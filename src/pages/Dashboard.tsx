@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Sun, Battery, Wind, Drop, Thermometer, WarningCircle, X, House, Gauge, Leaf } from "@phosphor-icons/react";
+import { Sun, BatteryHigh as Battery, Wind, Drop, Thermometer, WarningCircle, X, House, Leaf } from "@phosphor-icons/react";
 
 const ease = [0.16, 1, 0.3, 1] as const;
 const tabs = ["Overview", "Energy", "Climate", "Activity"];
