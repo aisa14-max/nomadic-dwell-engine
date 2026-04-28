@@ -8,8 +8,8 @@ export default {
     container: { center: true, padding: "1.5rem", screens: { "2xl": "1400px" } },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', "sans-serif"],
-        sans: ["Inter", "sans-serif"],
+        display: ['"Bricolage Grotesque"', "sans-serif"],
+        sans: ["Geist", "sans-serif"],
         mono: ['"Geist Mono"', "monospace"],
       },
       colors: {
