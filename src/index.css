@@ -89,13 +89,13 @@
   html { -webkit-font-smoothing: antialiased; }
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Geist', sans-serif;
     font-weight: 300;
   }
   h1, h2, h3, h4, h5, .display {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Bricolage Grotesque', sans-serif;
     font-weight: 500;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.035em;
   }
   .font-mono-data { font-family: 'Geist Mono', monospace; font-feature-settings: "tnum"; }
 }
