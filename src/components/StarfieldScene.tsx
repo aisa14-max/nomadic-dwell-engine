@@ -117,7 +117,7 @@ export default function StarfieldScene({ className = "" }: Props) {
   }, []);
 
   return (
-    <div className={`relative overflow-hidden ${className}`} aria-hidden>
+    <div className={`overflow-hidden ${className}`} aria-hidden>
       <img
         src={habitatNight}
         alt=""
