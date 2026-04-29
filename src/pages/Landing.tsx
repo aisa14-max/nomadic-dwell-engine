@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, Play } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import DayNightScene from "@/components/DayNightScene";
+import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
 
 const HERO_VIDEO =
