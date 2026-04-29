@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, Play } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import DayNightScene from "@/components/DayNightScene";
+import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
 
 const HERO_VIDEO =
@@ -127,10 +128,7 @@ export default function Landing() {
 
       {/* ============ CAPABILITIES ============ */}
       <section className="relative min-h-screen w-full overflow-hidden bg-black">
-        <FadingVideo
-          src={CAP_VIDEO}
-          className="absolute inset-0 w-full h-full object-cover z-0"
-        />
+        <StarfieldScene className="absolute inset-0 w-full h-full z-0" />
 
         <div className="relative z-10 px-8 md:px-16 lg:px-20 pt-24 pb-10 flex flex-col min-h-screen">
           <div className="mb-auto">
