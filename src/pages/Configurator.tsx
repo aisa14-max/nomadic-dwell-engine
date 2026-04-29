@@ -1,12 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Bed, Cookie, Droplets, Sun, Wind, Wrench, Plus, Check, Box, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
-import FadingVideo from "@/components/FadingVideo";
 import BlurText from "@/components/BlurText";
+import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-iso.png";
-
-const CAP_VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_094631_d30ab262-45ee-4b7d-99f3-5d5848c8ef13.mp4";
 
 type Mod = { id: string; name: string; icon: any; cat: string; kwh: number; weight: number };
 
@@ -39,8 +36,8 @@ export default function Configurator() {
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <FadingVideo src={CAP_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-50" />
-      <div className="fixed inset-0 z-0 bg-black/50" aria-hidden />
+      <ClaimSpotScene className="fixed inset-0 w-full h-full z-0" />
+      <div className="fixed inset-0 z-0 bg-black/55" aria-hidden />
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
