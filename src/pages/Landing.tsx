@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, Play } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
+import DayNightScene from "@/components/DayNightScene";
 import BlurText from "@/components/BlurText";
 
 const HERO_VIDEO =
@@ -17,9 +18,8 @@ export default function Landing() {
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
       <section className="relative h-screen min-h-[760px] w-full overflow-hidden bg-black">
-        <FadingVideo
-          src={HERO_VIDEO}
-          className="absolute left-1/2 top-0 -translate-x-1/2 object-cover object-top z-0"
+        <DayNightScene
+          className="absolute left-1/2 top-0 -translate-x-1/2 z-0"
           style={{ width: "120%", height: "120%" }}
         />
 
