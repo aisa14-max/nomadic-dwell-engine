@@ -135,7 +135,7 @@ export default function Configurator() {
                         initial={{ scale: 1.06, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="max-h-[55vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                        className="max-h-[72vh] max-w-[85%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
                       />
                     </AnimatePresence>
                   </div>
