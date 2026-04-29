@@ -1,20 +1,26 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Bed, Cookie, Drop, Sun, Wind, Wrench, Plus, Check, Cube, ArrowsClockwise, MagnifyingGlassPlus, MagnifyingGlassMinus } from "@phosphor-icons/react";
+import { Bed, Cookie, Droplets, Sun, Wind, Wrench, Plus, Check, Box, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
+import FadingVideo from "@/components/FadingVideo";
+import BlurText from "@/components/BlurText";
 import dwelling from "@/assets/dwelling-iso.png";
 
-const ease = [0.16, 1, 0.3, 1] as const;
+const CAP_VIDEO =
+  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_094631_d30ab262-45ee-4b7d-99f3-5d5848c8ef13.mp4";
 
-type Mod = { id: string; name: string; icon: any; cat: string; kwh: number; weight: number; };
+type Mod = { id: string; name: string; icon: any; cat: string; kwh: number; weight: number };
 
 const modules: Mod[] = [
   { id: "sleep", name: "Sleeping pod", icon: Bed, cat: "Habitation", kwh: 0.4, weight: 280 },
   { id: "kitchen", name: "Galley module", icon: Cookie, cat: "Habitation", kwh: 1.2, weight: 320 },
-  { id: "water", name: "Water reclaim", icon: Drop, cat: "Systems", kwh: 0.6, weight: 210 },
+  { id: "water", name: "Water reclaim", icon: Droplets, cat: "Systems", kwh: 0.6, weight: 210 },
   { id: "solar", name: "Solar array", icon: Sun, cat: "Energy", kwh: -4.2, weight: 140 },
   { id: "wind", name: "Wind turbine", icon: Wind, cat: "Energy", kwh: -1.8, weight: 95 },
   { id: "workshop", name: "Workshop bay", icon: Wrench, cat: "Aux", kwh: 0.8, weight: 360 },
 ];
+
+const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
+const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Configurator() {
   const [added, setAdded] = useState<string[]>(["sleep", "solar", "water"]);
@@ -32,160 +38,186 @@ export default function Configurator() {
     setAdded((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
 
   return (
-    <div className="pt-28 px-6 pb-12 min-h-screen">
-      <div className="mx-auto max-w-[1400px]">
-        <div className="flex items-end justify-between flex-wrap gap-4">
-          <div>
-            <p className="text-[12px] uppercase tracking-[0.18em]" style={{ color: "#9A9589" }}>Configurator</p>
-            <h1 className="mt-2 font-display text-[40px] leading-tight" style={{ color: "#E8E3D8" }}>Compose your engine.</h1>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn-pill btn-secondary">Save draft</button>
-            <button className="btn-pill btn-deploy">Continue to plan</button>
-          </div>
-        </div>
+    <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
+      <FadingVideo src={CAP_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-50" />
+      <div className="fixed inset-0 z-0 bg-black/50" aria-hidden />
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-5">
-          {/* MODULES PANEL */}
-          <aside>
-            <h3 className="text-[12px] uppercase tracking-[0.16em] mb-3" style={{ color: "#9A9589" }}>Modules</h3>
-            <div className="space-y-2">
-              {modules.map((m) => {
-                const on = added.includes(m.id);
-                return (
-                  <motion.button
-                    key={m.id}
-                    onClick={() => toggle(m.id)}
-                    layout
-                    className="group w-full text-left rounded-2xl p-4 flex items-center gap-3 border"
-                    style={{
-                      background: on ? "#1C1C19" : "#161614",
-                      borderColor: on ? "rgba(138,184,110,0.35)" : "rgba(255,255,255,0.06)",
-                      transition: "background-color 200ms cubic-bezier(0.16,1,0.3,1), border-color 200ms",
-                    }}
-                  >
-                    <div className="icon-box" style={{ borderColor: on ? "#8AB86E" : undefined }}>
-                      <m.icon size={20} weight="regular" color={on ? "#8AB86E" : "#9A9589"} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium" style={{ color: "#E8E3D8" }}>{m.name}</p>
-                      <p className="text-[11px]" style={{ color: "#9A9589" }}>{m.cat} · {m.kwh > 0 ? `+${m.kwh}` : m.kwh} kWh</p>
-                    </div>
-                    <AnimatePresence>
-                      {on ? (
-                        <motion.span
-                          key="added"
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ duration: 0.18 }}
-                          className="tag-pill tag-green"
-                        >
-                          <Check size={10} weight="bold" /> Added
-                        </motion.span>
-                      ) : (
-                        <Plus size={16} className="opacity-50" color="#9A9589" />
-                      )}
-                    </AnimatePresence>
-                  </motion.button>
-                );
-              })}
+      <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
+        <div className="mx-auto max-w-[1400px]">
+          <p className="text-sm font-body text-white/80 mb-4">// Worlds</p>
+          <div className="flex items-end justify-between flex-wrap gap-6">
+            <div className="max-w-3xl">
+              <BlurText
+                text="Compose your engine."
+                className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
+              />
             </div>
-          </aside>
-
-          {/* VIEWPORT */}
-          <div className="relative">
             <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, ease }}
-              className="relative rounded-2xl overflow-hidden render-glow"
-              style={{ background: "radial-gradient(ellipse at center, #1C1C19 0%, #0F0F0D 70%)", height: "62vh", border: "0.5px solid rgba(255,255,255,0.06)" }}
+              initial={blurInit}
+              animate={blurIn}
+              transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
+              className="flex gap-3"
             >
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="autorotate">
-                  <AnimatePresence mode="popLayout">
-                    <motion.img
-                      key={added.join("-")}
-                      src={dwelling}
-                      alt="Modular dwelling render"
-                      initial={{ scale: 1.06, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.4, ease }}
-                      className="max-h-[55vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(138,184,110,0.15)]"
-                    />
-                  </AnimatePresence>
+              <button className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white">
+                Save draft
+              </button>
+              <button className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium">
+                Continue to plan
+              </button>
+            </motion.div>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-5">
+            {/* MODULES */}
+            <motion.aside
+              initial={blurInit}
+              animate={blurIn}
+              transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+            >
+              <h3 className="text-xs uppercase tracking-[0.16em] mb-3 text-white/70 font-body">Modules</h3>
+              <div className="space-y-2">
+                {modules.map((m) => {
+                  const on = added.includes(m.id);
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => toggle(m.id)}
+                      className={`liquid-glass w-full text-left rounded-[1rem] p-4 flex items-center gap-3 transition-opacity ${
+                        on ? "opacity-100" : "opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
+                        <m.icon className="h-4 w-4 text-white" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-body font-medium text-white">{m.name}</p>
+                        <p className="text-xs text-white/60 font-body">
+                          {m.cat} · {m.kwh > 0 ? `+${m.kwh}` : m.kwh} kWh
+                        </p>
+                      </div>
+                      <AnimatePresence>
+                        {on ? (
+                          <motion.span
+                            key="added"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.18 }}
+                            className="bg-white text-black rounded-full px-2 py-0.5 text-[10px] font-body font-semibold inline-flex items-center gap-1"
+                          >
+                            <Check className="h-3 w-3" strokeWidth={3} /> Added
+                          </motion.span>
+                        ) : (
+                          <Plus className="h-4 w-4 text-white/60" strokeWidth={1.5} />
+                        )}
+                      </AnimatePresence>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.aside>
+
+            {/* VIEWPORT */}
+            <motion.div
+              initial={blurInit}
+              animate={blurIn}
+              transition={{ duration: 0.7, delay: 0.9, ease: "easeOut" }}
+              className="relative"
+            >
+              <div
+                className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
+                style={{ height: "62vh" }}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="autorotate">
+                    <AnimatePresence mode="popLayout">
+                      <motion.img
+                        key={added.join("-")}
+                        src={dwelling}
+                        alt="Modular dwelling render"
+                        initial={{ scale: 1.06, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                        className="max-h-[55vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                      />
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
+                  {[Box, RotateCw, ZoomIn, ZoomOut].map((I, i) => (
+                    <button key={i} className="w-8 h-8 rounded-full inline-flex items-center justify-center text-white/80 hover:text-white">
+                      <I className="h-4 w-4" strokeWidth={1.5} />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
+                  <span className="liquid-glass tag-glass">{added.length} modules</span>
+                  <span className="liquid-glass tag-glass">Site: Skye Moor</span>
                 </div>
               </div>
 
-              {/* Toolbar */}
-              <div className="absolute top-4 right-4 flex flex-col gap-3 p-2 rounded-full" style={{ background: "rgba(15,15,13,0.6)" }}>
-                {[Cube, ArrowsClockwise, MagnifyingGlassPlus, MagnifyingGlassMinus].map((I, i) => (
-                  <button key={i} className="icon-bare w-8 h-8" style={{ color: "#E8E3D8" }}>
-                    <I size={16} />
-                  </button>
-                ))}
-              </div>
-
-              {/* Floating tags */}
-              <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-                <span className="tag-pill tag-green">{added.length} modules</span>
-                <span className="tag-pill tag-neutral" style={{ color: "#9A9589" }}>Site: Skye Moor</span>
+              {/* Performance strip */}
+              <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Stat label="Net energy" value={(-draft.kwh).toFixed(1)} unit="kWh/d" />
+                <Stat label="Total mass" value={(draft.weight / 1000).toFixed(2)} unit="t" />
+                <Stat
+                  label="Habitable"
+                  value={String(added.filter((id) => modules.find((m) => m.id === id)?.cat === "Habitation").length)}
+                  unit="modules"
+                />
+                <Stat label="Climate fit" value="92" unit="%" />
               </div>
             </motion.div>
 
-            {/* Performance strip */}
-            <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Stat label="Net energy" value={(-draft.kwh).toFixed(1)} unit="kWh/d" good={-draft.kwh >= 0} />
-              <Stat label="Total mass" value={(draft.weight / 1000).toFixed(2)} unit="t" good={draft.weight < 1500} />
-              <Stat label="Habitable" value={String(added.filter((id) => modules.find((m) => m.id === id)?.cat === "Habitation").length)} unit="modules" good />
-              <Stat label="Climate fit" value="92" unit="%" good />
-            </div>
+            {/* AI ASSIST */}
+            <motion.aside
+              initial={blurInit}
+              animate={blurIn}
+              transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
+              className="liquid-glass rounded-[1.25rem] p-5"
+            >
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
+              </div>
+              <div className="mt-5 space-y-4 text-sm font-body font-light text-white/90">
+                <AssistantMsg delay={0.1}>
+                  Your current setup yields a net surplus on Skye Moor. The wind turbine
+                  would push you well past 100% autonomy.
+                </AssistantMsg>
+                <AssistantMsg delay={0.6}>
+                  If you add the galley module, expect a 1.2 kWh/d draw — still within envelope.
+                </AssistantMsg>
+                <AssistantMsg delay={1.2} typing>
+                  Want me to suggest a deployment window with stable conditions
+                </AssistantMsg>
+              </div>
+            </motion.aside>
           </div>
-
-          {/* AI ASSIST */}
-          <aside className="rounded-2xl p-5" style={{ background: "#161614", border: "0.5px solid rgba(255,255,255,0.06)" }}>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full pulse-nominal" style={{ background: "#8AB86E" }} />
-              <h3 className="text-[13px] font-medium" style={{ color: "#8AB86E" }}>Engine Assistant</h3>
-            </div>
-            <div className="mt-5 space-y-4 text-[13px] font-light" style={{ color: "#E8E3D8" }}>
-              <AssistantMsg delay={0.1}>
-                Your current setup yields a net surplus on Skye Moor. The wind turbine
-                would push you well past 100% autonomy.
-              </AssistantMsg>
-              <AssistantMsg delay={0.6}>
-                If you add the galley module, expect a 1.2 kWh/d draw — still within envelope.
-              </AssistantMsg>
-              <AssistantMsg delay={1.2} typing>
-                Want me to suggest a deployment window with stable conditions
-              </AssistantMsg>
-            </div>
-          </aside>
         </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, unit, good }: { label: string; value: string; unit: string; good: boolean }) {
+function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="rounded-2xl p-4" style={{ background: "#161614", border: "0.5px solid rgba(255,255,255,0.06)" }}>
-      <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: "#9A9589" }}>{label}</p>
+    <div className="liquid-glass rounded-[1rem] p-4">
+      <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
       <div className="mt-2 flex items-baseline gap-1.5">
         <motion.span
           key={value}
           initial={{ y: 8, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.18 }}
-          className="font-mono-data text-[26px]"
-          style={{ color: "#E8E3D8" }}
+          className="font-heading text-white text-3xl tracking-[-1px] leading-none"
         >
           {value}
         </motion.span>
-        <span className="font-mono-data text-[12px]" style={{ color: "#9A9589" }}>{unit}</span>
+        <span className="text-xs text-white/60 font-body">{unit}</span>
       </div>
-      <span className={`tag-pill mt-3 ${good ? "tag-green" : "tag-alert"}`}>{good ? "Good" : "Review"}</span>
     </div>
   );
 }
@@ -195,12 +227,12 @@ function AssistantMsg({ children, delay = 0, typing = false }: { children: React
     <motion.div
       initial={{ opacity: 0, maxHeight: 0 }}
       animate={{ opacity: 1, maxHeight: 200 }}
-      transition={{ duration: 0.3, delay, ease }}
+      transition={{ duration: 0.3, delay, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden"
     >
       <p>
         {children}
-        {typing && <span className="caret" style={{ color: "#8AB86E" }} />}
+        {typing && <span className="caret text-white" />}
       </p>
     </motion.div>
   );
