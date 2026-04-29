@@ -123,7 +123,7 @@ export default function Configurator() {
             >
               <div
                 className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
-                style={{ height: "62vh" }}
+                style={{ height: "82vh" }}
               >
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="autorotate">
