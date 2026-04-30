@@ -64,7 +64,7 @@ export default function Configurator() {
             </motion.div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[300px_1fr_280px] gap-5">
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[260px_1fr_240px] gap-5">
             {/* MODULES */}
             <motion.aside
               initial={blurInit}
@@ -122,8 +122,8 @@ export default function Configurator() {
               className="relative"
             >
               <div
-                className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
-                style={{ height: "82vh" }}
+                className="liquid-glass relative rounded-[1.25rem] overflow-hidden mx-[-40px] lg:mx-[-60px]"
+                style={{ height: "58vh" }}
               >
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="autorotate">
@@ -135,7 +135,7 @@ export default function Configurator() {
                         initial={{ scale: 1.06, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="max-h-[72vh] max-w-[85%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                        className="max-h-[50vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
                       />
                     </AnimatePresence>
                   </div>
