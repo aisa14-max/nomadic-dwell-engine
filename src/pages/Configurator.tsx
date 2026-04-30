@@ -122,7 +122,7 @@ export default function Configurator() {
               className="relative"
             >
               <div
-                className="liquid-glass relative rounded-[1.25rem] overflow-hidden mx-[-40px] lg:mx-[-60px]"
+                className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
                 style={{ height: "58vh" }}
               >
                 <div className="absolute inset-0 flex items-center justify-center">
