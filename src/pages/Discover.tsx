@@ -2,11 +2,8 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Sun, Wind, Droplets } from "lucide-react";
-import FadingVideo from "@/components/FadingVideo";
+import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
-
-const HERO_VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
 
 const filters = ["All terrain", "Forest", "Coastal", "Desert", "Alpine", "Moor", "< 7 days", "Long-stay"];
 
@@ -27,10 +24,7 @@ export default function Discover() {
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <FadingVideo
-        src={HERO_VIDEO}
-        className="fixed inset-0 w-full h-full object-cover z-0 opacity-60"
-      />
+      <VoyageScene className="fixed inset-0 w-full h-full z-0" />
       <div className="fixed inset-0 z-0 bg-black/40" aria-hidden />
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
