@@ -44,9 +44,9 @@ export default function VoyageScene({ className = "" }: Props) {
     };
 
     const ridges = [
-      { pts: makeRidge(1.2, 0.18, 6),  speed: 0.006, baseY: 0.78, alpha: 0.18 },
-      { pts: makeRidge(3.8, 0.22, 8),  speed: 0.012, baseY: 0.84, alpha: 0.28 },
-      { pts: makeRidge(7.4, 0.16, 11), speed: 0.022, baseY: 0.92, alpha: 0.45 },
+      { pts: makeRidge(1.2, 0.18, 6),  speed: 0.0018, baseY: 0.78, alpha: 0.18 },
+      { pts: makeRidge(3.8, 0.22, 8),  speed: 0.0036, baseY: 0.84, alpha: 0.28 },
+      { pts: makeRidge(7.4, 0.16, 11), speed: 0.0066, baseY: 0.92, alpha: 0.45 },
     ];
 
     const drawRidge = (
