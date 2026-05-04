@@ -2,11 +2,8 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Sun, Wind, Droplets } from "lucide-react";
-import FadingVideo from "@/components/FadingVideo";
+import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
-
-const HERO_VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
 
 const filters = ["All terrain", "Forest", "Coastal", "Desert", "Alpine", "Moor", "< 7 days", "Long-stay"];
 
