@@ -92,7 +92,7 @@ export default function VoyageScene({ className = "" }: Props) {
       const radius = Math.min(w, h) * 0.13;
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.rotate((t * 0.0001) % (Math.PI * 2));
+      ctx.rotate((t * 0.00003) % (Math.PI * 2));
       ctx.strokeStyle = "rgba(255,255,255,0.18)";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -127,7 +127,7 @@ export default function VoyageScene({ className = "" }: Props) {
       ctx.strokeStyle = "rgba(255,255,255,0.05)";
       ctx.lineWidth = 1;
       const spacing = 80;
-      const off = (t * 0.015) % spacing;
+      const off = (t * 0.004) % spacing;
       for (let y = -spacing + off; y < h * 0.7; y += spacing) {
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -152,8 +152,8 @@ export default function VoyageScene({ className = "" }: Props) {
         const x = p * w;
         const y =
           h * 0.55 +
-          Math.sin(p * 6 + t * 0.0003) * h * 0.05 +
-          Math.sin(p * 13 + t * 0.0005) * h * 0.02;
+          Math.sin(p * 6 + t * 0.00009) * h * 0.05 +
+          Math.sin(p * 13 + t * 0.00015) * h * 0.02;
         pts.push([x, y]);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
@@ -161,7 +161,7 @@ export default function VoyageScene({ className = "" }: Props) {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      const prog = ((t * 0.00006) % 1);
+      const prog = ((t * 0.000018) % 1);
       const idx = Math.floor(prog * (pts.length - 1));
       const [px, py] = pts[idx];
       // Glow
@@ -180,7 +180,7 @@ export default function VoyageScene({ className = "" }: Props) {
 
     const drawBackdrop = (t: number) => {
       // Subtle aurora-ish gradient that breathes
-      const breathe = 0.5 + Math.sin(t * 0.0004) * 0.5;
+      const breathe = 0.5 + Math.sin(t * 0.00012) * 0.5;
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0, `rgba(20,30,50,${0.6 + breathe * 0.1})`);
       g.addColorStop(0.55, "rgba(8,10,18,0.85)");
@@ -190,7 +190,7 @@ export default function VoyageScene({ className = "" }: Props) {
 
       // Drifting horizon haze
       const haze = ctx.createRadialGradient(
-        w * (0.4 + Math.sin(t * 0.0002) * 0.1),
+        w * (0.4 + Math.sin(t * 0.00006) * 0.1),
         h * 0.65,
         0,
         w * 0.5,
