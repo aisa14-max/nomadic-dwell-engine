@@ -24,10 +24,7 @@ export default function Discover() {
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <FadingVideo
-        src={HERO_VIDEO}
-        className="fixed inset-0 w-full h-full object-cover z-0 opacity-60"
-      />
+      <VoyageScene className="fixed inset-0 w-full h-full z-0" />
       <div className="fixed inset-0 z-0 bg-black/40" aria-hidden />
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
