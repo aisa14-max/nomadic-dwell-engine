@@ -4,16 +4,22 @@ import { Link } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Sun, Wind, Droplets } from "lucide-react";
 import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
+import pineHollow from "@/assets/sites/pine-hollow.jpg";
+import myrarCliff from "@/assets/sites/myrar-cliff.jpg";
+import atacamaPlateau from "@/assets/sites/atacama-plateau.jpg";
+import skyeMoor from "@/assets/sites/skye-moor.jpg";
+import mosiPlains from "@/assets/sites/mosi-plains.jpg";
+import blackPines from "@/assets/sites/black-pines.jpg";
 
 const filters = ["All terrain", "Forest", "Coastal", "Desert", "Alpine", "Moor", "< 7 days", "Long-stay"];
 
 const sites = [
-  { title: "Pine Hollow", region: "Lapland, SE", solar: "5.1", wind: "12", water: "Stream", climate: "Sub-arctic" },
-  { title: "Mýrar Cliff", region: "Faroe, FO", solar: "3.8", wind: "34", water: "Rain", climate: "Maritime" },
-  { title: "Atacama Plateau", region: "Antofagasta, CL", solar: "9.2", wind: "8", water: "Tank", climate: "Arid alpine" },
-  { title: "Skye Moor", region: "Highlands, UK", solar: "3.2", wind: "26", water: "Spring", climate: "Temperate" },
-  { title: "Mosi Plains", region: "Suðurland, IS", solar: "4.0", wind: "22", water: "Glacial", climate: "Sub-arctic" },
-  { title: "Black Pines", region: "Karelia, FI", solar: "4.6", wind: "10", water: "Lake", climate: "Boreal" },
+  { title: "Pine Hollow", region: "Lapland, SE", solar: "5.1", wind: "12", water: "Stream", climate: "Sub-arctic", image: pineHollow },
+  { title: "Mýrar Cliff", region: "Faroe, FO", solar: "3.8", wind: "34", water: "Rain", climate: "Maritime", image: myrarCliff },
+  { title: "Atacama Plateau", region: "Antofagasta, CL", solar: "9.2", wind: "8", water: "Tank", climate: "Arid alpine", image: atacamaPlateau },
+  { title: "Skye Moor", region: "Highlands, UK", solar: "3.2", wind: "26", water: "Spring", climate: "Temperate", image: skyeMoor },
+  { title: "Mosi Plains", region: "Suðurland, IS", solar: "4.0", wind: "22", water: "Glacial", climate: "Sub-arctic", image: mosiPlains },
+  { title: "Black Pines", region: "Karelia, FI", solar: "4.6", wind: "10", water: "Lake", climate: "Boreal", image: blackPines },
 ];
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
@@ -93,9 +99,19 @@ export default function Discover() {
                   <p className="text-xs text-white/70 font-body inline-flex items-center gap-1">
                     <MapPin className="h-3 w-3" /> {s.region}
                   </p>
-                  <h3 className="font-heading text-white text-3xl md:text-[2.25rem] tracking-[-1px] leading-none mt-2">
-                    {s.title}
-                  </h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <img
+                      src={s.image}
+                      alt={`${s.title} landscape`}
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                      className="h-14 w-14 rounded-xl object-cover flex-shrink-0 border border-white/15"
+                    />
+                    <h3 className="font-heading text-white text-3xl md:text-[2.25rem] tracking-[-1px] leading-none">
+                      {s.title}
+                    </h3>
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-1.5">
                     <span className="liquid-glass tag-glass">
                       <Sun className="h-3 w-3" /> {s.solar} kWh
