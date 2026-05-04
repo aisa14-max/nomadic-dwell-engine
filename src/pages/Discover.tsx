@@ -99,9 +99,19 @@ export default function Discover() {
                   <p className="text-xs text-white/70 font-body inline-flex items-center gap-1">
                     <MapPin className="h-3 w-3" /> {s.region}
                   </p>
-                  <h3 className="font-heading text-white text-3xl md:text-[2.25rem] tracking-[-1px] leading-none mt-2">
-                    {s.title}
-                  </h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <img
+                      src={s.image}
+                      alt={`${s.title} landscape`}
+                      width={64}
+                      height={64}
+                      loading="lazy"
+                      className="h-14 w-14 rounded-xl object-cover flex-shrink-0 border border-white/15"
+                    />
+                    <h3 className="font-heading text-white text-3xl md:text-[2.25rem] tracking-[-1px] leading-none">
+                      {s.title}
+                    </h3>
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-1.5">
                     <span className="liquid-glass tag-glass">
                       <Sun className="h-3 w-3" /> {s.solar} kWh
