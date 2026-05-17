@@ -14,9 +14,27 @@ interface RegionGlobeProps {
 }
 
 const SOURCE_ID = "continents";
+const LABEL_SOURCE_ID = "continents-labels";
 const FILL_LAYER = "continents-fill";
 const LINE_LAYER = "continents-line";
 const LABEL_LAYER = "continents-label";
+
+const COUNTRY_LABEL_LAYERS = [
+  "country-label",
+  "state-label",
+  "settlement-major-label",
+  "settlement-minor-label",
+  "settlement-subdivision-label",
+];
+
+const REGION_LABELS_GEOJSON: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: REGIONS.map((r) => ({
+    type: "Feature",
+    properties: { label: r.label },
+    geometry: { type: "Point", coordinates: r.center },
+  })),
+};
 
 export default function RegionGlobe({ selectedRegion, onSelect, className }: RegionGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -42,6 +60,11 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
     mapRef.current = map;
 
     map.on("style.load", () => {
+      // Hide default country/place labels from the basemap
+      COUNTRY_LABEL_LAYERS.forEach((id) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      });
+
       map.setFog({
         color: "rgb(20, 20, 28)",
         "high-color": "rgb(36, 36, 56)",
@@ -54,6 +77,11 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
         type: "geojson",
         data: continentsGeo as GeoJSON.FeatureCollection,
         promoteId: "id",
+      });
+
+      map.addSource(LABEL_SOURCE_ID, {
+        type: "geojson",
+        data: REGION_LABELS_GEOJSON,
       });
 
       map.addLayer({
@@ -89,7 +117,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
       map.addLayer({
         id: LABEL_LAYER,
         type: "symbol",
-        source: SOURCE_ID,
+        source: LABEL_SOURCE_ID,
         layout: {
           "text-field": ["get", "label"],
           "text-size": 11,
