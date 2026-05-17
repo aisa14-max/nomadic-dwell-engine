@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, MapPin, Heart, Sun, Wind, Droplets } from "lucide-react";
+import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
@@ -109,7 +109,6 @@ export default function Discover() {
                       <MapPin className="h-5 w-5 text-white" strokeWidth={1.5} />
                     </div>
                     <div className="flex flex-wrap justify-end gap-1.5 max-w-[65%]">
-                      <span className="liquid-glass tag-glass">{s.climate}</span>
                       <span className="liquid-glass tag-glass">Available</span>
                     </div>
                   </div>
@@ -133,13 +132,19 @@ export default function Discover() {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-1.5">
                       <span className="liquid-glass tag-glass">
-                        <Sun className="h-3 w-3" /> {s.solar} kWh
+                        <Thermometer className="h-3 w-3" /> {s.temperature}
                       </span>
                       <span className="liquid-glass tag-glass">
-                        <Wind className="h-3 w-3" /> {s.wind} km/h
+                        <CloudRain className="h-3 w-3" /> {s.rainfall}
                       </span>
                       <span className="liquid-glass tag-glass">
-                        <Droplets className="h-3 w-3" /> {s.water}
+                        <Wallet className="h-3 w-3" /> {s.costOfLiving}
+                      </span>
+                      <span className="liquid-glass tag-glass">
+                        <Wifi className="h-3 w-3" /> {s.internetSpeed}
+                      </span>
+                      <span className="liquid-glass tag-glass">
+                        <ShieldCheck className="h-3 w-3" /> {s.safety}
                       </span>
                     </div>
                     <div className="mt-5 flex items-center gap-3">
