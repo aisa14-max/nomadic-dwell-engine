@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
+import LoginDialog from "@/components/LoginDialog";
+import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 import type { RegionId } from "@/data/regions";
 import { CLIMATES, type ClimateId } from "@/data/climates";
