@@ -39,8 +39,8 @@ export default function Discover() {
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
         <div className="mx-auto max-w-[1400px]">
           {/* Header */}
-          <p className="text-sm font-body text-white/80 mb-4">// Voyages</p>
-          <div className="max-w-3xl">
+          <p className="text-sm font-body text-white/80 mb-4 text-center">// Voyages</p>
+          <div className="max-w-3xl mx-auto text-center">
             <BlurText
               text="Find terrain that matches your engine."
               className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
@@ -50,7 +50,7 @@ export default function Discover() {
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
-            className="mt-6 max-w-xl text-sm md:text-base text-white/80 font-body font-light leading-tight"
+            className="mt-6 max-w-xl mx-auto text-center text-sm md:text-base text-white/80 font-body font-light leading-tight"
           >
             Browse pre-cleared parcels worldwide. Every site reports live solar, wind, and water yields.
           </motion.p>
