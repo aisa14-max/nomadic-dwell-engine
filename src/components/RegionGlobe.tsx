@@ -14,9 +14,27 @@ interface RegionGlobeProps {
 }
 
 const SOURCE_ID = "continents";
+const LABEL_SOURCE_ID = "continents-labels";
 const FILL_LAYER = "continents-fill";
 const LINE_LAYER = "continents-line";
 const LABEL_LAYER = "continents-label";
+
+const COUNTRY_LABEL_LAYERS = [
+  "country-label",
+  "state-label",
+  "settlement-major-label",
+  "settlement-minor-label",
+  "settlement-subdivision-label",
+];
+
+const REGION_LABELS_GEOJSON: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: REGIONS.map((r) => ({
+    type: "Feature",
+    properties: { label: r.label },
+    geometry: { type: "Point", coordinates: r.center },
+  })),
+};
 
 export default function RegionGlobe({ selectedRegion, onSelect, className }: RegionGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
