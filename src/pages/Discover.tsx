@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck } from "lucide-react";
 import BlurText from "@/components/BlurText";
+import VoyageScene from "@/components/VoyageScene";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
 import { useMockAuth } from "@/context/MockAuth";
