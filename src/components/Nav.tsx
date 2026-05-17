@@ -11,7 +11,7 @@ const items = [
 
 export default function Nav() {
   const { pathname } = useLocation();
-  const { user, signOut } = useMockAuth();
+  const { user, signOut, openLogin } = useMockAuth();
   return (
     <nav className="fixed top-4 inset-x-0 z-50 px-8 lg:px-16">
       <div className="mx-auto max-w-[1400px] flex items-center justify-between">
@@ -47,14 +47,21 @@ export default function Nav() {
           </Link>
         </div>
 
-        {/* Right: sign-out when logged in */}
-        <div className="w-12 h-12 flex items-center justify-end" aria-hidden={!user}>
-          {user && (
+        {/* Right: auth action */}
+        <div className="flex items-center justify-end">
+          {user ? (
             <button
               onClick={signOut}
-              className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body font-medium text-white/90"
+              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
             >
               Sign out
+            </button>
+          ) : (
+            <button
+              onClick={() => openLogin()}
+              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+            >
+              Sign in
             </button>
           )}
         </div>

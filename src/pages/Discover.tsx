@@ -5,7 +5,6 @@ import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, Shie
 import BlurText from "@/components/BlurText";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
-import LoginDialog from "@/components/LoginDialog";
 import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 import type { RegionId } from "@/data/regions";
@@ -17,9 +16,8 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
-  const [loginOpen, setLoginOpen] = useState(false);
   const navigate = useNavigate();
-  const { user } = useMockAuth();
+  const { user, openLogin } = useMockAuth();
 
   const visibleSites = useMemo(
     () =>
@@ -33,7 +31,7 @@ export default function Discover() {
 
   const handleConfigure = () => {
     if (user) navigate("/configurator");
-    else setLoginOpen(true);
+    else openLogin(() => navigate("/configurator"));
   };
 
   return (
@@ -175,11 +173,6 @@ export default function Discover() {
           )}
         </div>
       </div>
-      <LoginDialog
-        open={loginOpen}
-        onOpenChange={setLoginOpen}
-        onSuccess={() => navigate("/configurator")}
-      />
     </div>
   );
 }
