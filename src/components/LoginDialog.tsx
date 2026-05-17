@@ -40,7 +40,7 @@ export default function LoginDialog() {
 
   return (
     <Dialog open={loginOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="liquid-glass border-white/10 bg-black/85 text-white sm:max-w-md rounded-3xl p-8">
+      <DialogContent className="liquid-glass border-white/10 bg-black/85 text-white sm:max-w-lg rounded-3xl p-10">
         <DialogHeader className="space-y-2">
           <DialogTitle className="font-heading text-3xl tracking-[-1px] leading-tight">
             Sign in to configure
