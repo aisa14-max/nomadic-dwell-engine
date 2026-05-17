@@ -25,7 +25,9 @@ import {
   Maximize2,
 } from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
-import heroBg from "@/assets/hero-landscape.jpg";
+import VoyageScene from "@/components/VoyageScene";
+import BlurText from "@/components/BlurText";
+
 
 type Option = { id: string; label: string; subtitle: string; Icon: typeof User };
 
@@ -123,43 +125,47 @@ export default function OnboardingFlow() {
           aria-describedby={undefined}
           className="fixed inset-0 z-[60] w-screen h-screen overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none"
         >
-          {/* Background image */}
-          <div
-            className="fixed inset-0 z-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${heroBg})` }}
-            aria-hidden
-          />
-          <div className="fixed inset-0 z-0 bg-black/30" aria-hidden />
+          {/* Cinematic backdrop — Voyages aesthetic */}
+          <div className="fixed inset-0 z-0 bg-[#01030f]" aria-hidden />
+          <VoyageScene className="fixed inset-0 w-full h-full z-0 opacity-70 pointer-events-none" />
+          <div className="fixed inset-0 z-0 bg-[#020618]/70 pointer-events-none" aria-hidden />
 
-          {/* Floating card */}
+          {/* Floating glass card */}
           <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-16">
-            <div className="w-full max-w-[860px] rounded-[2rem] bg-white text-neutral-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)] p-8 md:p-10">
+            <div className="liquid-glass border border-white/10 w-full max-w-[920px] rounded-[2rem] p-8 md:p-12 text-white">
               {/* Header: progress dashes + counter */}
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-10">
                 <div className="flex items-center gap-1.5">
                   {Array.from({ length: total }).map((_, i) => (
                     <span
                       key={i}
                       className={[
-                        "h-1.5 w-8 rounded-full transition-colors",
-                        i <= stepIdx ? "bg-neutral-900" : "bg-neutral-200",
+                        "h-[3px] w-10 rounded-full transition-colors",
+                        i <= stepIdx ? "bg-white" : "bg-white/15",
                       ].join(" ")}
                     />
                   ))}
                 </div>
-                <span className="text-xs font-body tracking-wider text-neutral-500">
-                  {stepIdx + 1} / {total}
+                <span className="text-[11px] font-body tracking-[0.18em] uppercase text-white/50">
+                  {String(stepIdx + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
                 </span>
               </div>
 
-              <DialogPrimitive.Title className="font-heading text-3xl md:text-[2.25rem] tracking-[-1px] leading-tight text-center text-neutral-900">
-                {step.question}
+              <p className="text-xs font-body text-white/60 mb-3 text-center tracking-wider">// Onboarding</p>
+              <DialogPrimitive.Title asChild>
+                <div className="text-center">
+                  <BlurText
+                    key={stepIdx}
+                    text={step.question}
+                    className="font-heading text-white text-4xl md:text-5xl leading-[0.95] tracking-[-2px]"
+                  />
+                </div>
               </DialogPrimitive.Title>
 
               {/* Options */}
               <div
                 className={[
-                  "mt-10 grid gap-3",
+                  "mt-12 grid gap-3",
                   step.options.length === 3
                     ? "grid-cols-1 md:grid-cols-3"
                     : "grid-cols-2 md:grid-cols-4",
@@ -173,45 +179,47 @@ export default function OnboardingFlow() {
                       type="button"
                       onClick={() => setAnswers((a) => ({ ...a, [stepIdx]: opt.id }))}
                       className={[
-                        "flex flex-col items-center text-center gap-2 rounded-2xl px-4 py-6 border transition-all",
+                        "group relative flex flex-col items-start text-left gap-3 rounded-2xl px-5 py-6 border transition-all",
                         isSelected
-                          ? "bg-neutral-900 text-white border-neutral-900 shadow-md"
-                          : "bg-neutral-50 text-neutral-900 border-neutral-200 hover:bg-neutral-100",
+                          ? "bg-white text-black border-white shadow-[0_8px_30px_-10px_rgba(255,255,255,0.4)]"
+                          : "bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06] hover:border-white/20",
                       ].join(" ")}
                     >
                       <opt.Icon
-                        className={["h-7 w-7", isSelected ? "text-white" : "text-neutral-700"].join(" ")}
-                        strokeWidth={1.5}
+                        className={["h-6 w-6", isSelected ? "text-black" : "text-white/80"].join(" ")}
+                        strokeWidth={1.25}
                       />
-                      <span className="font-body font-semibold text-sm mt-1">{opt.label}</span>
-                      <span
-                        className={[
-                          "font-body text-xs leading-snug",
-                          isSelected ? "text-white/70" : "text-neutral-500",
-                        ].join(" ")}
-                      >
-                        {opt.subtitle}
-                      </span>
+                      <div className="space-y-1">
+                        <div className="font-heading text-xl leading-none tracking-[-1px]">{opt.label}</div>
+                        <div
+                          className={[
+                            "font-body text-xs leading-snug",
+                            isSelected ? "text-black/60" : "text-white/55",
+                          ].join(" ")}
+                        >
+                          {opt.subtitle}
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between mt-10">
+              <div className="flex items-center justify-between mt-12">
                 <button
                   type="button"
                   onClick={goBack}
-                  className="inline-flex items-center gap-2 text-sm font-body text-neutral-600 hover:text-neutral-900 px-3 py-2 rounded-full transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-body text-white/60 hover:text-white px-3 py-2 rounded-full transition-colors"
                 >
-                  <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+                  <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
                   Back
                 </button>
                 <button
                   type="button"
                   onClick={goNext}
                   disabled={!selected}
-                  className="inline-flex items-center gap-2 text-sm font-body font-medium bg-neutral-900 text-white px-5 py-2.5 rounded-full hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-body font-medium bg-white text-black px-6 py-3 rounded-full hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   {isLast ? "See my proposal" : "Continue"}
                   <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
