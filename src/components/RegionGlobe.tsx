@@ -117,7 +117,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
       map.addLayer({
         id: LABEL_LAYER,
         type: "symbol",
-        source: SOURCE_ID,
+        source: LABEL_SOURCE_ID,
         layout: {
           "text-field": ["get", "label"],
           "text-size": 11,
