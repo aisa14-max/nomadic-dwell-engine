@@ -1,6 +1,28 @@
 import { useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { ArrowLeft, ArrowRight, User, Users, Home, UsersRound, Sun, Snowflake, Wind, Leaf, Mountain, Waves, Trees, Sparkles, Zap, Battery, Flame, Gauge } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  User,
+  Users,
+  Home,
+  UsersRound,
+  CalendarDays,
+  CalendarRange,
+  Leaf,
+  Infinity as InfinityIcon,
+  Laptop,
+  Flower2,
+  PartyPopper,
+  Microscope,
+  Zap,
+  Lock,
+  Sofa,
+  Wifi,
+  Minimize2,
+  Square,
+  Maximize2,
+} from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
 import heroBg from "@/assets/hero-landscape.jpg";
 
@@ -15,46 +37,45 @@ const steps: Step[] = [
   {
     question: "How many people will be staying?",
     options: [
-      { id: "solo", label: "Solo", subtitle: "Just you", Icon: User },
-      { id: "couple", label: "Couple", subtitle: "Two travelers", Icon: Users },
-      { id: "family", label: "Family", subtitle: "3–5 people", Icon: Home },
-      { id: "group", label: "Large group", subtitle: "6 or more", Icon: UsersRound },
+      { id: "solo", label: "Solo", subtitle: "Just me, full independence", Icon: User },
+      { id: "couple", label: "Couple", subtitle: "Two people, shared space", Icon: Users },
+      { id: "family", label: "Family", subtitle: "3–4 people, shared setup", Icon: Home },
+      { id: "group", label: "Large group", subtitle: "5+ people, full capacity", Icon: UsersRound },
     ],
   },
   {
-    question: "What climate calls to you?",
+    question: "How long are you planning to stay?",
     options: [
-      { id: "warm", label: "Warm", subtitle: "Sun & coast", Icon: Sun },
-      { id: "cold", label: "Cold", subtitle: "Snow & ice", Icon: Snowflake },
-      { id: "temperate", label: "Temperate", subtitle: "Mild seasons", Icon: Wind },
-      { id: "tropical", label: "Tropical", subtitle: "Humid & lush", Icon: Leaf },
+      { id: "weeks", label: "1–4 weeks", subtitle: "Medium-term immersion", Icon: CalendarDays },
+      { id: "months", label: "1–3 months", subtitle: "Extended stay, full comfort", Icon: CalendarRange },
+      { id: "season", label: "A season", subtitle: "3–6 months, deep immersion", Icon: Leaf },
+      { id: "open", label: "Open-ended", subtitle: "Nomadic lifestyle, flexible", Icon: InfinityIcon },
     ],
   },
   {
-    question: "Which terrain feels like home?",
+    question: "What's the primary purpose of this stay?",
     options: [
-      { id: "mountain", label: "Mountain", subtitle: "High altitude", Icon: Mountain },
-      { id: "coast", label: "Coast", subtitle: "Near the sea", Icon: Waves },
-      { id: "forest", label: "Forest", subtitle: "Deep woods", Icon: Trees },
-      { id: "desert", label: "Desert", subtitle: "Open expanse", Icon: Sun },
+      { id: "work", label: "Remote work", subtitle: "Focus & deep work", Icon: Laptop },
+      { id: "retreat", label: "Retreat", subtitle: "Rest & reset", Icon: Flower2 },
+      { id: "social", label: "Socialising", subtitle: "Gather with others", Icon: PartyPopper },
+      { id: "research", label: "Field research", subtitle: "Study & observe", Icon: Microscope },
     ],
   },
   {
-    question: "Pick a power source for the engine.",
+    question: "What matters most to you?",
     options: [
-      { id: "solar", label: "Solar", subtitle: "Photovoltaic array", Icon: Sparkles },
-      { id: "wind", label: "Wind", subtitle: "Turbine assist", Icon: Wind },
-      { id: "battery", label: "Battery", subtitle: "Grid-tied cell", Icon: Battery },
-      { id: "hybrid", label: "Hybrid", subtitle: "Combined system", Icon: Zap },
+      { id: "energy", label: "Energy", subtitle: "Off-grid autonomy", Icon: Zap },
+      { id: "privacy", label: "Privacy", subtitle: "Quiet & secluded", Icon: Lock },
+      { id: "comfort", label: "Comfort", subtitle: "Refined living", Icon: Sofa },
+      { id: "connectivity", label: "Connectivity", subtitle: "Always online", Icon: Wifi },
     ],
   },
   {
-    question: "How long do you plan to stay?",
+    question: "How much space do you need?",
     options: [
-      { id: "weekend", label: "Weekend", subtitle: "A short retreat", Icon: Flame },
-      { id: "weeks", label: "Weeks", subtitle: "Extended visit", Icon: Gauge },
-      { id: "season", label: "A season", subtitle: "Months at a time", Icon: Leaf },
-      { id: "indef", label: "Indefinite", subtitle: "Living on-site", Icon: Home },
+      { id: "compact", label: "Compact", subtitle: "Efficient footprint", Icon: Minimize2 },
+      { id: "standard", label: "Standard", subtitle: "Balanced layout", Icon: Square },
+      { id: "generous", label: "Generous", subtitle: "Room to breathe", Icon: Maximize2 },
     ],
   },
 ];
@@ -67,6 +88,7 @@ export default function OnboardingFlow() {
   const total = steps.length;
   const step = steps[stepIdx];
   const selected = answers[stepIdx];
+  const isLast = stepIdx === total - 1;
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -83,7 +105,7 @@ export default function OnboardingFlow() {
 
   const goNext = () => {
     if (!selected) return;
-    if (stepIdx === total - 1) handleOpenChange(false);
+    if (isLast) handleOpenChange(false);
     else setStepIdx((i) => i + 1);
   };
 
@@ -106,9 +128,19 @@ export default function OnboardingFlow() {
           {/* Floating card */}
           <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-16">
             <div className="w-full max-w-[860px] rounded-[2rem] bg-white text-neutral-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.35)] p-8 md:p-10">
-              {/* Header: handle + counter */}
+              {/* Header: progress dashes + counter */}
               <div className="flex items-center justify-between mb-8">
-                <div className="h-1.5 w-12 rounded-full bg-neutral-800/80" />
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: total }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={[
+                        "h-1.5 w-8 rounded-full transition-colors",
+                        i <= stepIdx ? "bg-neutral-900" : "bg-neutral-200",
+                      ].join(" ")}
+                    />
+                  ))}
+                </div>
                 <span className="text-xs font-body tracking-wider text-neutral-500">
                   {stepIdx + 1} / {total}
                 </span>
@@ -119,7 +151,14 @@ export default function OnboardingFlow() {
               </DialogPrimitive.Title>
 
               {/* Options */}
-              <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div
+                className={[
+                  "mt-10 grid gap-3",
+                  step.options.length === 3
+                    ? "grid-cols-1 md:grid-cols-3"
+                    : "grid-cols-2 md:grid-cols-4",
+                ].join(" ")}
+              >
                 {step.options.map((opt) => {
                   const isSelected = selected === opt.id;
                   return (
@@ -168,7 +207,7 @@ export default function OnboardingFlow() {
                   disabled={!selected}
                   className="inline-flex items-center gap-2 text-sm font-body font-medium bg-neutral-900 text-white px-5 py-2.5 rounded-full hover:bg-neutral-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  {stepIdx === total - 1 ? "Finish" : "Continue"}
+                  {isLast ? "See my proposal" : "Continue"}
                   <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
                 </button>
               </div>
@@ -179,5 +218,3 @@ export default function OnboardingFlow() {
     </DialogPrimitive.Root>
   );
 }
-
-function _unusedTypeGuard(_: ReactNode) {}
