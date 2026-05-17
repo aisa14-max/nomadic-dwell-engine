@@ -1,18 +1,49 @@
-## Update Discover filter pills — terrain → climate classifications
+## Wire climate pills to filter results
 
-### What
-Replace the current terrain + duration filter bar on `/discover` with climate-classification pills.
+### Data model
 
-### Changes
+**`src/data/climates.ts`** (new)
+```ts
+export type ClimateId =
+  | "tropical"
+  | "dry-arid"
+  | "temperate"
+  | "continental"
+  | "polar"
+  | "mountain-alpine";
+
+export const CLIMATES: { id: ClimateId; label: string }[] = [
+  { id: "tropical",        label: "Tropical" },
+  { id: "dry-arid",        label: "Dry/Arid" },
+  { id: "temperate",       label: "Temperate" },
+  { id: "continental",     label: "Continental" },
+  { id: "polar",           label: "Polar" },
+  { id: "mountain-alpine", label: "Mountain/Alpine" },
+];
+```
+
+**`src/data/sites.ts`** — add `climateId: ClimateId` to each site (keep existing free-text `climate` tag for cards):
+
+| Site            | Existing `climate` | New `climateId`    |
+|-----------------|--------------------|--------------------|
+| Pine Hollow     | Sub-arctic         | `polar`            |
+| Mýrar Cliff     | Maritime           | `temperate`        |
+| Atacama Plateau | Arid alpine        | `mountain-alpine`  |
+| Skye Moor       | Temperate          | `temperate`        |
+| Mosi Plains     | Sub-arctic         | `polar`            |
+| Black Pines     | Boreal             | `continental`      |
+
+Tropical and Dry/Arid will show the empty state until more sites exist.
+
+### Page logic
 
 **`src/pages/Discover.tsx`**
-- Swap the `filters` array from:
-  `["All terrain", "Forest", "Coastal", "Desert", "Alpine", "Moor", "< 7 days", "Long-stay"]`
-  to:
-  `["All climates", "Tropical", "Dry/Arid", "Temperate", "Continental", "Polar", "Mountain/Alpine"]`
-- Keep the existing `active` index state and visual highlighting behavior (white = active, liquid-glass = inactive).
-- The climate pills remain visual-only for now; the live filtering is still driven by the globe region selection. Climate-based filtering will be wired once site data is remapped to the new categories.
+- Replace `filters` array + numeric `active` state with `selectedClimate: ClimateId | "all"` (default `"all"`).
+- Render a leading "All climates" pill plus one pill per `CLIMATES` entry.
+- `visibleSites` memo combines both filters:
+  `(selectedRegion === "all" || s.regionId === selectedRegion) && (selectedClimate === "all" || s.climateId === selectedClimate)`
 
 ### Out of scope
-- No changes to `src/data/sites.ts` or site climate values.
-- No new filtering logic beyond the existing region filter.
+- Renaming card `climate` tag text.
+- Adding new sites.
+- A separate active-climate chip (pill highlight is enough).
