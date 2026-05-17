@@ -8,7 +8,7 @@ import RegionChip from "@/components/RegionChip";
 import { SITES } from "@/data/sites";
 import type { RegionId } from "@/data/regions";
 
-const filters = ["All terrain", "Forest", "Coastal", "Desert", "Alpine", "Moor", "< 7 days", "Long-stay"];
+const filters = ["All climates", "Tropical", "Dry/Arid", "Temperate", "Continental", "Polar", "Mountain/Alpine"];
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
