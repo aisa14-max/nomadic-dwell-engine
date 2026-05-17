@@ -182,9 +182,9 @@ export default function VoyageScene({ className = "" }: Props) {
       // Subtle aurora-ish gradient that breathes
       const breathe = 0.5 + Math.sin(t * 0.00012) * 0.5;
       const g = ctx.createLinearGradient(0, 0, 0, h);
-      g.addColorStop(0, `rgba(20,30,50,${0.6 + breathe * 0.1})`);
-      g.addColorStop(0.55, "rgba(8,10,18,0.85)");
-      g.addColorStop(1, "rgba(0,0,0,0.95)");
+      g.addColorStop(0, `rgba(15,30,80,${0.75 + breathe * 0.1})`);
+      g.addColorStop(0.55, "rgba(8,18,55,0.9)");
+      g.addColorStop(1, "rgba(2,6,28,0.98)");
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, w, h);
 
