@@ -49,7 +49,7 @@ export default function LoginDialog() {
             Voyages are open to browse. Configuring a site needs an account.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <Input
             type="email"
             autoComplete="email"
@@ -57,7 +57,7 @@ export default function LoginDialog() {
             value={email}
             maxLength={255}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-white/5 border-white/15 text-white placeholder:text-white/40"
+            className="bg-white/5 border-white/15 text-white placeholder:text-white/40 py-3"
           />
           <Input
             type="password"
@@ -66,12 +66,12 @@ export default function LoginDialog() {
             value={password}
             maxLength={100}
             onChange={(e) => setPassword(e.target.value)}
-            className="bg-white/5 border-white/15 text-white placeholder:text-white/40"
+            className="bg-white/5 border-white/15 text-white placeholder:text-white/40 py-3"
           />
           {error && <p className="text-xs font-body text-red-300">{error}</p>}
           <button
             type="submit"
-            className="w-full rounded-full bg-white text-black px-4 py-2.5 text-sm font-body font-medium mt-2"
+            className="w-full rounded-full bg-white text-black px-4 py-3 text-sm font-body font-medium mt-2"
           >
             Sign in
           </button>
