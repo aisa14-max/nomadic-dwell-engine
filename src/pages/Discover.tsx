@@ -173,11 +173,6 @@ export default function Discover() {
           )}
         </div>
       </div>
-      <LoginDialog
-        open={loginOpen}
-        onOpenChange={setLoginOpen}
-        onSuccess={() => navigate("/configurator")}
-      />
     </div>
   );
 }
