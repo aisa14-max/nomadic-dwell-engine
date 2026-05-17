@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
+import { useMockAuth } from "@/context/MockAuth";
 
 const items = [
   { to: "/", label: "Home" },
@@ -10,6 +11,7 @@ const items = [
 
 export default function Nav() {
   const { pathname } = useLocation();
+  const { user, signOut } = useMockAuth();
   return (
     <nav className="fixed top-4 inset-x-0 z-50 px-8 lg:px-16">
       <div className="mx-auto max-w-[1400px] flex items-center justify-between">
@@ -45,8 +47,17 @@ export default function Nav() {
           </Link>
         </div>
 
-        {/* Right spacer */}
-        <div className="w-12 h-12" aria-hidden />
+        {/* Right: sign-out when logged in */}
+        <div className="w-12 h-12 flex items-center justify-end" aria-hidden={!user}>
+          {user && (
+            <button
+              onClick={signOut}
+              className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body font-medium text-white/90"
+            >
+              Sign out
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );
