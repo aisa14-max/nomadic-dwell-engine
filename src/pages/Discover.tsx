@@ -73,17 +73,17 @@ export default function Discover() {
             transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
             className="mt-6 flex flex-wrap gap-2"
           >
-            {filters.map((f, i) => {
-              const isActive = i === active;
+            {[{ id: "all" as const, label: "All climates" }, ...CLIMATES].map((c) => {
+              const isActive = selectedClimate === c.id;
               return (
                 <button
-                  key={f}
-                  onClick={() => setActive(i)}
+                  key={c.id}
+                  onClick={() => setSelectedClimate(c.id)}
                   className={`px-4 py-2 rounded-full text-sm font-body font-medium transition-colors ${
                     isActive ? "bg-white text-black" : "liquid-glass text-white/90"
                   }`}
                 >
-                  {f}
+                  {c.label}
                 </button>
               );
             })}
