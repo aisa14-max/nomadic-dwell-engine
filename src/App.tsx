@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import PageTransition from "./components/PageTransition.tsx";
+import LoginDialog from "./components/LoginDialog.tsx";
 import { MockAuthProvider } from "./context/MockAuth";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const RoutedApp = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
+      <LoginDialog />
     </>
   );
 };
