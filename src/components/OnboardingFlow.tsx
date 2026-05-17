@@ -227,7 +227,6 @@ export default function OnboardingFlow() {
               </div>
             </div>
           </div>
-          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
