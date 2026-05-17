@@ -7,19 +7,23 @@ import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
 import { SITES } from "@/data/sites";
 import type { RegionId } from "@/data/regions";
-
-const filters = ["All climates", "Tropical", "Dry/Arid", "Temperate", "Continental", "Polar", "Mountain/Alpine"];
+import { CLIMATES, type ClimateId } from "@/data/climates";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Discover() {
-  const [active, setActive] = useState(0);
+  const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
 
   const visibleSites = useMemo(
-    () => (selectedRegion === "all" ? SITES : SITES.filter((s) => s.regionId === selectedRegion)),
-    [selectedRegion],
+    () =>
+      SITES.filter(
+        (s) =>
+          (selectedRegion === "all" || s.regionId === selectedRegion) &&
+          (selectedClimate === "all" || s.climateId === selectedClimate),
+      ),
+    [selectedRegion, selectedClimate],
   );
 
   return (
@@ -69,17 +73,17 @@ export default function Discover() {
             transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
             className="mt-6 flex flex-wrap gap-2"
           >
-            {filters.map((f, i) => {
-              const isActive = i === active;
+            {[{ id: "all" as const, label: "All climates" }, ...CLIMATES].map((c) => {
+              const isActive = selectedClimate === c.id;
               return (
                 <button
-                  key={f}
-                  onClick={() => setActive(i)}
+                  key={c.id}
+                  onClick={() => setSelectedClimate(c.id)}
                   className={`px-4 py-2 rounded-full text-sm font-body font-medium transition-colors ${
                     isActive ? "bg-white text-black" : "liquid-glass text-white/90"
                   }`}
                 >
-                  {f}
+                  {c.label}
                 </button>
               );
             })}
