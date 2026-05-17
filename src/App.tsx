@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import PageTransition from "./components/PageTransition.tsx";
+import { MockAuthProvider } from "./context/MockAuth";
 
 const queryClient = new QueryClient();
 
@@ -36,9 +37,11 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <RoutedApp />
-      </BrowserRouter>
+      <MockAuthProvider>
+        <BrowserRouter>
+          <RoutedApp />
+        </BrowserRouter>
+      </MockAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

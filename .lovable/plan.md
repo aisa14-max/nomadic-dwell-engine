@@ -1,49 +1,46 @@
-## Wire climate pills to filter results
+## Goal
 
-### Data model
+Add a **mockup** login gate to the Configure flow. Browsing voyages stays public; pressing **Configure** on a site card prompts an email login, and after "signing in" the user proceeds to `/configurator`.
 
-**`src/data/climates.ts`** (new)
-```ts
-export type ClimateId =
-  | "tropical"
-  | "dry-arid"
-  | "temperate"
-  | "continental"
-  | "polar"
-  | "mountain-alpine";
+No backend, no Lovable Cloud auth, no persisted accounts — purely client-side state so the flow can be demoed.
 
-export const CLIMATES: { id: ClimateId; label: string }[] = [
-  { id: "tropical",        label: "Tropical" },
-  { id: "dry-arid",        label: "Dry/Arid" },
-  { id: "temperate",       label: "Temperate" },
-  { id: "continental",     label: "Continental" },
-  { id: "polar",           label: "Polar" },
-  { id: "mountain-alpine", label: "Mountain/Alpine" },
-];
-```
+## UX flow
 
-**`src/data/sites.ts`** — add `climateId: ClimateId` to each site (keep existing free-text `climate` tag for cards):
+1. User browses `/discover` freely (no change).
+2. User clicks **Configure** on a site card.
+   - If "logged in" → navigate to `/configurator` as today.
+   - If not → open a login modal.
+3. Login modal: email + password fields, single **Sign in** button. Any non-empty values succeed.
+4. On success: modal closes, mock auth state flips to logged-in, user is sent to `/configurator`.
+5. Nav shows a small **Sign out** affordance when logged in (so the gate can be re-tested).
 
-| Site            | Existing `climate` | New `climateId`    |
-|-----------------|--------------------|--------------------|
-| Pine Hollow     | Sub-arctic         | `polar`            |
-| Mýrar Cliff     | Maritime           | `temperate`        |
-| Atacama Plateau | Arid alpine        | `mountain-alpine`  |
-| Skye Moor       | Temperate          | `temperate`        |
-| Mosi Plains     | Sub-arctic         | `polar`            |
-| Black Pines     | Boreal             | `continental`      |
+## Implementation
 
-Tropical and Dry/Arid will show the empty state until more sites exist.
+**New: `src/context/MockAuth.tsx`**
+- `MockAuthProvider` with `useState<{ email: string } | null>(null)`.
+- Hook `useMockAuth()` exposes `user`, `signIn(email)`, `signOut()`.
+- No persistence (refresh = logged out). This is explicitly a mockup.
+- Wrap `<App />` children in `src/App.tsx` with the provider.
 
-### Page logic
+**New: `src/components/LoginDialog.tsx`**
+- Built on existing shadcn `Dialog`.
+- Controlled via `open` / `onOpenChange` props plus an `onSuccess` callback.
+- Form: email + password inputs (shadcn `Input`), **Sign in** button. Validation: both fields non-empty.
+- Submit calls `signIn(email)` then `onSuccess()`.
+- Styled with existing `liquid-glass` tokens to match the dark Discover aesthetic.
 
-**`src/pages/Discover.tsx`**
-- Replace `filters` array + numeric `active` state with `selectedClimate: ClimateId | "all"` (default `"all"`).
-- Render a leading "All climates" pill plus one pill per `CLIMATES` entry.
-- `visibleSites` memo combines both filters:
-  `(selectedRegion === "all" || s.regionId === selectedRegion) && (selectedClimate === "all" || s.climateId === selectedClimate)`
+**Edit: `src/pages/Discover.tsx`**
+- Replace the `<Link to="/configurator">` Configure button with a `<button>` that:
+  - If `user` exists → `navigate("/configurator")`.
+  - Else → set local `pendingNavigate = "/configurator"` and open `LoginDialog`.
+- Render one `LoginDialog` at page level; on success, navigate to the pending route.
 
-### Out of scope
-- Renaming card `climate` tag text.
-- Adding new sites.
-- A separate active-climate chip (pill highlight is enough).
+**Edit: `src/components/Nav.tsx`** (light touch)
+- When `user` is set, show a small "Sign out" text button. Otherwise nothing — login is contextual to the Configure action, not a global nav item.
+
+## Out of scope
+
+- Real authentication, Lovable Cloud, password reset, signup, social providers.
+- Persisting login across reloads.
+- Gating any route other than `/configurator` access from the Configure button (typing the URL directly still works — it's a mockup).
+- Profile data, avatars, saved voyages.

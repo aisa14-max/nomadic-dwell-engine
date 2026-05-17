@@ -1,10 +1,12 @@
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
+import LoginDialog from "@/components/LoginDialog";
+import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 import type { RegionId } from "@/data/regions";
 import { CLIMATES, type ClimateId } from "@/data/climates";
@@ -15,6 +17,9 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
+  const [loginOpen, setLoginOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useMockAuth();
 
   const visibleSites = useMemo(
     () =>
@@ -25,6 +30,11 @@ export default function Discover() {
       ),
     [selectedRegion, selectedClimate],
   );
+
+  const handleConfigure = () => {
+    if (user) navigate("/configurator");
+    else setLoginOpen(true);
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -148,12 +158,12 @@ export default function Discover() {
                       </span>
                     </div>
                     <div className="mt-5 flex items-center gap-3">
-                      <Link
-                        to="/configurator"
+                      <button
+                        onClick={handleConfigure}
                         className="liquid-glass-strong rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
                       >
                         Configure <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-                      </Link>
+                      </button>
                       <button className="liquid-glass w-9 h-9 rounded-full flex items-center justify-center text-white">
                         <Heart className="h-4 w-4" strokeWidth={1.5} />
                       </button>
@@ -165,6 +175,11 @@ export default function Discover() {
           )}
         </div>
       </div>
+      <LoginDialog
+        open={loginOpen}
+        onOpenChange={setLoginOpen}
+        onSuccess={() => navigate("/configurator")}
+      />
     </div>
   );
 }
