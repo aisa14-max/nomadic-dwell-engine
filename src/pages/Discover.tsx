@@ -158,12 +158,12 @@ export default function Discover() {
                       </span>
                     </div>
                     <div className="mt-5 flex items-center gap-3">
-                      <Link
-                        to="/configurator"
+                      <button
+                        onClick={handleConfigure}
                         className="liquid-glass-strong rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
                       >
                         Configure <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-                      </Link>
+                      </button>
                       <button className="liquid-glass w-9 h-9 rounded-full flex items-center justify-center text-white">
                         <Heart className="h-4 w-4" strokeWidth={1.5} />
                       </button>
