@@ -60,6 +60,11 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
     mapRef.current = map;
 
     map.on("style.load", () => {
+      // Hide default country/place labels from the basemap
+      COUNTRY_LABEL_LAYERS.forEach((id) => {
+        if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", "none");
+      });
+
       map.setFog({
         color: "rgb(20, 20, 28)",
         "high-color": "rgb(36, 36, 56)",
@@ -72,6 +77,11 @@ export default function RegionGlobe({ selectedRegion, onSelect, className }: Reg
         type: "geojson",
         data: continentsGeo as GeoJSON.FeatureCollection,
         promoteId: "id",
+      });
+
+      map.addSource(LABEL_SOURCE_ID, {
+        type: "geojson",
+        data: REGION_LABELS_GEOJSON,
       });
 
       map.addLayer({
