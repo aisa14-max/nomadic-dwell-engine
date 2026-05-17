@@ -197,7 +197,7 @@ export default function VoyageScene({ className = "" }: Props) {
         h * 0.65,
         Math.max(w, h) * 0.6
       );
-      haze.addColorStop(0, "rgba(180,170,150,0.08)");
+      haze.addColorStop(0, "rgba(20,40,90,0.12)");
       haze.addColorStop(1, "rgba(0,0,0,0)");
       ctx.fillStyle = haze;
       ctx.fillRect(0, 0, w, h);
