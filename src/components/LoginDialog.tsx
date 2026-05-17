@@ -36,7 +36,7 @@ export default function LoginDialog({ open, onOpenChange, onSuccess }: LoginDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="liquid-glass border-white/10 bg-black/80 text-white sm:max-w-md">
+      <DialogContent className="liquid-glass border-white/10 bg-black/80 text-white sm:max-w-md rounded-3xl p-8">
         <DialogHeader>
           <DialogTitle className="font-heading text-3xl tracking-[-1px]">Sign in to configure</DialogTitle>
           <DialogDescription className="font-body text-sm text-white/70">

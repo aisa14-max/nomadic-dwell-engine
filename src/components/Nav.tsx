@@ -47,15 +47,26 @@ export default function Nav() {
           </Link>
         </div>
 
-        {/* Right: sign-out when logged in */}
-        <div className="w-12 h-12 flex items-center justify-end" aria-hidden={!user}>
-          {user && (
+        {/* Right: auth action */}
+        <div className="flex items-center justify-end">
+          {user ? (
             <button
               onClick={signOut}
-              className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body font-medium text-white/90"
+              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
             >
               Sign out
             </button>
+          ) : (
+            <Link
+              to="/login"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new CustomEvent("nomad:open-login"));
+              }}
+              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+            >
+              Sign in
+            </Link>
           )}
         </div>
       </div>
