@@ -17,6 +17,9 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
+  const [loginOpen, setLoginOpen] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useMockAuth();
 
   const visibleSites = useMemo(
     () =>
@@ -27,6 +30,11 @@ export default function Discover() {
       ),
     [selectedRegion, selectedClimate],
   );
+
+  const handleConfigure = () => {
+    if (user) navigate("/configurator");
+    else setLoginOpen(true);
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
