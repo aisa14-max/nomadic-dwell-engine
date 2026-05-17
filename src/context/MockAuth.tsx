@@ -11,6 +11,8 @@ interface MockAuthValue {
   loginOpen: boolean;
   openLogin: (onSuccess?: () => void) => void;
   closeLogin: () => void;
+  onboardingOpen: boolean;
+  closeOnboarding: () => void;
   /** internal: consumed by the global LoginDialog */
   _pendingSuccess: (() => void) | null;
   _clearPendingSuccess: () => void;
@@ -21,15 +23,20 @@ const MockAuthContext = createContext<MockAuthValue | undefined>(undefined);
 export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MockUser | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [pendingSuccess, setPendingSuccess] = useState<(() => void) | null>(null);
 
-  const signIn = useCallback((email: string) => setUser({ email }), []);
+  const signIn = useCallback((email: string) => {
+    setUser({ email });
+    setOnboardingOpen(true);
+  }, []);
   const signOut = useCallback(() => setUser(null), []);
   const openLogin = useCallback((onSuccess?: () => void) => {
     setPendingSuccess(() => onSuccess ?? null);
     setLoginOpen(true);
   }, []);
   const closeLogin = useCallback(() => setLoginOpen(false), []);
+  const closeOnboarding = useCallback(() => setOnboardingOpen(false), []);
   const _clearPendingSuccess = useCallback(() => setPendingSuccess(null), []);
 
   const value = useMemo(
@@ -40,10 +47,12 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       loginOpen,
       openLogin,
       closeLogin,
+      onboardingOpen,
+      closeOnboarding,
       _pendingSuccess: pendingSuccess,
       _clearPendingSuccess,
     }),
-    [user, signIn, signOut, loginOpen, openLogin, closeLogin, pendingSuccess, _clearPendingSuccess],
+    [user, signIn, signOut, loginOpen, openLogin, closeLogin, onboardingOpen, closeOnboarding, pendingSuccess, _clearPendingSuccess],
   );
   return <MockAuthContext.Provider value={value}>{children}</MockAuthContext.Provider>;
 }
