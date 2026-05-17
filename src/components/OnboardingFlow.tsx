@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowLeft, ArrowRight, User, Users, Home, UsersRound, Sun, Snowflake, Wind, Leaf, Mountain, Waves, Trees, Sparkles, Zap, Battery, Flame, Gauge } from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
