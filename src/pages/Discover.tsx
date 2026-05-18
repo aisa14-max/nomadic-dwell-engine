@@ -19,6 +19,14 @@ export default function Discover() {
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
+  const sitesRef = useRef<HTMLDivElement | null>(null);
+
+  const handleRegionSelect = (id: RegionId) => {
+    setSelectedRegion(id);
+    setTimeout(() => {
+      sitesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+  };
 
   const visibleSites = useMemo(
     () =>
