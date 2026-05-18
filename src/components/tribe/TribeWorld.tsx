@@ -545,7 +545,7 @@ function Stager({ progressRef }: { progressRef: React.MutableRefObject<number> }
 function useDrag(targetRef: React.RefObject<HTMLElement>) {
   const dragRef = useRef({ x: 0, y: 0, vx: 0, vy: 0 });
   useEffect(() => {
-    const el = targetRef.current;
+    const el = targetRef?.current;
     if (!el) return;
     let down = false; let lx = 0; let ly = 0;
     const onDown = (e: PointerEvent) => { down = true; lx = e.clientX; ly = e.clientY; };
