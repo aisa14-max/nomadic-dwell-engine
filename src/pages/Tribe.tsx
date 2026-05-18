@@ -659,77 +659,101 @@ export default function Tribe() {
               )}
             </AnimatePresence>
 
-            {/* Selected camp card */}
-            <AnimatePresence>
-              {activeCamp && (
-                <motion.div
-                  key={`camp-${activeCamp.id}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute z-20"
-                  style={{
-                    left: Math.min(size.w - 280, project(activeCamp.lat, activeCamp.lng, size.w, size.h).x + 30),
-                    top:  Math.min(size.h - 220, project(activeCamp.lat, activeCamp.lng, size.w, size.h).y + 10),
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="liquid-glass rounded-2xl p-4 min-w-[240px]">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Emergent camp</p>
-                    <div className="font-heading text-2xl mt-1">{activeCamp.name}</div>
-                    <div className="text-xs text-white/55 mt-1">{activeCamp.theme}</div>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-3">
-                      {activeCamp.members.length} aligned
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {activeCamp.members.map((m) => (
-                        <span key={m.id} className="tag-glass border border-white/10 text-[10px]">{m.alias}</span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Exploration hint */}
+            {/* Exploration hint (top) */}
             <AnimatePresence>
               {layer < 3 && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-white/35 pointer-events-none"
+                  className="absolute top-44 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-white/35 pointer-events-none"
                 >
                   {layer < 2 ? "hover · click · scroll to reveal" : "keep exploring — camps emerge"}
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Side hint panel after depth */}
-            <AnimatePresence>
-              {showHint && (
-                <motion.aside
-                  initial={{ x: 60, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: 60, opacity: 0 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 w-[220px] liquid-glass rounded-2xl p-4 text-xs text-white/65"
-                >
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Legend</p>
-                  <div className="mt-3 space-y-2">
+            {/* Bottom bar: legend + emergent camp */}
+            <motion.div
+              initial={{ y: 40, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 w-[min(1100px,calc(100%-40px))]"
+            >
+              <div className="liquid-glass rounded-2xl px-5 py-3 flex items-center gap-6 flex-wrap">
+                {/* Legend */}
+                <div className="flex items-center gap-5 flex-wrap">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-body">
+                    Legend
+                  </p>
+                  <div className="flex items-center gap-4 flex-wrap">
                     {(Object.keys(INTENTION_COLOR) as Intention[]).map((k) => (
-                      <div key={k} className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full"
-                          style={{ background: INTENTION_COLOR[k], boxShadow: `0 0 8px ${INTENTION_COLOR[k]}` }} />
-                        <span className="capitalize">{k}</span>
+                      <div key={k} className="flex items-center gap-2 text-xs text-white/70">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: INTENTION_COLOR[k], boxShadow: `0 0 8px ${INTENTION_COLOR[k]}` }}
+                        />
+                        <span className="capitalize font-body">{k}</span>
                       </div>
                     ))}
-                    <div className="pt-3 mt-3 border-t border-white/10 text-white/45">
-                      Lines: shared intention · Clouds: emergent camps
-                    </div>
                   </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
+                  <div className="hidden md:block text-[10px] text-white/40 font-body tracking-wide">
+                    lines · shared intention &nbsp;·&nbsp; clouds · emergent camps
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="hidden lg:block h-10 w-px bg-white/10 ml-auto" />
+
+                {/* Emergent camp slot */}
+                <div className="ml-auto lg:ml-0 min-w-[260px] max-w-[480px] flex-1">
+                  <AnimatePresence mode="wait">
+                    {activeCamp ? (
+                      <motion.div
+                        key={`camp-${activeCamp.id}`}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.35 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0">
+                            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40 font-body">
+                              Emergent camp
+                            </p>
+                            <div className="font-heading text-xl text-white/95 mt-0.5 leading-tight">
+                              {activeCamp.name}
+                            </div>
+                            <div className="text-[11px] text-white/55 font-body">{activeCamp.theme}</div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 font-body">
+                              {activeCamp.members.length} aligned
+                            </div>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              {activeCamp.members.map((m) => (
+                                <span key={m.id} className="tag-glass border border-white/10 text-[10px]">
+                                  {m.alias}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="camp-empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-body text-right"
+                      >
+                        {layer < 3 ? "camps emerging…" : "select a camp on the map"}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Privacy control */}
             <AnimatePresence>
