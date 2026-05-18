@@ -1,334 +1,130 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { X, RefreshCw } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import atlas from "@/assets/cosmic-atlas.jpg";
+import { useMockAuth } from "@/context/MockAuth";
+import type { RegionId } from "@/data/regions";
+import { REGIONS, REGION_LABEL } from "@/data/regions";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
-type Intention = "create" | "travel" | "work" | "rest" | "explore";
-
 type Person = {
   id: string;
-  alias: string;
+  name: string;
   city: string;
+  country: string;
+  age: number;
+  occupation: string;
   lat: number;
   lng: number;
-  intention: Intention;
-  tags: string[];
-  stayDays: number;
+  regionId: RegionId;
+  avatar: string;
+  exchangeOpen: boolean;
 };
 
-const INTENTION_COLOR: Record<Intention, string> = {
-  create: "#f4c25a",   // warm gold
-  travel: "#7ee0c8",   // teal
-  work:   "#a48bff",   // violet
-  rest:   "#ffb6a3",   // peach
-  explore:"#9cd4ff",   // sky
-};
+const av = (seed: string) =>
+  `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundType=gradientLinear`;
 
 const PEOPLE: Person[] = [
-  { id: "p1",  alias: "Kestrel", city: "Lisbon",        lat: 38.7,  lng: -9.1,  intention: "create",  tags: ["writing","ocean"],      stayDays: 28 },
-  { id: "p2",  alias: "Aria",    city: "Tbilisi",       lat: 41.7,  lng: 44.8,  intention: "work",    tags: ["code","wine"],          stayDays: 21 },
-  { id: "p3",  alias: "Mira",    city: "Chiang Mai",    lat: 18.8,  lng: 98.9,  intention: "create",  tags: ["film","monsoon"],       stayDays: 40 },
-  { id: "p4",  alias: "Ilya",    city: "Mexico City",   lat: 19.4,  lng: -99.1, intention: "create",  tags: ["sound","design"],       stayDays: 18 },
-  { id: "p5",  alias: "Noor",    city: "Marrakech",     lat: 31.6,  lng: -7.99, intention: "rest",    tags: ["weaving","tea"],        stayDays: 12 },
-  { id: "p6",  alias: "Søren",   city: "Reykjavík",     lat: 64.1,  lng: -21.9, intention: "explore", tags: ["geology","ice"],        stayDays: 9  },
-  { id: "p7",  alias: "Luma",    city: "Bali",          lat: -8.4,  lng: 115.2, intention: "rest",    tags: ["yoga","ocean"],         stayDays: 35 },
-  { id: "p8",  alias: "Atlas",   city: "Cape Town",     lat: -33.9, lng: 18.4,  intention: "travel",  tags: ["mountain","wind"],      stayDays: 14 },
-  { id: "p9",  alias: "Yara",    city: "Istanbul",      lat: 41.0,  lng: 28.9,  intention: "create",  tags: ["bazaar","writing"],     stayDays: 22 },
-  { id: "p10", alias: "Theo",    city: "Tokyo",         lat: 35.6,  lng: 139.7, intention: "work",    tags: ["code","ramen"],         stayDays: 30 },
-  { id: "p11", alias: "Iris",    city: "Buenos Aires",  lat: -34.6, lng: -58.4, intention: "create",  tags: ["tango","film"],         stayDays: 16 },
-  { id: "p12", alias: "Bram",    city: "Berlin",        lat: 52.5,  lng: 13.4,  intention: "work",    tags: ["code","techno"],        stayDays: 45 },
-  { id: "p13", alias: "Sana",    city: "Dakar",         lat: 14.7,  lng: -17.5, intention: "explore", tags: ["ocean","textile"],      stayDays: 11 },
-  { id: "p14", alias: "Onyx",    city: "Medellín",      lat: 6.25,  lng: -75.6, intention: "travel",  tags: ["mountain","coffee"],    stayDays: 19 },
-  { id: "p15", alias: "Kai",     city: "Honolulu",      lat: 21.3,  lng: -157.8,intention: "rest",    tags: ["surf","ocean"],         stayDays: 25 },
-  { id: "p16", alias: "Vega",    city: "Stockholm",     lat: 59.3,  lng: 18.07, intention: "create",  tags: ["design","ice"],         stayDays: 17 },
-  { id: "p17", alias: "Rhea",    city: "Athens",        lat: 37.98, lng: 23.7,  intention: "create",  tags: ["ruins","wine"],         stayDays: 23 },
-  { id: "p18", alias: "Juno",    city: "Kyoto",         lat: 35.01, lng: 135.7, intention: "rest",    tags: ["tea","writing"],        stayDays: 31 },
-  { id: "p19", alias: "Calla",   city: "Oaxaca",        lat: 17.06, lng: -96.7, intention: "create",  tags: ["weaving","sound"],      stayDays: 26 },
-  { id: "p20", alias: "Echo",    city: "Tallinn",       lat: 59.43, lng: 24.75, intention: "work",    tags: ["code","forest"],        stayDays: 13 },
+  // Europe
+  { id: "p1",  name: "Kestrel Vale",   city: "Lisbon",      country: "Portugal", age: 32, occupation: "Writer",        lat: 38.7,  lng: -9.1,   regionId: "europe", avatar: av("kestrel"), exchangeOpen: true },
+  { id: "p2",  name: "Aria Mzia",      city: "Tbilisi",     country: "Georgia",  age: 29, occupation: "Software engineer", lat: 41.7, lng: 44.8, regionId: "europe", avatar: av("aria"),    exchangeOpen: false },
+  { id: "p3",  name: "Bram de Witt",   city: "Berlin",      country: "Germany",  age: 35, occupation: "Sound designer", lat: 52.5,  lng: 13.4,   regionId: "europe", avatar: av("bram"),    exchangeOpen: true },
+  { id: "p4",  name: "Vega Lindqvist", city: "Stockholm",   country: "Sweden",   age: 27, occupation: "Industrial designer", lat: 59.3, lng: 18.07, regionId: "europe", avatar: av("vega"), exchangeOpen: true },
+  { id: "p5",  name: "Echo Mägi",      city: "Tallinn",     country: "Estonia",  age: 30, occupation: "Backend dev",   lat: 59.43, lng: 24.75,  regionId: "europe", avatar: av("echo"),    exchangeOpen: false },
+  { id: "p6",  name: "Rhea Konstas",   city: "Athens",      country: "Greece",   age: 34, occupation: "Archaeologist", lat: 37.98, lng: 23.7,   regionId: "europe", avatar: av("rhea"),    exchangeOpen: true },
+  { id: "p7",  name: "Søren Holm",     city: "Reykjavík",   country: "Iceland",  age: 41, occupation: "Geologist",     lat: 64.1,  lng: -21.9,  regionId: "europe", avatar: av("soren"),   exchangeOpen: true },
+  { id: "p8",  name: "Yara Demir",     city: "Istanbul",    country: "Türkiye",  age: 28, occupation: "Poet",          lat: 41.0,  lng: 28.9,   regionId: "europe", avatar: av("yara"),    exchangeOpen: false },
+
+  // North America
+  { id: "p9",  name: "Ilya Cruz",      city: "Mexico City", country: "Mexico",   age: 31, occupation: "Composer",      lat: 19.4,  lng: -99.1,  regionId: "north-america", avatar: av("ilya"),  exchangeOpen: true },
+  { id: "p10", name: "Calla Mendez",   city: "Oaxaca",      country: "Mexico",   age: 26, occupation: "Textile artist", lat: 17.06, lng: -96.7, regionId: "north-america", avatar: av("calla"), exchangeOpen: true },
+  { id: "p11", name: "Kai Mahelona",   city: "Honolulu",    country: "USA",      age: 33, occupation: "Surf instructor", lat: 21.3, lng: -157.8, regionId: "north-america", avatar: av("kai"), exchangeOpen: false },
+  { id: "p12", name: "Juno Park",      city: "Portland",    country: "USA",      age: 29, occupation: "UX researcher", lat: 45.5,  lng: -122.6, regionId: "north-america", avatar: av("juno"),  exchangeOpen: true },
+  { id: "p13", name: "Mara Belisle",   city: "Montréal",    country: "Canada",   age: 37, occupation: "Architect",     lat: 45.5,  lng: -73.56, regionId: "north-america", avatar: av("mara"),  exchangeOpen: true },
+
+  // South America
+  { id: "p14", name: "Iris Vidal",     city: "Buenos Aires", country: "Argentina", age: 30, occupation: "Filmmaker",   lat: -34.6, lng: -58.4,  regionId: "south-america", avatar: av("iris"),  exchangeOpen: true },
+  { id: "p15", name: "Onyx Restrepo",  city: "Medellín",    country: "Colombia", age: 28, occupation: "Coffee roaster", lat: 6.25, lng: -75.6, regionId: "south-america", avatar: av("onyx"), exchangeOpen: true },
+  { id: "p16", name: "Tova Lima",      city: "Florianópolis", country: "Brazil", age: 25, occupation: "Marine biologist", lat: -27.6, lng: -48.5, regionId: "south-america", avatar: av("tova"), exchangeOpen: false },
+  { id: "p17", name: "Reno Castillo",  city: "Cusco",       country: "Peru",     age: 36, occupation: "Mountain guide", lat: -13.5, lng: -71.97, regionId: "south-america", avatar: av("reno"), exchangeOpen: true },
+
+  // Africa
+  { id: "p18", name: "Noor Bensaid",   city: "Marrakech",   country: "Morocco",  age: 32, occupation: "Ceramicist",    lat: 31.6,  lng: -7.99,  regionId: "africa", avatar: av("noor"),    exchangeOpen: true },
+  { id: "p19", name: "Sana Diop",      city: "Dakar",       country: "Senegal",  age: 29, occupation: "Photographer",  lat: 14.7,  lng: -17.5,  regionId: "africa", avatar: av("sana"),    exchangeOpen: false },
+  { id: "p20", name: "Atlas Nkosi",    city: "Cape Town",   country: "South Africa", age: 34, occupation: "Climber",   lat: -33.9, lng: 18.4,   regionId: "africa", avatar: av("atlas"),   exchangeOpen: true },
+  { id: "p21", name: "Halima Said",    city: "Zanzibar",    country: "Tanzania", age: 27, occupation: "Chef",          lat: -6.16, lng: 39.2,   regionId: "africa", avatar: av("halima"),  exchangeOpen: true },
+  { id: "p22", name: "Tarek Awad",     city: "Cairo",       country: "Egypt",    age: 38, occupation: "Documentarian", lat: 30.04, lng: 31.23,  regionId: "africa", avatar: av("tarek"),   exchangeOpen: false },
+
+  // Asia
+  { id: "p23", name: "Mira Suwan",     city: "Chiang Mai",  country: "Thailand", age: 31, occupation: "Filmmaker",     lat: 18.8,  lng: 98.9,   regionId: "asia", avatar: av("mira"),      exchangeOpen: true },
+  { id: "p24", name: "Theo Nakamura",  city: "Tokyo",       country: "Japan",    age: 33, occupation: "Frontend dev",  lat: 35.6,  lng: 139.7,  regionId: "asia", avatar: av("theo"),      exchangeOpen: false },
+  { id: "p25", name: "Hiro Tanizaki",  city: "Kyoto",       country: "Japan",    age: 40, occupation: "Tea master",    lat: 35.01, lng: 135.7,  regionId: "asia", avatar: av("hiro"),      exchangeOpen: true },
+  { id: "p26", name: "Anya Sharma",    city: "Goa",         country: "India",    age: 28, occupation: "Yoga teacher",  lat: 15.3,  lng: 74.1,   regionId: "asia", avatar: av("anya"),      exchangeOpen: true },
+  { id: "p27", name: "Park Min-jun",   city: "Seoul",       country: "South Korea", age: 30, occupation: "Game designer", lat: 37.56, lng: 126.97, regionId: "asia", avatar: av("minjun"), exchangeOpen: false },
+
+  // Oceania
+  { id: "p28", name: "Luma Pratama",   city: "Bali",        country: "Indonesia", age: 26, occupation: "Permaculturist", lat: -8.4, lng: 115.2, regionId: "oceania", avatar: av("luma"),   exchangeOpen: true },
+  { id: "p29", name: "Wren Carter",    city: "Byron Bay",   country: "Australia", age: 31, occupation: "Illustrator",   lat: -28.6, lng: 153.6, regionId: "oceania", avatar: av("wren"),    exchangeOpen: true },
+  { id: "p30", name: "Tane Wiremu",    city: "Wellington",  country: "New Zealand", age: 35, occupation: "Boat builder", lat: -41.3, lng: 174.78, regionId: "oceania", avatar: av("tane"), exchangeOpen: false },
 ];
 
-// Equirectangular projection
+// Equirectangular projection (whole world)
 const project = (lat: number, lng: number, w: number, h: number) => ({
   x: ((lng + 180) / 360) * w,
   y: ((90 - lat) / 180) * h,
 });
 
-const shareScore = (a: Person, b: Person) => {
-  const shared = a.tags.filter((t) => b.tags.includes(t)).length;
-  const intent = a.intention === b.intention ? 1 : 0;
-  const overlap = Math.min(a.stayDays, b.stayDays) / Math.max(a.stayDays, b.stayDays);
-  return shared * 0.4 + intent * 0.25 + overlap * 0.35;
-};
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function Tribe() {
-  const [layer, setLayer] = useState(0);
-  const [interactions, setInteractions] = useState(0);
+  const navigate = useNavigate();
+  const { user, openLogin } = useMockAuth();
+
+  // Auth gate
+  useEffect(() => {
+    if (!user) {
+      openLogin(() => {
+        // user came back via login; stay here
+      });
+    }
+  }, [user, openLogin]);
+
+  const [layer, setLayer] = useState(0); // 0 = entry, 1 = world, 2 = continent focus
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [selectedCamp, setSelectedCamp] = useState<number | null>(null);
-  const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showHint, setShowHint] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [focusRegion, setFocusRegion] = useState<RegionId | null>(null);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const sizeRef = useRef({ w: 0, h: 0 });
-  const mouseRef = useRef({ x: 0, y: 0, has: false });
-  const camRef = useRef({ x: 0, y: 0 }); // camera offset drift
-
-  const bump = () => setInteractions((n) => n + 1);
-
-  // Reveal sequence
+  // Read continent from Voyages page
   useEffect(() => {
-    if (interactions >= 2) setLayer((l) => Math.max(l, 2)); // connections
-    if (interactions >= 4) setLayer((l) => Math.max(l, 3)); // camps
-    if (interactions >= 3) setShowPrivacy(true);
-    if (interactions >= 6) setShowHint(true);
-  }, [interactions]);
-
-  // Auto reveal map shortly after entry click
-  const enter = () => {
-    setLayer(1);
-    bump();
-  };
-
-  // Compute connections
-  const connections = useMemo(() => {
-    const out: { a: Person; b: Person; s: number }[] = [];
-    for (let i = 0; i < PEOPLE.length; i++) {
-      for (let j = i + 1; j < PEOPLE.length; j++) {
-        const s = shareScore(PEOPLE[i], PEOPLE[j]);
-        if (s > 0.45) out.push({ a: PEOPLE[i], b: PEOPLE[j], s });
-      }
+    if (layer < 2) return;
+    if (focusRegion) return;
+    try {
+      const stored = localStorage.getItem("voyages.selectedRegion");
+      if (stored && stored !== "all") setFocusRegion(stored as RegionId);
+      else setFocusRegion("europe"); // default focal continent
+    } catch {
+      setFocusRegion("europe");
     }
-    return out;
-  }, []);
+  }, [layer, focusRegion]);
 
-  // Compute camps: clusters of ≥3 people within proximity
-  const camps = useMemo(() => {
-    const visited = new Set<string>();
-    const groups: Person[][] = [];
-    const distDeg = 35; // rough angular proximity
-    for (const p of PEOPLE) {
-      if (visited.has(p.id)) continue;
-      const g = [p];
-      visited.add(p.id);
-      for (const q of PEOPLE) {
-        if (visited.has(q.id)) continue;
-        const d = Math.hypot(p.lat - q.lat, p.lng - q.lng);
-        if (d < distDeg) {
-          g.push(q);
-          visited.add(q.id);
-        }
-      }
-      if (g.length >= 3) groups.push(g);
-    }
-    const themes = [
-      { name: "Salt & Page",    theme: "Atlantic writers" },
-      { name: "Quiet Signal",   theme: "Caucasus builders" },
-      { name: "Monsoon Studio", theme: "Southeast filmmakers" },
-      { name: "Pacific Drift",  theme: "Island restorers" },
-      { name: "Northern Glow",  theme: "Arctic explorers" },
-    ];
-    return groups.map((members, i) => {
-      const cx = members.reduce((s, m) => s + m.lng, 0) / members.length;
-      const cy = members.reduce((s, m) => s + m.lat, 0) / members.length;
-      return { ...themes[i % themes.length], members, lat: cy, lng: cx, id: i };
-    });
-  }, []);
-
-  // ── Canvas render loop ────────────────────────────────────────────────────
+  // Gradual reveal of 30 lights once map is shown
   useEffect(() => {
     if (layer < 1) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    setRevealedCount(0);
+    let i = 0;
+    const total = PEOPLE.length;
+    const timer = window.setInterval(() => {
+      i += 1;
+      setRevealedCount(i);
+      if (i >= total) window.clearInterval(timer);
+    }, 110);
+    return () => window.clearInterval(timer);
+  }, [layer]);
 
-    let raf = 0;
-    let t0 = performance.now();
-
-    const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = rect.width + "px";
-      canvas.style.height = rect.height + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      sizeRef.current = { w: rect.width, h: rect.height };
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas.parentElement!);
-
-    const onMove = (e: MouseEvent) => {
-      const r = canvas.getBoundingClientRect();
-      mouseRef.current = { x: e.clientX - r.left, y: e.clientY - r.top, has: true };
-    };
-    const onLeave = () => (mouseRef.current.has = false);
-    canvas.addEventListener("mousemove", onMove);
-    canvas.addEventListener("mouseleave", onLeave);
-
-    // Pre-seed particle drift positions per node
-    const drift = PEOPLE.map(() => ({
-      ax: Math.random() * Math.PI * 2,
-      ay: Math.random() * Math.PI * 2,
-      sp: 0.0004 + Math.random() * 0.0008,
-    }));
-    // Dust particles
-    const dust = Array.from({ length: 120 }, () => ({
-      x: Math.random(), y: Math.random(),
-      vx: (Math.random() - 0.5) * 0.00005,
-      vy: (Math.random() - 0.5) * 0.00003,
-      r: Math.random() * 1.2 + 0.3,
-      a: Math.random() * 0.4 + 0.1,
-    }));
-
-    const tick = (now: number) => {
-      const t = (now - t0) / 1000;
-      const { w, h } = sizeRef.current;
-      ctx.clearRect(0, 0, w, h);
-
-      // Camera drift toward cursor
-      if (mouseRef.current.has) {
-        const tx = (mouseRef.current.x - w / 2) * 0.02;
-        const ty = (mouseRef.current.y - h / 2) * 0.02;
-        camRef.current.x += (tx - camRef.current.x) * 0.04;
-        camRef.current.y += (ty - camRef.current.y) * 0.04;
-      } else {
-        camRef.current.x *= 0.98;
-        camRef.current.y *= 0.98;
-      }
-      const camX = camRef.current.x, camY = camRef.current.y;
-
-      // Dust drift
-      ctx.globalCompositeOperation = "lighter";
-      for (const d of dust) {
-        d.x += d.vx; d.y += d.vy;
-        if (d.x < 0) d.x += 1; if (d.x > 1) d.x -= 1;
-        if (d.y < 0) d.y += 1; if (d.y > 1) d.y -= 1;
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(180,200,255,${d.a * 0.25})`;
-        ctx.arc(d.x * w - camX, d.y * h - camY, d.r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Global pulse wave every ~12s
-      const pulseT = (t % 12) / 12;
-      if (pulseT < 0.6) {
-        const pr = pulseT * Math.max(w, h) * 1.4;
-        const alpha = (1 - pulseT / 0.6) * 0.06;
-        ctx.beginPath();
-        ctx.strokeStyle = `rgba(160,200,255,${alpha})`;
-        ctx.lineWidth = 1;
-        ctx.arc(w / 2 - camX, h / 2 - camY, pr, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      // Compute node positions (with micro-orbital motion)
-      const pos = PEOPLE.map((p, i) => {
-        const base = project(p.lat, p.lng, w, h);
-        const d = drift[i];
-        const ox = Math.cos(d.ax + t * d.sp * 60) * 6;
-        const oy = Math.sin(d.ay + t * d.sp * 50) * 4;
-        return { x: base.x + ox - camX, y: base.y + oy - camY, p };
-      });
-
-      // Connections (layer 2+)
-      if (layer >= 2) {
-        ctx.globalCompositeOperation = "lighter";
-        for (const c of connections) {
-          const a = pos.find((n) => n.p.id === c.a.id)!;
-          const b = pos.find((n) => n.p.id === c.b.id)!;
-          const isHi =
-            hovered === c.a.id || hovered === c.b.id ||
-            selected === c.a.id || selected === c.b.id;
-          const baseA = 0.06 + c.s * 0.10;
-          const pulse = 0.5 + 0.5 * Math.sin(t * 1.4 + (a.x + b.y) * 0.005);
-          const alpha = isHi ? Math.min(0.9, baseA + 0.3 + pulse * 0.15) : baseA + pulse * 0.04;
-
-          // Curved bezier with slight underwater wobble
-          const mx = (a.x + b.x) / 2;
-          const my = (a.y + b.y) / 2;
-          const nx = -(b.y - a.y);
-          const ny = (b.x - a.x);
-          const nl = Math.hypot(nx, ny) || 1;
-          const curve = 40 + 30 * Math.sin(t * 0.6 + c.s * 5);
-          const cx = mx + (nx / nl) * curve;
-          const cy = my + (ny / nl) * curve;
-
-          ctx.beginPath();
-          const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-          g.addColorStop(0, `rgba(125,200,255,${alpha})`);
-          g.addColorStop(1, `rgba(180,140,255,${alpha})`);
-          ctx.strokeStyle = g;
-          ctx.lineWidth = isHi ? 1.2 : 0.6;
-          ctx.moveTo(a.x, a.y);
-          ctx.quadraticCurveTo(cx, cy, b.x, b.y);
-          ctx.stroke();
-        }
-      }
-
-      // Camps (layer 3+)
-      if (layer >= 3) {
-        ctx.globalCompositeOperation = "lighter";
-        for (const camp of camps) {
-          const c = project(camp.lat, camp.lng, w, h);
-          const cx = c.x - camX, cy = c.y - camY;
-          const breathe = 1 + 0.08 * Math.sin(t * 0.7 + camp.id);
-          const R = (60 + camp.members.length * 14) * breathe;
-          const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
-          grd.addColorStop(0, "rgba(140,230,180,0.22)");
-          grd.addColorStop(0.5, "rgba(140,230,180,0.07)");
-          grd.addColorStop(1, "rgba(140,230,180,0)");
-          ctx.fillStyle = grd;
-          ctx.beginPath();
-          ctx.arc(cx, cy, R, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // Nodes
-      for (const n of pos) {
-        const color = INTENTION_COLOR[n.p.intention];
-        const breathe = 0.85 + 0.15 * Math.sin(t * 1.2 + n.x * 0.01);
-        const isHi = hovered === n.p.id || selected === n.p.id;
-        const auraR = (isHi ? 38 : 24) * breathe;
-
-        // aura
-        const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, auraR);
-        grd.addColorStop(0, hexA(color, 0.55));
-        grd.addColorStop(0.4, hexA(color, 0.18));
-        grd.addColorStop(1, hexA(color, 0));
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, auraR, 0, Math.PI * 2);
-        ctx.fill();
-
-        // core
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, isHi ? 3 : 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.globalCompositeOperation = "source-over";
-
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      canvas.removeEventListener("mousemove", onMove);
-      canvas.removeEventListener("mouseleave", onLeave);
-    };
-  }, [layer, connections, camps, hovered, selected]);
-
-  // Hover/click hit testing via DOM overlay (positioned absolutely)
+  // Layout
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
     if (layer < 1) return;
@@ -341,29 +137,91 @@ export default function Tribe() {
     return () => ro.disconnect();
   }, [layer]);
 
+  const enterWorld = () => setLayer(1);
+  const focusContinent = () => {
+    if (layer >= 1 && layer < 2) setLayer(2);
+  };
+
+  // Camera transform for continent focus
+  const camera = useMemo(() => {
+    if (layer < 2 || !focusRegion || size.w === 0) {
+      return { scale: 1, tx: 0, ty: 0 };
+    }
+    const region = REGIONS.find((r) => r.id === focusRegion);
+    if (!region) return { scale: 1, tx: 0, ty: 0 };
+    const [lng, lat] = region.center;
+    const p = project(lat, lng, size.w, size.h);
+    const scale = 1.9;
+    const tx = size.w / 2 - p.x * scale;
+    const ty = size.h / 2 - p.y * scale;
+    return { scale, tx, ty };
+  }, [layer, focusRegion, size]);
+
+  // Decorative extra lights across the focused continent
+  const continentSparkles = useMemo(() => {
+    if (!focusRegion) return [] as { lat: number; lng: number; d: number }[];
+    const inRegion = PEOPLE.filter((p) => p.regionId === focusRegion);
+    if (inRegion.length === 0) return [];
+    const out: { lat: number; lng: number; d: number }[] = [];
+    for (let i = 0; i < 24; i++) {
+      const seed = inRegion[i % inRegion.length];
+      const jitterLat = (Math.sin(i * 13.37) * 6);
+      const jitterLng = (Math.cos(i * 7.11) * 8);
+      out.push({ lat: seed.lat + jitterLat, lng: seed.lng + jitterLng, d: i * 0.05 });
+    }
+    return out;
+  }, [focusRegion]);
+
   const selectedPerson = PEOPLE.find((p) => p.id === selected) || null;
-  const hoveredPerson = PEOPLE.find((p) => p.id === hovered) || null;
-  const activeCamp = selectedCamp != null ? camps[selectedCamp] : null;
+
+  // If not signed in, render a soft gate
+  if (!user) {
+    return (
+      <div className="relative min-h-screen w-full overflow-hidden bg-[#02030a] text-white flex items-center justify-center">
+        <div className="fixed inset-0 z-0">
+          <img src={atlas} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-[#02030a]/80" />
+        </div>
+        <div className="relative z-10 text-center px-8 max-w-md">
+          <BlurText
+            text="Sign in to enter the tribe."
+            className="font-heading text-3xl md:text-4xl text-white/90"
+          />
+          <p className="mt-6 text-sm text-white/55 font-body">
+            The world only opens for those in motion.
+          </p>
+          <div className="mt-8 flex gap-3 justify-center">
+            <button
+              onClick={() => openLogin()}
+              className="rounded-full bg-white text-black px-5 py-2 text-sm font-body font-medium"
+            >
+              Sign in
+            </button>
+            <button
+              onClick={() => navigate("/")}
+              className="liquid-glass rounded-full px-5 py-2 text-sm font-body text-white/80"
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#02030a] text-white">
       {/* Atmospheric background */}
       <div className="fixed inset-0 z-0">
-        <img
+        <motion.img
           src={atlas}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.55]"
-          style={{ filter: "blur(0.5px) saturate(0.85)" }}
+          className="absolute inset-0 h-full w-full object-cover"
+          animate={{ opacity: layer === 0 ? 0.04 : layer === 1 ? 0.45 : 0.25 }}
+          transition={{ duration: 1.8, ease: "easeInOut" }}
+          style={{ filter: "saturate(0.85)" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
-        {/* subtle noise */}
-        <div
-          className="absolute inset-0 opacity-[0.06] mix-blend-overlay pointer-events-none"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
-          }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/85" />
       </div>
 
       {/* ── Layer 0: minimal entry ───────────────────────────────────────── */}
@@ -372,7 +230,7 @@ export default function Tribe() {
           <motion.button
             key="entry"
             type="button"
-            onClick={enter}
+            onClick={enterWorld}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
@@ -383,24 +241,25 @@ export default function Tribe() {
               className="block h-28 w-28 rounded-full"
               style={{
                 background:
-                  "radial-gradient(circle, rgba(255,230,180,0.9) 0%, rgba(255,200,140,0.2) 38%, rgba(255,255,255,0) 72%)",
-                filter: "blur(0.4px)",
+                  "radial-gradient(circle, rgba(255,230,180,0.95) 0%, rgba(255,200,140,0.25) 38%, rgba(255,255,255,0) 72%)",
               }}
-              animate={{ scale: [1, 1.18, 1], opacity: [0.7, 1, 0.7] }}
+              animate={{ scale: [1, 1.22, 1], opacity: [0.75, 1, 0.75] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             />
-            <BlurText
-              text="You are not alone in motion."
-              className="font-heading text-4xl md:text-5xl text-white/90 text-center"
-            />
-            <p className="text-[11px] uppercase tracking-[0.35em] text-white/40 font-body">
-              Move or click to explore the tribe
-            </p>
+            <div className="flex flex-col items-center gap-3">
+              <BlurText
+                text="You are not alone in motion."
+                className="font-heading text-3xl md:text-5xl text-white/90 text-center"
+              />
+              <p className="text-[11px] uppercase tracking-[0.35em] text-white/45 font-body">
+                Move or click to explore the tribe
+              </p>
+            </div>
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* ── Layer 1+: Living world ───────────────────────────────────────── */}
+      {/* ── Layer 1+: World ──────────────────────────────────────────────── */}
       {layer >= 1 && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -408,214 +267,235 @@ export default function Tribe() {
           transition={{ duration: 1.6 }}
           className="relative z-10 min-h-screen w-full"
         >
-          {/* World container — fullscreen, scroll deepens layers */}
           <div
             ref={wrapRef}
             className="relative h-screen w-full"
-            onWheel={(e) => { if (e.deltaY > 0) bump(); }}
-            onClick={() => { bump(); setSelected(null); setSelectedCamp(null); }}
+            onClick={() => { setSelected(null); focusContinent(); }}
           >
-            <canvas ref={canvasRef} className="absolute inset-0" />
+            {/* Continent fade veil */}
+            <AnimatePresence>
+              {layer >= 2 && (
+                <motion.div
+                  key="veil"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 1.2 }}
+                  className="absolute inset-0 pointer-events-none z-[1]"
+                  style={{
+                    background:
+                      "radial-gradient(circle at center, rgba(2,3,10,0) 28%, rgba(2,3,10,0.55) 60%, rgba(2,3,10,0.85) 100%)",
+                  }}
+                />
+              )}
+            </AnimatePresence>
 
-            {/* DOM overlay: invisible hit zones for nodes & camps */}
-            <div className="absolute inset-0">
-              {/* Camp hit zones */}
-              {layer >= 3 && camps.map((camp, i) => {
-                const c = project(camp.lat, camp.lng, size.w, size.h);
-                const r = 60 + camp.members.length * 14;
+            {/* Zoomable world plane */}
+            <motion.div
+              className="absolute inset-0 origin-top-left"
+              animate={{ x: camera.tx, y: camera.ty, scale: camera.scale }}
+              transition={{ duration: 1.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {/* Continent sparkles (extra lights) */}
+              {layer >= 2 && continentSparkles.map((s, i) => {
+                const c = project(s.lat, s.lng, size.w, size.h);
                 return (
-                  <button
-                    key={`camp-${i}`}
-                    onClick={(e) => { e.stopPropagation(); setSelectedCamp(i); setSelected(null); bump(); }}
-                    className="absolute rounded-full"
+                  <motion.span
+                    key={`spark-${i}`}
+                    className="absolute rounded-full pointer-events-none"
                     style={{
-                      left: c.x - r, top: c.y - r,
-                      width: r * 2, height: r * 2,
+                      left: c.x - 4,
+                      top: c.y - 4,
+                      width: 8,
+                      height: 8,
+                      background:
+                        "radial-gradient(circle, rgba(255,240,200,0.9) 0%, rgba(255,200,140,0) 70%)",
                     }}
-                    aria-label={camp.name}
+                    initial={{ opacity: 0, scale: 0.4 }}
+                    animate={{ opacity: [0.2, 0.9, 0.4], scale: [0.6, 1.1, 0.8] }}
+                    transition={{
+                      duration: 3.5 + (i % 5) * 0.3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: s.d,
+                    }}
                   />
                 );
               })}
-              {/* Person hit zones */}
-              {PEOPLE.map((p) => {
+
+              {/* Person lights */}
+              {PEOPLE.slice(0, revealedCount).map((p) => {
                 const c = project(p.lat, p.lng, size.w, size.h);
-                const r = 22;
+                const focused = !focusRegion || p.regionId === focusRegion;
+                const r = 14;
                 return (
-                  <button
+                  <motion.button
                     key={p.id}
                     onMouseEnter={() => setHovered(p.id)}
                     onMouseLeave={() => setHovered((h) => (h === p.id ? null : h))}
-                    onClick={(e) => { e.stopPropagation(); setSelected(p.id); setSelectedCamp(null); bump(); }}
-                    className="absolute rounded-full"
-                    style={{ left: c.x - r, top: c.y - r, width: r * 2, height: r * 2 }}
-                    aria-label={p.alias}
-                  />
+                    onClick={(e) => { e.stopPropagation(); setSelected(p.id); }}
+                    className="absolute rounded-full flex items-center justify-center group"
+                    style={{
+                      left: c.x - r,
+                      top: c.y - r,
+                      width: r * 2,
+                      height: r * 2,
+                      opacity: focused ? 1 : 0.35,
+                    }}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: focused ? 1 : 0.35 }}
+                    transition={{ duration: 0.9, ease: "easeOut" }}
+                    aria-label={p.name}
+                  >
+                    <span
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(255,235,190,0.55) 0%, rgba(255,200,140,0.15) 45%, rgba(255,255,255,0) 75%)",
+                      }}
+                    />
+                    <motion.span
+                      className="relative block rounded-full"
+                      style={{
+                        width: 5,
+                        height: 5,
+                        background: "rgba(255,250,235,1)",
+                        boxShadow: "0 0 12px rgba(255,225,180,0.9)",
+                      }}
+                      animate={{ opacity: [0.7, 1, 0.7], scale: [0.9, 1.15, 0.9] }}
+                      transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  </motion.button>
                 );
               })}
-            </div>
+            </motion.div>
 
-            {/* Header overlay */}
-            <div className="absolute top-24 left-0 right-0 px-8 lg:px-16 pointer-events-none">
+            {/* Hover label */}
+            <AnimatePresence>
+              {hovered && !selectedPerson && (() => {
+                const p = PEOPLE.find((x) => x.id === hovered)!;
+                const c = project(p.lat, p.lng, size.w, size.h);
+                const x = c.x * camera.scale + camera.tx;
+                const y = c.y * camera.scale + camera.ty;
+                return (
+                  <motion.div
+                    key={`hov-${p.id}`}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute pointer-events-none z-10"
+                    style={{ left: x + 16, top: y - 14 }}
+                  >
+                    <div className="liquid-glass rounded-2xl px-3 py-1.5 text-xs whitespace-nowrap">
+                      <span className="font-heading text-sm text-white/95">{p.name}</span>
+                      <span className="text-white/45 ml-2">{p.city}</span>
+                    </div>
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
+            {/* Header */}
+            <div className="absolute top-24 left-0 right-0 px-8 lg:px-16 pointer-events-none z-10">
               <div className="max-w-[1400px] mx-auto">
-                <p className="text-[10px] uppercase tracking-[0.4em] text-white/40 font-body">
-                  The Tribe · 20 lives in orbit
+                <p className="text-[10px] uppercase tracking-[0.4em] text-white/45 font-body">
+                  The Tribe · {PEOPLE.length} lives in motion
                 </p>
                 <h1 className="font-heading text-3xl md:text-4xl mt-2 text-white/90">
-                  A small world, breathing.
+                  {layer < 2
+                    ? "A small world, breathing."
+                    : `Focused on ${REGION_LABEL[focusRegion as RegionId] ?? "your continent"}.`}
                 </h1>
               </div>
             </div>
 
-            {/* Hover thought-bubble */}
+            {/* Hint */}
             <AnimatePresence>
-              {hoveredPerson && !selectedPerson && (
-                <motion.div
-                  key={`hover-${hoveredPerson.id}`}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute pointer-events-none"
-                  style={{
-                    left: project(hoveredPerson.lat, hoveredPerson.lng, size.w, size.h).x + 18,
-                    top:  project(hoveredPerson.lat, hoveredPerson.lng, size.w, size.h).y - 14,
-                  }}
-                >
-                  <div className="liquid-glass rounded-2xl px-3 py-2 text-xs">
-                    <span className="font-heading text-sm text-white/90">{hoveredPerson.alias}</span>
-                    <span className="text-white/40 ml-2">{hoveredPerson.city}</span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Selected person card */}
-            <AnimatePresence>
-              {selectedPerson && (
-                <motion.div
-                  key={`sel-${selectedPerson.id}`}
-                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
-                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute z-20"
-                  style={{
-                    left: Math.min(size.w - 260, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).x + 24),
-                    top:  Math.min(size.h - 200, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).y - 10),
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="liquid-glass rounded-2xl p-4 min-w-[220px]">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: INTENTION_COLOR[selectedPerson.intention], boxShadow: `0 0 10px ${INTENTION_COLOR[selectedPerson.intention]}` }}
-                      />
-                      <span className="font-heading text-xl text-white/95">{selectedPerson.alias}</span>
-                    </div>
-                    <div className="text-xs text-white/50 mt-1">{selectedPerson.city}</div>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-3">
-                      {selectedPerson.intention} · {selectedPerson.stayDays}d window
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {selectedPerson.tags.map((t) => (
-                        <span key={t} className="tag-glass border border-white/10 text-[10px]">{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Selected camp card */}
-            <AnimatePresence>
-              {activeCamp && (
-                <motion.div
-                  key={`camp-${activeCamp.id}`}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute z-20"
-                  style={{
-                    left: Math.min(size.w - 280, project(activeCamp.lat, activeCamp.lng, size.w, size.h).x + 30),
-                    top:  Math.min(size.h - 220, project(activeCamp.lat, activeCamp.lng, size.w, size.h).y + 10),
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="liquid-glass rounded-2xl p-4 min-w-[240px]">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Emergent camp</p>
-                    <div className="font-heading text-2xl mt-1">{activeCamp.name}</div>
-                    <div className="text-xs text-white/55 mt-1">{activeCamp.theme}</div>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-3">
-                      {activeCamp.members.length} aligned
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {activeCamp.members.map((m) => (
-                        <span key={m.id} className="tag-glass border border-white/10 text-[10px]">{m.alias}</span>
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Exploration hint */}
-            <AnimatePresence>
-              {layer < 3 && (
+              {layer === 1 && revealedCount >= PEOPLE.length && (
                 <motion.div
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-white/35 pointer-events-none"
+                  className="absolute bottom-8 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.4em] text-white/40 pointer-events-none"
                 >
-                  {layer < 2 ? "hover · click · scroll to reveal" : "keep exploring — camps emerge"}
+                  Click anywhere to focus your continent
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Side hint panel after depth */}
+            {/* Reset focus */}
+            {layer >= 2 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setLayer(1); setSelected(null); }}
+                className="absolute top-24 right-8 lg:right-16 z-20 liquid-glass rounded-full px-4 py-2 text-xs font-body text-white/80 inline-flex items-center gap-2"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Whole world
+              </button>
+            )}
+
+            {/* Profile panel */}
             <AnimatePresence>
-              {showHint && (
+              {selectedPerson && (
                 <motion.aside
+                  key={`profile-${selectedPerson.id}`}
                   initial={{ x: 60, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: 60, opacity: 0 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-6 top-1/2 -translate-y-1/2 w-[220px] liquid-glass rounded-2xl p-4 text-xs text-white/65"
+                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 z-30 w-[320px] liquid-glass rounded-2xl p-5"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Legend</p>
-                  <div className="mt-3 space-y-2">
-                    {(Object.keys(INTENTION_COLOR) as Intention[]).map((k) => (
-                      <div key={k} className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full"
-                          style={{ background: INTENTION_COLOR[k], boxShadow: `0 0 8px ${INTENTION_COLOR[k]}` }} />
-                        <span className="capitalize">{k}</span>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="absolute top-3 right-3 text-white/60 hover:text-white"
+                    aria-label="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={selectedPerson.avatar}
+                      alt={selectedPerson.name}
+                      className="h-16 w-16 rounded-full bg-white/10 border border-white/15"
+                    />
+                    <div>
+                      <div className="font-heading text-2xl text-white/95 leading-tight">
+                        {selectedPerson.name}
                       </div>
-                    ))}
-                    <div className="pt-3 mt-3 border-t border-white/10 text-white/45">
-                      Lines: shared intention · Clouds: emergent camps
+                      <div className="text-xs text-white/55 mt-1">
+                        {selectedPerson.city}, {selectedPerson.country}
+                      </div>
                     </div>
                   </div>
-                </motion.aside>
-              )}
-            </AnimatePresence>
-
-            {/* Privacy control */}
-            <AnimatePresence>
-              {showPrivacy && (
-                <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="absolute bottom-5 left-5 z-30"
-                >
-                  <details className="liquid-glass rounded-full px-4 py-2 text-xs text-white/60 font-body">
-                    <summary className="cursor-pointer list-none tracking-[0.2em] uppercase text-[10px]">Presence</summary>
-                    <div className="mt-3 space-y-2 pb-2">
-                      <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Visible to tribe</label>
-                      <label className="flex items-center gap-2"><input type="checkbox" /> Anonymous mode</label>
-                      <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> City-level only</label>
-                      <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Show connections</label>
+                  <div className="mt-5 grid grid-cols-2 gap-3 text-xs font-body">
+                    <div className="liquid-glass rounded-xl p-3">
+                      <p className="text-[9px] uppercase tracking-[0.25em] text-white/40">Age</p>
+                      <p className="mt-1 text-white/90 text-base font-heading">{selectedPerson.age}</p>
                     </div>
-                  </details>
-                </motion.div>
+                    <div className="liquid-glass rounded-xl p-3">
+                      <p className="text-[9px] uppercase tracking-[0.25em] text-white/40">Occupation</p>
+                      <p className="mt-1 text-white/90 text-sm">{selectedPerson.occupation}</p>
+                    </div>
+                  </div>
+                  <div
+                    className="mt-3 rounded-xl p-3 border"
+                    style={{
+                      borderColor: selectedPerson.exchangeOpen ? "rgba(126,224,200,0.35)" : "rgba(255,255,255,0.08)",
+                      background: selectedPerson.exchangeOpen ? "rgba(126,224,200,0.08)" : "rgba(255,255,255,0.03)",
+                    }}
+                  >
+                    <p className="text-[9px] uppercase tracking-[0.25em] text-white/50">Dwelling exchange</p>
+                    <p className="mt-1 text-sm text-white/85">
+                      {selectedPerson.exchangeOpen
+                        ? "Open to exchanging their dwelling with yours."
+                        : "Not currently open to exchange."}
+                    </p>
+                  </div>
+                  <button
+                    disabled={!selectedPerson.exchangeOpen}
+                    className="mt-4 w-full h-10 rounded-full bg-white text-black text-sm font-body font-medium disabled:bg-white/15 disabled:text-white/40 transition-colors"
+                  >
+                    {selectedPerson.exchangeOpen ? "Propose an exchange" : "Send a quiet hello"}
+                  </button>
+                </motion.aside>
               )}
             </AnimatePresence>
           </div>
@@ -623,13 +503,4 @@ export default function Tribe() {
       )}
     </div>
   );
-}
-
-// ── helpers ──
-function hexA(hex: string, a: number) {
-  const h = hex.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${a})`;
 }
