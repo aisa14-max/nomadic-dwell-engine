@@ -84,14 +84,17 @@ export default function Discover() {
 
           {/* Globe */}
           <motion.div
+            ref={globeRef}
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden"
+            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
               onSelect={handleRegionSelect}
+              focusPoint={focusedSite?.coords ?? null}
+              focusLabel={focusedSite?.title}
               className="w-full h-[420px] md:h-[520px]"
             />
           </motion.div>
