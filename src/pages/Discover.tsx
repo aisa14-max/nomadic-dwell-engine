@@ -80,7 +80,7 @@ export default function Discover() {
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
-              onSelect={setSelectedRegion}
+              onSelect={handleRegionSelect}
               className="w-full h-[420px] md:h-[520px]"
             />
           </motion.div>
