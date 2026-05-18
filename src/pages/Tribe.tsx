@@ -15,6 +15,10 @@ type Person = {
   intention: Intention;
   tags: string[];
   stayDays: number;
+  age: number;
+  occupation: string;
+  avatar: string;
+  openToExchange: boolean;
 };
 
 const INTENTION_COLOR: Record<Intention, string> = {
