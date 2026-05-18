@@ -267,7 +267,7 @@ export default function Tribe() {
         ctx.beginPath();
         ctx.strokeStyle = `rgba(160,200,255,${alpha})`;
         ctx.lineWidth = 1;
-        ctx.arc(w / 2 - camX, h / 2 - camY, pr, 0, Math.PI * 2);
+        ctx.arc(w / 2 - camX, h / 2 - camY, Math.max(0, pr), 0, Math.PI * 2);
         ctx.stroke();
       }
 
