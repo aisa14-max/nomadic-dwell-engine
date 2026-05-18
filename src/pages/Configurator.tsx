@@ -22,6 +22,7 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Configurator() {
   const [added, setAdded] = useState<string[]>(["sleep", "solar", "water"]);
   const [draft, setDraft] = useState({ kwh: 0, weight: 0 });
+  const [showNext, setShowNext] = useState(false);
 
   useEffect(() => {
     const sel = modules.filter((m) => added.includes(m.id));
