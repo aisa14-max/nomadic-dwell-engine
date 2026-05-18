@@ -50,6 +50,26 @@ const RAW_PEOPLE: Omit<Person, "avatar" | "age" | "occupation" | "openToExchange
   { id: "p18", alias: "Juno",    city: "Kyoto",         lat: 35.01, lng: 135.7, intention: "rest",    tags: ["tea","writing"],        stayDays: 31 },
   { id: "p19", alias: "Calla",   city: "Oaxaca",        lat: 17.06, lng: -96.7, intention: "create",  tags: ["weaving","sound"],      stayDays: 26 },
   { id: "p20", alias: "Echo",    city: "Tallinn",       lat: 59.43, lng: 24.75, intention: "work",    tags: ["code","forest"],        stayDays: 13 },
+  { id: "p21", alias: "Wren",    city: "Porto",         lat: 41.15, lng: -8.61, intention: "create",  tags: ["wine","writing"],       stayDays: 24 },
+  { id: "p22", alias: "Hale",    city: "Edinburgh",     lat: 55.95, lng: -3.19, intention: "create",  tags: ["writing","fog"],        stayDays: 19 },
+  { id: "p23", alias: "Sable",   city: "Marseille",     lat: 43.30, lng: 5.37,  intention: "rest",    tags: ["ocean","tea"],          stayDays: 17 },
+  { id: "p24", alias: "Orin",    city: "Prague",        lat: 50.08, lng: 14.43, intention: "work",    tags: ["code","beer"],          stayDays: 33 },
+  { id: "p25", alias: "Lior",    city: "Tel Aviv",      lat: 32.08, lng: 34.78, intention: "work",    tags: ["code","ocean"],         stayDays: 27 },
+  { id: "p26", alias: "Nyra",    city: "Cairo",         lat: 30.04, lng: 31.24, intention: "explore", tags: ["ruins","desert"],       stayDays: 10 },
+  { id: "p27", alias: "Tovi",    city: "Nairobi",       lat: -1.29, lng: 36.82, intention: "travel",  tags: ["mountain","coffee"],    stayDays: 15 },
+  { id: "p28", alias: "Indra",   city: "Mumbai",        lat: 19.08, lng: 72.88, intention: "create",  tags: ["film","monsoon"],       stayDays: 29 },
+  { id: "p29", alias: "Kavi",    city: "Goa",           lat: 15.30, lng: 74.12, intention: "rest",    tags: ["yoga","ocean"],         stayDays: 36 },
+  { id: "p30", alias: "Suri",    city: "Seoul",         lat: 37.57, lng: 126.98,intention: "work",    tags: ["code","design"],        stayDays: 22 },
+  { id: "p31", alias: "Renji",   city: "Taipei",        lat: 25.03, lng: 121.57,intention: "work",    tags: ["code","ramen"],         stayDays: 26 },
+  { id: "p32", alias: "Mei",     city: "Hanoi",         lat: 21.03, lng: 105.85,intention: "create",  tags: ["film","tea"],           stayDays: 20 },
+  { id: "p33", alias: "Pax",     city: "Singapore",     lat: 1.35,  lng: 103.82,intention: "work",    tags: ["code","ocean"],         stayDays: 18 },
+  { id: "p34", alias: "Coral",   city: "Sydney",        lat: -33.87,lng: 151.21,intention: "rest",    tags: ["surf","ocean"],         stayDays: 31 },
+  { id: "p35", alias: "Linnea",  city: "Wellington",    lat: -41.29,lng: 174.78,intention: "explore", tags: ["mountain","wind"],      stayDays: 14 },
+  { id: "p36", alias: "Mara",    city: "Lima",          lat: -12.05,lng: -77.04,intention: "create",  tags: ["weaving","ocean"],      stayDays: 23 },
+  { id: "p37", alias: "Tieve",   city: "Bogotá",        lat: 4.71,  lng: -74.07,intention: "travel",  tags: ["mountain","coffee"],    stayDays: 16 },
+  { id: "p38", alias: "Soto",    city: "Havana",        lat: 23.13, lng: -82.38,intention: "create",  tags: ["sound","tango"],        stayDays: 21 },
+  { id: "p39", alias: "Quill",   city: "Montreal",      lat: 45.50, lng: -73.57,intention: "work",    tags: ["code","writing"],       stayDays: 28 },
+  { id: "p40", alias: "Esha",    city: "Portland",      lat: 45.52, lng: -122.68,intention: "create", tags: ["design","forest"],      stayDays: 25 },
 ];
 
 const OCCUPATIONS: Record<Intention, string[]> = {
@@ -373,12 +393,50 @@ export default function Tribe() {
     <div className="relative min-h-screen w-full overflow-hidden bg-[#02030a] text-white">
       {/* Atmospheric background */}
       <div className="fixed inset-0 z-0">
+        {/* SVG turbulence filter for water displacement */}
+        <svg className="absolute -inset-0 w-0 h-0" aria-hidden>
+          <defs>
+            <filter id="ocean-wave" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.022" numOctaves="2" seed="3">
+                <animate attributeName="baseFrequency" dur="22s" values="0.012 0.022;0.018 0.014;0.012 0.022" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap in="SourceGraphic" scale="14" />
+            </filter>
+          </defs>
+        </svg>
+
         <img
           src={atlas}
           alt=""
           className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[2000ms]"
-          style={{ filter: "blur(0.5px) saturate(0.85)", opacity: layer >= 1 ? 0.55 : 0 }}
+          style={{
+            filter: "blur(0.5px) saturate(0.85) url(#ocean-wave)",
+            opacity: layer >= 1 ? 0.55 : 0,
+          }}
         />
+
+        {/* Animated ocean shimmer blobs */}
+        {layer >= 1 && (
+          <>
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen opacity-40"
+              style={{
+                background:
+                  "radial-gradient(60% 40% at 20% 60%, rgba(60,160,210,0.25), transparent 70%), radial-gradient(50% 35% at 75% 40%, rgba(80,200,220,0.18), transparent 70%), radial-gradient(45% 30% at 50% 80%, rgba(40,120,200,0.22), transparent 70%)",
+                animation: "oceanDrift 28s ease-in-out infinite",
+              }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-30"
+              style={{
+                background:
+                  "repeating-linear-gradient(115deg, rgba(140,210,255,0.04) 0px, rgba(140,210,255,0.04) 2px, transparent 2px, transparent 9px)",
+                animation: "oceanShimmer 14s linear infinite",
+              }}
+            />
+          </>
+        )}
+
         <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
         {/* subtle noise */}
         <div
@@ -389,6 +447,18 @@ export default function Tribe() {
           }}
         />
       </div>
+
+      {/* Ocean animation keyframes */}
+      <style>{`
+        @keyframes oceanDrift {
+          0%, 100% { transform: translate3d(0,0,0) scale(1); }
+          50% { transform: translate3d(-2%, 1.5%, 0) scale(1.06); }
+        }
+        @keyframes oceanShimmer {
+          0% { background-position: 0 0; }
+          100% { background-position: 240px 80px; }
+        }
+      `}</style>
 
       {/* ── Layer 0: minimal entry ───────────────────────────────────────── */}
       <AnimatePresence>
@@ -482,7 +552,7 @@ export default function Tribe() {
             <div className="absolute top-24 left-0 right-0 px-8 lg:px-16 pointer-events-none">
               <div className="max-w-[1400px] mx-auto">
                 <p className="text-[10px] uppercase tracking-[0.4em] text-white/40 font-body">
-                  The Tribe · 20 lives in orbit
+                  The Tribe · 40 lives in orbit
                 </p>
                 <h1 className="font-heading text-3xl md:text-4xl mt-2 text-white/90">
                   A small world, breathing.
