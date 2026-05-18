@@ -417,8 +417,8 @@ export default function Tribe() {
               text="You are not alone in motion."
               className="font-heading text-4xl md:text-5xl text-white/90 text-center"
             />
-            <p className="text-[11px] uppercase tracking-[0.35em] text-white/40 font-body">
-              Move or click to explore the tribe
+            <p className="text-[11px] uppercase tracking-[0.35em] text-white/40 font-body text-center">
+              (move or click to explore the tribe)
             </p>
           </motion.button>
         )}
