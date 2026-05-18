@@ -676,7 +676,7 @@ export default function Tribe() {
               initial={{ y: 40, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 w-[min(1100px,calc(100%-40px))]"
+              className="absolute bottom-5 left-5 right-5 z-20 max-w-[1100px]"
             >
               <div className="liquid-glass rounded-2xl px-5 py-3 flex items-center gap-6 flex-wrap">
                 {/* Legend */}
