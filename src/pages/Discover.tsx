@@ -191,6 +191,12 @@ export default function Discover() {
                       >
                         Configure <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
                       </button>
+                      <button
+                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                        className="liquid-glass rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
+                      >
+                        <MapPin className="h-3.5 w-3.5" strokeWidth={1.8} /> Show on map
+                      </button>
                       <button className="liquid-glass w-9 h-9 rounded-full flex items-center justify-center text-white">
                         <Heart className="h-4 w-4" strokeWidth={1.5} />
                       </button>
