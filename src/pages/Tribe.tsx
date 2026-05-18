@@ -417,8 +417,9 @@ export default function Tribe() {
               maskRepeat: "no-repeat",
               WebkitMaskPosition: "center",
               maskPosition: "center",
-              WebkitMaskMode: "luminance",
-              maskMode: "luminance",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+              ...({ WebkitMaskMode: "luminance", maskMode: "luminance" } as React.CSSProperties),
             }}
           >
             <div
