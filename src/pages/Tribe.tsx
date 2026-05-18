@@ -15,6 +15,10 @@ type Person = {
   intention: Intention;
   tags: string[];
   stayDays: number;
+  age: number;
+  occupation: string;
+  avatar: string;
+  openToExchange: boolean;
 };
 
 const INTENTION_COLOR: Record<Intention, string> = {
@@ -25,7 +29,7 @@ const INTENTION_COLOR: Record<Intention, string> = {
   explore:"#9cd4ff",   // sky
 };
 
-const PEOPLE: Person[] = [
+const RAW_PEOPLE: Omit<Person, "avatar" | "age" | "occupation" | "openToExchange">[] = [
   { id: "p1",  alias: "Kestrel", city: "Lisbon",        lat: 38.7,  lng: -9.1,  intention: "create",  tags: ["writing","ocean"],      stayDays: 28 },
   { id: "p2",  alias: "Aria",    city: "Tbilisi",       lat: 41.7,  lng: 44.8,  intention: "work",    tags: ["code","wine"],          stayDays: 21 },
   { id: "p3",  alias: "Mira",    city: "Chiang Mai",    lat: 18.8,  lng: 98.9,  intention: "create",  tags: ["film","monsoon"],       stayDays: 40 },
@@ -47,6 +51,26 @@ const PEOPLE: Person[] = [
   { id: "p19", alias: "Calla",   city: "Oaxaca",        lat: 17.06, lng: -96.7, intention: "create",  tags: ["weaving","sound"],      stayDays: 26 },
   { id: "p20", alias: "Echo",    city: "Tallinn",       lat: 59.43, lng: 24.75, intention: "work",    tags: ["code","forest"],        stayDays: 13 },
 ];
+
+const OCCUPATIONS: Record<Intention, string[]> = {
+  create:  ["Writer", "Filmmaker", "Sound Designer", "Ceramicist", "Illustrator", "Poet"],
+  work:    ["Software Engineer", "Product Designer", "Researcher", "Architect"],
+  travel:  ["Photographer", "Travel Journalist", "Mountain Guide"],
+  rest:    ["Yoga Teacher", "Herbalist", "Tea Curator", "Translator"],
+  explore: ["Geologist", "Marine Biologist", "Cartographer"],
+};
+
+const PEOPLE: Person[] = RAW_PEOPLE.map((p, i) => {
+  const occs = OCCUPATIONS[p.intention];
+  const seed = i + 11;
+  return {
+    ...p,
+    age: 24 + ((i * 7) % 22),
+    occupation: occs[i % occs.length],
+    avatar: `https://i.pravatar.cc/200?img=${seed}`,
+    openToExchange: i % 3 !== 0,
+  };
+});
 
 // Equirectangular projection
 const project = (lat: number, lng: number, w: number, h: number) => ({
@@ -352,8 +376,8 @@ export default function Tribe() {
         <img
           src={atlas}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.55]"
-          style={{ filter: "blur(0.5px) saturate(0.85)" }}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[2000ms]"
+          style={{ filter: "blur(0.5px) saturate(0.85)", opacity: layer >= 1 ? 0.55 : 0 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
         {/* subtle noise */}
@@ -393,8 +417,8 @@ export default function Tribe() {
               text="You are not alone in motion."
               className="font-heading text-4xl md:text-5xl text-white/90 text-center"
             />
-            <p className="text-[11px] uppercase tracking-[0.35em] text-white/40 font-body">
-              Move or click to explore the tribe
+            <p className="text-[11px] uppercase tracking-[0.35em] text-white/40 font-body text-center">
+              (move or click to explore the tribe)
             </p>
           </motion.button>
         )}
@@ -500,27 +524,63 @@ export default function Tribe() {
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="absolute z-20"
                   style={{
-                    left: Math.min(size.w - 260, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).x + 24),
-                    top:  Math.min(size.h - 200, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).y - 10),
+                    left: Math.min(size.w - 300, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).x + 24),
+                    top:  Math.min(size.h - 340, project(selectedPerson.lat, selectedPerson.lng, size.w, size.h).y - 10),
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="liquid-glass rounded-2xl p-4 min-w-[220px]">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: INTENTION_COLOR[selectedPerson.intention], boxShadow: `0 0 10px ${INTENTION_COLOR[selectedPerson.intention]}` }}
+                  <div className="liquid-glass rounded-2xl p-5 w-[280px]">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={selectedPerson.avatar}
+                        alt={selectedPerson.alias}
+                        className="h-14 w-14 rounded-full object-cover border border-white/15"
+                        style={{ boxShadow: `0 0 18px ${INTENTION_COLOR[selectedPerson.intention]}55` }}
                       />
-                      <span className="font-heading text-xl text-white/95">{selectedPerson.alias}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-full flex-shrink-0"
+                            style={{ background: INTENTION_COLOR[selectedPerson.intention], boxShadow: `0 0 10px ${INTENTION_COLOR[selectedPerson.intention]}` }}
+                          />
+                          <span className="font-heading text-xl text-white/95 truncate">{selectedPerson.alias}</span>
+                        </div>
+                        <div className="text-xs text-white/55 mt-0.5 truncate">{selectedPerson.city}</div>
+                      </div>
                     </div>
-                    <div className="text-xs text-white/50 mt-1">{selectedPerson.city}</div>
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 mt-3">
-                      {selectedPerson.intention} · {selectedPerson.stayDays}d window
+
+                    <div className="mt-4 grid grid-cols-2 gap-y-2 text-[11px] font-body">
+                      <div className="text-white/40 uppercase tracking-[0.18em]">Age</div>
+                      <div className="text-white/85 text-right">{selectedPerson.age}</div>
+                      <div className="text-white/40 uppercase tracking-[0.18em]">Occupation</div>
+                      <div className="text-white/85 text-right">{selectedPerson.occupation}</div>
+                      <div className="text-white/40 uppercase tracking-[0.18em]">Intention</div>
+                      <div className="text-white/85 text-right capitalize">{selectedPerson.intention} · {selectedPerson.stayDays}d</div>
                     </div>
+
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {selectedPerson.tags.map((t) => (
                         <span key={t} className="tag-glass border border-white/10 text-[10px]">{t}</span>
                       ))}
+                    </div>
+
+                    <div
+                      className="mt-4 flex items-center gap-2 rounded-xl border px-3 py-2 text-[11px]"
+                      style={{
+                        borderColor: selectedPerson.openToExchange ? "rgba(126,224,200,0.35)" : "rgba(255,255,255,0.08)",
+                        background: selectedPerson.openToExchange ? "rgba(126,224,200,0.08)" : "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{
+                          background: selectedPerson.openToExchange ? "#7ee0c8" : "rgba(255,255,255,0.3)",
+                          boxShadow: selectedPerson.openToExchange ? "0 0 8px #7ee0c8" : "none",
+                        }}
+                      />
+                      <span className={selectedPerson.openToExchange ? "text-white/85" : "text-white/45"}>
+                        {selectedPerson.openToExchange ? "Open to dwelling exchange" : "Not exchanging right now"}
+                      </span>
                     </div>
                   </div>
                 </motion.div>
