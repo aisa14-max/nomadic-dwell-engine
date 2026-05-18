@@ -20,6 +20,13 @@ export default function Discover() {
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
   const sitesRef = useRef<HTMLDivElement | null>(null);
+  const globeRef = useRef<HTMLDivElement | null>(null);
+  const [focusedSite, setFocusedSite] = useState<{ coords: [number, number]; title: string } | null>(null);
+
+  const handleShowOnMap = (s: { coords: [number, number]; title: string }) => {
+    setFocusedSite(s);
+    globeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleRegionSelect = (id: RegionId) => {
     setSelectedRegion(id);
