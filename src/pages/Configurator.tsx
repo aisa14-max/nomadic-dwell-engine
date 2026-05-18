@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Bed, Cookie, Droplets, Sun, Wind, Wrench, Plus, Check, Box, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
+import { Bed, Cookie, Droplets, Sun, Wind, Wrench, Plus, Check, Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, X, Calendar, MapPin, Truck, Shield } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-iso.png";
