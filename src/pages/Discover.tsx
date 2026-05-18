@@ -44,8 +44,8 @@ export default function Discover() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#0a0604] text-white overflow-hidden">
-      {/* Background: vintage voyage map with slow drift */}
+    <div className="relative min-h-screen w-full bg-[#02030a] text-white overflow-hidden">
+      {/* Background: deep space nebula with slow drift */}
       <motion.img
         src={voyageBg}
         alt=""
@@ -55,14 +55,14 @@ export default function Discover() {
         transition={{ duration: 28, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
         className="fixed inset-0 w-full h-full object-cover z-0 opacity-90"
       />
-      {/* Sepia / vignette overlays */}
-      <div className="fixed inset-0 z-0 bg-gradient-to-b from-[#0a0604]/40 via-[#0a0604]/30 to-[#0a0604]/80" aria-hidden />
+      {/* Cosmic vignette */}
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/30 to-[#02030a]/80" aria-hidden />
       <div
         className="fixed inset-0 z-0 pointer-events-none"
         aria-hidden
         style={{
           background:
-            "radial-gradient(ellipse at center, transparent 40%, rgba(10,6,4,0.85) 100%)",
+            "radial-gradient(ellipse at center, transparent 40%, rgba(2,3,10,0.85) 100%)",
         }}
       />
       {/* Drifting amber glow — distant lantern at sea */}
