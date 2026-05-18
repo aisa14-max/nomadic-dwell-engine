@@ -116,36 +116,63 @@ export default function Discover() {
               ) : (
                 visibleSites.map((s) => {
                   const active = focusedSite?.title === s.title;
+                  const chip = (label: string, value: string, tone: "low" | "mid" | "high" = "mid") => {
+                    const toneCls =
+                      tone === "high"
+                        ? "bg-white/15 text-white"
+                        : tone === "low"
+                        ? "bg-white/5 text-white/60"
+                        : "bg-white/10 text-white/85";
+                    return (
+                      <span key={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full ${toneCls}`}>
+                        <span className="opacity-60">{label} · </span>
+                        {value}
+                      </span>
+                    );
+                  };
+                  const levelTone = (l: "Low" | "Medium" | "High") =>
+                    (l === "High" ? "high" : l === "Low" ? "low" : "mid") as "low" | "mid" | "high";
+                  const netTone = (n: "Slow" | "Medium" | "Fast") =>
+                    (n === "Fast" ? "high" : n === "Slow" ? "low" : "mid") as "low" | "mid" | "high";
                   return (
                     <div
                       key={s.title}
-                      className={`rounded-xl p-2 flex items-center gap-3 transition-colors ${
+                      className={`rounded-xl p-2 transition-colors ${
                         active ? "bg-white/15" : "hover:bg-white/8"
                       }`}
                     >
-                      <button
-                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
-                        className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                      >
-                        <img
-                          src={s.image}
-                          alt=""
-                          loading="lazy"
-                          className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
-                          <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
-                            <MapPin className="h-3 w-3 shrink-0" /> {s.region}
-                          </p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={handleConfigure}
-                        className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
-                      >
-                        Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
-                      </button>
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                          className="flex items-start gap-3 min-w-0 flex-1 text-left"
+                        >
+                          <img
+                            src={s.image}
+                            alt=""
+                            loading="lazy"
+                            className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                            <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
+                              <MapPin className="h-3 w-3 shrink-0" /> {s.region}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={handleConfigure}
+                          className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
+                        >
+                          Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {chip("Temp", s.temperature)}
+                        {chip("Rain", s.rainfall)}
+                        {chip("Cost", s.costOfLiving, levelTone(s.costOfLiving))}
+                        {chip("Net", s.internetSpeed, netTone(s.internetSpeed))}
+                        {chip("Safety", s.safety, levelTone(s.safety))}
+                      </div>
                     </div>
                   );
                 })
@@ -155,8 +182,8 @@ export default function Discover() {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
-        <div className="mx-auto max-w-[1400px]">
+      <div className="relative z-10 pt-32 pb-20">
+        <div className="mx-auto max-w-[1400px] px-8 md:px-16 lg:px-20">
           {/* Header */}
           <p className="text-sm font-body text-white/80 mb-4 text-center">// Voyages</p>
           <div className="max-w-3xl mx-auto text-center">
@@ -173,28 +200,29 @@ export default function Discover() {
           >
             Browse pre-cleared parcels worldwide. Tap a continent to reveal its sites.
           </motion.p>
+        </div>
 
-          {/* Globe */}
+        {/* Globe (wider, immersive) */}
+        <div className="mx-auto max-w-[1800px] px-4 md:px-8 mt-10">
           <motion.div
             ref={globeRef}
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
+            className="relative liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
               onSelect={handleRegionSelect}
               focusPoint={focusedSite?.coords ?? null}
               focusLabel={focusedSite?.title}
-              className="w-full h-[420px] md:h-[560px]"
+              className="w-full h-[460px] md:h-[620px] lg:h-[680px]"
             />
+            {/* Floating status/filter chip */}
+            <div className="absolute top-3 right-3 z-20">
+              <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
+            </div>
           </motion.div>
-
-          {/* Active region chip */}
-          <div className="mt-5">
-            <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
-          </div>
         </div>
       </div>
     </div>
