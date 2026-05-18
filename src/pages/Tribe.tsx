@@ -502,7 +502,7 @@ export default function Tribe() {
             <div className="absolute top-24 left-0 right-0 px-8 lg:px-16 pointer-events-none">
               <div className="max-w-[1400px] mx-auto">
                 <p className="text-[10px] uppercase tracking-[0.4em] text-white/40 font-body">
-                  The Tribe · 20 lives in orbit
+                  The Tribe · 40 lives in orbit
                 </p>
                 <h1 className="font-heading text-3xl md:text-4xl mt-2 text-white/90">
                   A small world, breathing.
