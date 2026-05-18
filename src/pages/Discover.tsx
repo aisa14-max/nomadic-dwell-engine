@@ -37,7 +37,12 @@ export default function Discover() {
 
   return (
     <div className="relative min-h-screen w-full bg-[#01030f] text-white overflow-hidden">
-      <VoyageScene className="fixed inset-0 w-full h-full z-0 opacity-80" />
+      <img
+        src={voyageBg}
+        alt=""
+        aria-hidden
+        className="fixed inset-0 w-full h-full object-cover z-0 opacity-80"
+      />
       <div className="fixed inset-0 z-0 bg-[#020618]/55" aria-hidden />
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
         <div className="mx-auto max-w-[1400px]">
