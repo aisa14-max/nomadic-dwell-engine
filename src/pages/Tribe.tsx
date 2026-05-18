@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import BlurText from "@/components/BlurText";
 import atlas from "@/assets/cosmic-atlas.jpg";
+import oceanMask from "@/assets/ocean-mask.png";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 type Intention = "create" | "travel" | "work" | "rest" | "explore";
@@ -403,48 +404,39 @@ export default function Tribe() {
           }}
         />
 
-        {/* Animated ocean shimmer blobs — sit over ocean regions, blend modes keep land mostly untouched */}
+        {/* Animated ocean shimmer — masked to ocean areas only */}
         {layer >= 1 && (
-          <>
+          <div
+            className="absolute inset-0 pointer-events-none transition-opacity duration-[2000ms]"
+            style={{
+              WebkitMaskImage: `url(${oceanMask})`,
+              maskImage: `url(${oceanMask})`,
+              WebkitMaskSize: "100% 100%",
+              maskSize: "100% 100%",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+              WebkitMaskPosition: "center",
+              maskPosition: "center",
+              ...({ WebkitMaskMode: "luminance", maskMode: "luminance" } as React.CSSProperties),
+            }}
+          >
             <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen opacity-40"
+              className="absolute inset-0 mix-blend-screen opacity-50"
               style={{
                 background:
-                  "radial-gradient(60% 40% at 20% 60%, rgba(60,160,210,0.25), transparent 70%), radial-gradient(50% 35% at 75% 40%, rgba(80,200,220,0.18), transparent 70%), radial-gradient(45% 30% at 50% 80%, rgba(40,120,200,0.22), transparent 70%)",
+                  "radial-gradient(60% 40% at 20% 60%, rgba(60,160,210,0.32), transparent 70%), radial-gradient(50% 35% at 75% 40%, rgba(80,200,220,0.24), transparent 70%), radial-gradient(45% 30% at 50% 80%, rgba(40,120,200,0.28), transparent 70%)",
                 animation: "oceanDrift 28s ease-in-out infinite",
               }}
             />
             <div
-              className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-25"
+              className="absolute inset-0 mix-blend-screen opacity-35"
               style={{
                 background:
-                  "repeating-linear-gradient(115deg, rgba(140,210,255,0.05) 0px, rgba(140,210,255,0.05) 2px, transparent 2px, transparent 9px)",
+                  "repeating-linear-gradient(115deg, rgba(150,215,255,0.10) 0px, rgba(150,215,255,0.10) 2px, transparent 2px, transparent 9px)",
                 animation: "oceanShimmer 14s linear infinite",
               }}
             />
-          </>
-        )}
-
-        {/* Animated ocean shimmer blobs */}
-        {layer >= 1 && (
-          <>
-            <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen opacity-40"
-              style={{
-                background:
-                  "radial-gradient(60% 40% at 20% 60%, rgba(60,160,210,0.25), transparent 70%), radial-gradient(50% 35% at 75% 40%, rgba(80,200,220,0.18), transparent 70%), radial-gradient(45% 30% at 50% 80%, rgba(40,120,200,0.22), transparent 70%)",
-                animation: "oceanDrift 28s ease-in-out infinite",
-              }}
-            />
-            <div
-              className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-30"
-              style={{
-                background:
-                  "repeating-linear-gradient(115deg, rgba(140,210,255,0.04) 0px, rgba(140,210,255,0.04) 2px, transparent 2px, transparent 9px)",
-                animation: "oceanShimmer 14s linear infinite",
-              }}
-            />
-          </>
+          </div>
         )}
 
         <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
