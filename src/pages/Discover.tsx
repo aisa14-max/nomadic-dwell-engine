@@ -25,7 +25,7 @@ export default function Discover() {
     setSelectedRegion(id);
     setTimeout(() => {
       sitesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 3000);
+    }, 2000);
   };
 
   const visibleSites = useMemo(
