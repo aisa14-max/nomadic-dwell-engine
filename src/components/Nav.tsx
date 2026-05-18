@@ -48,7 +48,7 @@ export default function Nav() {
         </div>
 
         {/* Right: auth action */}
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end gap-2">
           {user ? (
             <button
               onClick={signOut}
@@ -57,12 +57,20 @@ export default function Nav() {
               Sign out
             </button>
           ) : (
-            <button
-              onClick={() => openLogin()}
-              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
-            >
-              Sign in
-            </button>
+            <>
+              <button
+                onClick={() => openLogin()}
+                className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => openLogin()}
+                className="bg-white text-black rounded-full px-4 py-2 text-sm font-body font-medium"
+              >
+                Log in
+              </button>
+            </>
           )}
         </div>
       </div>
