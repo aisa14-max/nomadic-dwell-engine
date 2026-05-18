@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck } from "lucide-react";
 import BlurText from "@/components/BlurText";
-import VoyageScene from "@/components/VoyageScene";
+import voyageBg from "@/assets/voyage-bg.jpg";
 import RegionGlobe from "@/components/RegionGlobe";
 import RegionChip from "@/components/RegionChip";
 import { useMockAuth } from "@/context/MockAuth";
@@ -19,6 +19,14 @@ export default function Discover() {
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
+  const sitesRef = useRef<HTMLDivElement | null>(null);
+
+  const handleRegionSelect = (id: RegionId) => {
+    setSelectedRegion(id);
+    setTimeout(() => {
+      sitesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 250);
+  };
 
   const visibleSites = useMemo(
     () =>
@@ -37,7 +45,12 @@ export default function Discover() {
 
   return (
     <div className="relative min-h-screen w-full bg-[#01030f] text-white overflow-hidden">
-      <VoyageScene className="fixed inset-0 w-full h-full z-0 opacity-80" />
+      <img
+        src={voyageBg}
+        alt=""
+        aria-hidden
+        className="fixed inset-0 w-full h-full object-cover z-0 opacity-80"
+      />
       <div className="fixed inset-0 z-0 bg-[#020618]/55" aria-hidden />
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
         <div className="mx-auto max-w-[1400px]">
@@ -67,7 +80,7 @@ export default function Discover() {
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
-              onSelect={setSelectedRegion}
+              onSelect={handleRegionSelect}
               className="w-full h-[420px] md:h-[520px]"
             />
           </motion.div>
@@ -78,6 +91,7 @@ export default function Discover() {
           </div>
 
           {/* Filter pills */}
+          <div ref={sitesRef} className="scroll-mt-24" />
           <motion.div
             initial={blurInit}
             animate={blurIn}
