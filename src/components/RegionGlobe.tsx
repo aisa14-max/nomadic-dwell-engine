@@ -212,5 +212,57 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
     else map.once("idle", apply);
   }, [selectedRegion]);
 
+  // Focus pin for a selected site
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!focusPoint) {
+      focusMarkerRef.current?.remove();
+      focusMarkerRef.current = null;
+      return;
+    }
+    const place = () => {
+      // Create or move marker
+      if (!focusMarkerRef.current) {
+        const el = document.createElement("div");
+        el.style.cssText =
+          "width:14px;height:14px;border-radius:9999px;background:#ffffff;box-shadow:0 0 0 4px rgba(255,255,255,0.25),0 0 18px 6px rgba(255,255,255,0.55);animation:rg-pulse 1.8s ease-out infinite;";
+        // Inject keyframes once
+        if (!document.getElementById("rg-pulse-style")) {
+          const style = document.createElement("style");
+          style.id = "rg-pulse-style";
+          style.textContent =
+            "@keyframes rg-pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,0.6),0 0 18px 6px rgba(255,255,255,0.55)}70%{box-shadow:0 0 0 18px rgba(255,255,255,0),0 0 18px 6px rgba(255,255,255,0.55)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0),0 0 18px 6px rgba(255,255,255,0.55)}}";
+          document.head.appendChild(style);
+        }
+        const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat(focusPoint);
+        if (focusLabel) {
+          marker.setPopup(
+            new mapboxgl.Popup({ offset: 18, closeButton: false }).setHTML(
+              `<div style="font-family:sans-serif;font-size:12px;color:#111;padding:2px 4px">${focusLabel}</div>`
+            )
+          );
+        }
+        marker.addTo(map);
+        focusMarkerRef.current = marker;
+      } else {
+        focusMarkerRef.current.setLngLat(focusPoint);
+        if (focusLabel) {
+          focusMarkerRef.current.setPopup(
+            new mapboxgl.Popup({ offset: 18, closeButton: false }).setHTML(
+              `<div style="font-family:sans-serif;font-size:12px;color:#111;padding:2px 4px">${focusLabel}</div>`
+            )
+          );
+        }
+      }
+      focusMarkerRef.current.togglePopup();
+      userInteractedRef.current = true;
+      map.flyTo({ center: focusPoint, zoom: 3.6, duration: 1800, essential: true });
+    };
+    if (map.isStyleLoaded()) place();
+    else map.once("idle", place);
+  }, [focusPoint, focusLabel]);
+
   return <div ref={containerRef} className={className} aria-label="Interactive globe" />;
 }
