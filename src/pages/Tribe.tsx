@@ -29,7 +29,7 @@ const INTENTION_COLOR: Record<Intention, string> = {
   explore:"#9cd4ff",   // sky
 };
 
-const PEOPLE: Person[] = [
+const RAW_PEOPLE: Omit<Person, "avatar" | "age" | "occupation" | "openToExchange">[] = [
   { id: "p1",  alias: "Kestrel", city: "Lisbon",        lat: 38.7,  lng: -9.1,  intention: "create",  tags: ["writing","ocean"],      stayDays: 28 },
   { id: "p2",  alias: "Aria",    city: "Tbilisi",       lat: 41.7,  lng: 44.8,  intention: "work",    tags: ["code","wine"],          stayDays: 21 },
   { id: "p3",  alias: "Mira",    city: "Chiang Mai",    lat: 18.8,  lng: 98.9,  intention: "create",  tags: ["film","monsoon"],       stayDays: 40 },
@@ -51,6 +51,26 @@ const PEOPLE: Person[] = [
   { id: "p19", alias: "Calla",   city: "Oaxaca",        lat: 17.06, lng: -96.7, intention: "create",  tags: ["weaving","sound"],      stayDays: 26 },
   { id: "p20", alias: "Echo",    city: "Tallinn",       lat: 59.43, lng: 24.75, intention: "work",    tags: ["code","forest"],        stayDays: 13 },
 ];
+
+const OCCUPATIONS: Record<Intention, string[]> = {
+  create:  ["Writer", "Filmmaker", "Sound Designer", "Ceramicist", "Illustrator", "Poet"],
+  work:    ["Software Engineer", "Product Designer", "Researcher", "Architect"],
+  travel:  ["Photographer", "Travel Journalist", "Mountain Guide"],
+  rest:    ["Yoga Teacher", "Herbalist", "Tea Curator", "Translator"],
+  explore: ["Geologist", "Marine Biologist", "Cartographer"],
+};
+
+const PEOPLE: Person[] = RAW_PEOPLE.map((p, i) => {
+  const occs = OCCUPATIONS[p.intention];
+  const seed = i + 11;
+  return {
+    ...p,
+    age: 24 + ((i * 7) % 22),
+    occupation: occs[i % occs.length],
+    avatar: `https://i.pravatar.cc/200?img=${seed}`,
+    openToExchange: i % 3 !== 0,
+  };
+});
 
 // Equirectangular projection
 const project = (lat: number, lng: number, w: number, h: number) => ({
