@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import BlurText from "@/components/BlurText";
 import atlas from "@/assets/cosmic-atlas.jpg";
+import oceanMask from "@/assets/ocean-mask.png";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 type Intention = "create" | "travel" | "work" | "rest" | "explore";
