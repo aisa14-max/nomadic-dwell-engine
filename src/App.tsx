@@ -7,6 +7,7 @@ import Landing from "./pages/Landing.tsx";
 import Discover from "./pages/Discover.tsx";
 import Configurator from "./pages/Configurator.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Tribe from "./pages/Tribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import PageTransition from "./components/PageTransition.tsx";
@@ -27,6 +28,7 @@ const RoutedApp = () => {
           <Route path="/discover" element={<Discover />} />
           <Route path="/configurator" element={<Configurator />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tribe" element={<Tribe />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

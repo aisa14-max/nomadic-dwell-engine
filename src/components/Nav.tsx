@@ -40,10 +40,10 @@ export default function Nav() {
             );
           })}
           <Link
-            to="/configurator"
+            to="/tribe"
             className="ml-1 inline-flex items-center gap-1 bg-white text-black rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap font-body"
           >
-            Claim a Spot <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+            Join the Tribe <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
           </Link>
         </div>
 
