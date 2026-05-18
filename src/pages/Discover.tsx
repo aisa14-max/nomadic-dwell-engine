@@ -91,6 +91,7 @@ export default function Discover() {
           </div>
 
           {/* Filter pills */}
+          <div ref={sitesRef} className="scroll-mt-24" />
           <motion.div
             initial={blurInit}
             animate={blurIn}
