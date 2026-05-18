@@ -25,7 +25,7 @@ export default function Discover() {
     setSelectedRegion(id);
     setTimeout(() => {
       sitesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 250);
+    }, 3000);
   };
 
   const visibleSites = useMemo(
@@ -44,14 +44,56 @@ export default function Discover() {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#01030f] text-white overflow-hidden">
-      <img
+    <div className="relative min-h-screen w-full bg-[#0a0604] text-white overflow-hidden">
+      {/* Background: vintage voyage map with slow drift */}
+      <motion.img
         src={voyageBg}
         alt=""
         aria-hidden
-        className="fixed inset-0 w-full h-full object-cover z-0 opacity-80"
+        initial={{ scale: 1.08, x: -10, y: -8 }}
+        animate={{ scale: 1.14, x: 10, y: 8 }}
+        transition={{ duration: 28, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
+        className="fixed inset-0 w-full h-full object-cover z-0 opacity-90"
       />
-      <div className="fixed inset-0 z-0 bg-[#020618]/55" aria-hidden />
+      {/* Sepia / vignette overlays */}
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-[#0a0604]/40 via-[#0a0604]/30 to-[#0a0604]/80" aria-hidden />
+      <div
+        className="fixed inset-0 z-0 pointer-events-none"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 40%, rgba(10,6,4,0.85) 100%)",
+        }}
+      />
+      {/* Drifting amber glow — distant lantern at sea */}
+      <motion.div
+        aria-hidden
+        className="fixed top-1/3 -left-24 w-[520px] h-[520px] rounded-full z-0 pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(217,156,82,0.18), transparent 60%)" }}
+        animate={{ x: [0, 80, 0], y: [0, -40, 0] }}
+        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        aria-hidden
+        className="fixed bottom-1/4 -right-32 w-[600px] h-[600px] rounded-full z-0 pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(82,140,217,0.14), transparent 60%)" }}
+        animate={{ x: [0, -90, 0], y: [0, 50, 0] }}
+        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut" }}
+      />
+      {/* Slowly rotating compass mark */}
+      <motion.div
+        aria-hidden
+        className="fixed bottom-10 left-10 z-0 pointer-events-none opacity-25"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
+      >
+        <svg width="140" height="140" viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="46" stroke="#d99c52" strokeWidth="0.5" />
+          <circle cx="50" cy="50" r="38" stroke="#d99c52" strokeWidth="0.3" strokeDasharray="2 3" />
+          <path d="M50 6 L54 50 L50 94 L46 50 Z" fill="#d99c52" opacity="0.6" />
+          <path d="M6 50 L50 46 L94 50 L50 54 Z" fill="#d99c52" opacity="0.3" />
+        </svg>
+      </motion.div>
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
         <div className="mx-auto max-w-[1400px]">
           {/* Header */}
