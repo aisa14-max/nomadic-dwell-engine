@@ -376,8 +376,8 @@ export default function Tribe() {
         <img
           src={atlas}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-[0.55]"
-          style={{ filter: "blur(0.5px) saturate(0.85)" }}
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[2000ms]"
+          style={{ filter: "blur(0.5px) saturate(0.85)", opacity: layer >= 1 ? 0.55 : 0 }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
         {/* subtle noise */}
