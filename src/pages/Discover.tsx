@@ -20,6 +20,13 @@ export default function Discover() {
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
   const sitesRef = useRef<HTMLDivElement | null>(null);
+  const globeRef = useRef<HTMLDivElement | null>(null);
+  const [focusedSite, setFocusedSite] = useState<{ coords: [number, number]; title: string } | null>(null);
+
+  const handleShowOnMap = (s: { coords: [number, number]; title: string }) => {
+    setFocusedSite(s);
+    globeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const handleRegionSelect = (id: RegionId) => {
     setSelectedRegion(id);
@@ -77,14 +84,17 @@ export default function Discover() {
 
           {/* Globe */}
           <motion.div
+            ref={globeRef}
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden"
+            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
               onSelect={handleRegionSelect}
+              focusPoint={focusedSite?.coords ?? null}
+              focusLabel={focusedSite?.title}
               className="w-full h-[420px] md:h-[520px]"
             />
           </motion.div>
@@ -180,6 +190,12 @@ export default function Discover() {
                         className="liquid-glass-strong rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
                       >
                         Configure <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                      <button
+                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                        className="liquid-glass rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
+                      >
+                        <MapPin className="h-3.5 w-3.5" strokeWidth={1.8} /> Show on map
                       </button>
                       <button className="liquid-glass w-9 h-9 rounded-full flex items-center justify-center text-white">
                         <Heart className="h-4 w-4" strokeWidth={1.5} />
