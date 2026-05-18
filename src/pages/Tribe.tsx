@@ -1,345 +1,378 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import TribeWorld, { TRIBE_NODES, INTENT_COLOR_HEX } from "@/components/tribe/TribeWorld";
+import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
 
-const PHASES = [
-  { key: "presence",  range: [0.00, 0.15] as const, eyebrow: "Phase I — Pure Presence",       title: "The tribe exists… but not yet revealed." },
-  { key: "signals",   range: [0.15, 0.32] as const, eyebrow: "Phase II — Life Signals",       title: "Anonymous orbits. Faint motion." },
-  { key: "identity",  range: [0.32, 0.50] as const, eyebrow: "Phase III — Identity Emergence", title: "Aliases surface. Somewhere in motion." },
-  { key: "relations", range: [0.50, 0.65] as const, eyebrow: "Phase IV — Relationship Field", title: "Invisible alignments detected." },
-  { key: "reveal",    range: [0.65, 0.85] as const, eyebrow: "Phase V — World Reveal",        title: "Reality resolves into geography." },
-  { key: "global",    range: [0.85, 1.00] as const, eyebrow: "Phase VI — Living World Map",   title: "A tribe across Earth." },
+type Node = {
+  id: string;
+  x: number; // 0-1
+  y: number; // 0-1
+  alias: string;
+  city: string;
+  distance: "close" | "near" | "far";
+  stayDays: number;
+  status: "open" | "focused" | "hidden";
+  tags: string[];
+};
+
+const NODES: Node[] = [
+  { id: "n1", x: 0.30, y: 0.40, alias: "Kestrel", city: "Lisbon",   distance: "close", stayDays: 12, status: "open",    tags: ["writing", "ocean"] },
+  { id: "n2", x: 0.62, y: 0.32, alias: "Aria",    city: "Tbilisi",  distance: "near",  stayDays: 21, status: "focused", tags: ["code", "wine"] },
+  { id: "n3", x: 0.72, y: 0.58, alias: "Mira",    city: "Chiang Mai", distance: "far", stayDays: 40, status: "open",    tags: ["film", "monsoon"] },
+  { id: "n4", x: 0.38, y: 0.66, alias: "Ilya",    city: "Mexico City", distance: "near", stayDays: 8,  status: "open",   tags: ["sound", "design"] },
+  { id: "n5", x: 0.52, y: 0.50, alias: "Noor",    city: "Marrakech", distance: "close", stayDays: 5,  status: "hidden", tags: ["weaving", "tea"] },
 ];
 
-const RADIAL_ACTIONS = [
-  { label: "Connect",        angle: -90 },
-  { label: "Collaborate",    angle: -36 },
-  { label: "Align travel",   angle:  18 },
-  { label: "Join camp",      angle:  72 },
-  { label: "Suggest overlap",angle: 126 },
+const CAMPS = [
+  { id: "c1", x: 0.32, y: 0.50, name: "Salt & Page",     theme: "Writers by the Atlantic",   members: 14 },
+  { id: "c2", x: 0.68, y: 0.42, name: "Quiet Signal",    theme: "Builders in the Caucasus",  members: 9  },
+  { id: "c3", x: 0.62, y: 0.62, name: "Monsoon Studio",  theme: "Filmmakers in SE Asia",     members: 22 },
 ];
 
 export default function Tribe() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const progressRef = useRef(0);
-  const alignRef = useRef(false);
-  const [phaseIdx, setPhaseIdx] = useState(0);
-  const [picked, setPicked] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [hover, setHover] = useState<string | null>(null);
-  const [align, setAlign] = useState(false);
-  const [campOpen, setCampOpen] = useState(false);
+  // Progressive layer state
+  const [layer, setLayer] = useState(0); // 0..6
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [showPanel, setShowPanel] = useState(false);
+  const [showCamps, setShowCamps] = useState(false);
+  const [showBuild, setShowBuild] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [interactions, setInteractions] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Sync align state to ref
-  useEffect(() => { alignRef.current = align; }, [align]);
+  const bump = () => setInteractions((n) => n + 1);
 
+  // Layer 0 -> 1 on first interaction
+  const reveal = () => {
+    bump();
+    setLayer((l) => Math.max(l, 1));
+  };
+
+  // After enough interactions, slide in the side panel and camps
   useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const max = el.scrollHeight - el.clientHeight;
-      const p = Math.max(0, Math.min(1, el.scrollTop / Math.max(1, max)));
-      progressRef.current = p;
-      const i = PHASES.findIndex((ph) => p >= ph.range[0] && p < ph.range[1]);
-      setPhaseIdx(i < 0 ? PHASES.length - 1 : i);
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => el.removeEventListener("scroll", onScroll);
-  }, []);
+    if (interactions >= 3) setLayer((l) => Math.max(l, 3));
+    if (interactions >= 4) setShowPanel(true);
+    if (interactions >= 6) setShowCamps(true);
+    if (interactions >= 9) setShowBuild(true);
+    if (interactions >= 2) setShowPrivacy(true);
+  }, [interactions]);
 
-  const pickedNode = useMemo(
-    () => (picked ? TRIBE_NODES.find((n) => n.id === picked.id) ?? null : null),
-    [picked]
-  );
-  const hoverNode = useMemo(
-    () => (hover ? TRIBE_NODES.find((n) => n.id === hover) ?? null : null),
-    [hover]
-  );
+  // Connections derived from overlapping tags / stay windows
+  const connections = useMemo(() => {
+    if (layer < 3) return [];
+    const out: { a: Node; b: Node; strength: number }[] = [];
+    for (let i = 0; i < NODES.length; i++) {
+      for (let j = i + 1; j < NODES.length; j++) {
+        const a = NODES[i], b = NODES[j];
+        const shared = a.tags.some((t) => b.tags.includes(t));
+        const overlap = Math.min(a.stayDays, b.stayDays) / Math.max(a.stayDays, b.stayDays);
+        if (shared || overlap > 0.5) out.push({ a, b, strength: shared ? 0.7 : 0.3 });
+      }
+    }
+    return out;
+  }, [layer]);
+
+  const selected = NODES.find((n) => n.id === selectedNode) || null;
 
   return (
-    <div ref={containerRef} className="relative h-screen w-screen overflow-hidden bg-[#01030f] text-white select-none">
-      {/* WebGL world */}
+    <div
+      ref={wrapRef}
+      onWheel={() => { reveal(); }}
+      className="relative min-h-screen w-full overflow-hidden bg-[#01030f] text-white"
+    >
+      {/* Backdrop */}
       <div className="fixed inset-0 z-0">
-        <TribeWorld
-          progressRef={progressRef}
-          alignRef={alignRef}
-          containerRef={containerRef}
-          onPick={(id, screen) => setPicked(id && screen ? { id, x: screen.x, y: screen.y } : null)}
-          onHover={(id) => setHover(id)}
-        />
+        <VoyageScene className="absolute inset-0 opacity-40" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#02061a]/60 via-[#01030f]/80 to-[#01030f]" />
       </div>
 
-      {/* Scroll driver */}
-      <div
-        ref={scrollerRef}
-        className="absolute inset-0 z-10 overflow-y-scroll snap-y snap-mandatory hide-scrollbar"
-      >
-        {PHASES.map((ph, i) => (
-          <section
-            key={ph.key}
-            className="snap-start h-screen w-full flex flex-col justify-end p-10 lg:p-16 pointer-events-none"
-          >
-            <AnimatePresence mode="wait">
-              {phaseIdx === i && (
-                <motion.div
-                  key={ph.key}
-                  initial={{ opacity: 0, y: 24, filter: "blur(8px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -12, filter: "blur(6px)" }}
-                  transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
-                  className="max-w-xl pointer-events-auto"
-                >
-                  <p className="text-[11px] uppercase tracking-[0.35em] text-white/45 font-body">
-                    {ph.eyebrow}
-                  </p>
-                  <BlurText
-                    text={ph.title}
-                    className="font-heading text-4xl md:text-5xl text-white/95 mt-4 leading-[1.05]"
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </section>
-        ))}
-      </div>
-
-      {/* Brand */}
-      <div className="fixed top-6 left-8 z-30 pointer-events-none">
-        <p className="text-[10px] uppercase tracking-[0.4em] text-white/45 font-body">
-          Nomadic Engine — The Tribe
-        </p>
-      </div>
-
-      {/* Phase rail (right) */}
-      <div className="fixed right-8 top-1/2 -translate-y-1/2 z-30 flex flex-col gap-3">
-        {PHASES.map((ph, i) => (
-          <div key={ph.key} className="group flex items-center gap-3 justify-end">
-            <span className={`text-[10px] uppercase tracking-[0.25em] transition-opacity duration-500 ${
-              phaseIdx === i ? "opacity-90" : "opacity-0 group-hover:opacity-60"
-            }`}>
-              {ph.key}
-            </span>
-            <span className={`h-[1px] transition-all duration-700 ${
-              phaseIdx === i ? "w-10 bg-white/90" : "w-4 bg-white/25"
-            }`} />
-          </div>
-        ))}
-      </div>
-
-      {/* Interaction hint */}
+      {/* Layer 0 — minimal entry */}
       <AnimatePresence>
-        {phaseIdx <= 1 && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 text-[10px] uppercase tracking-[0.4em] text-white/45 pointer-events-none"
-          >
-            scroll to assemble · drag to shift perspective
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Hover emotion chip */}
-      <AnimatePresence>
-        {hoverNode && !pickedNode && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-[180px] z-30 pointer-events-none"
-          >
-            <div
-              className="rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.3em] backdrop-blur-md"
-              style={{
-                borderColor: INTENT_COLOR_HEX[hoverNode.intent] + "55",
-                color: INTENT_COLOR_HEX[hoverNode.intent],
-                background: "rgba(0,0,0,0.35)",
-              }}
-            >
-              {hoverNode.emotion}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Radial action menu + identity card on pick */}
-      <AnimatePresence>
-        {pickedNode && picked && (
-          <>
-            {/* Radial actions floating near node */}
-            <motion.div
-              key="radial"
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.7 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed z-30 pointer-events-none"
-              style={{ left: picked.x, top: picked.y, transform: "translate(-50%, -50%)" }}
-            >
-              {RADIAL_ACTIONS.map((a, i) => {
-                const r = 92;
-                const rad = (a.angle * Math.PI) / 180;
-                const x = Math.cos(rad) * r;
-                const y = Math.sin(rad) * r;
-                return (
-                  <motion.button
-                    key={a.label}
-                    initial={{ opacity: 0, x: 0, y: 0 }}
-                    animate={{ opacity: 1, x, y }}
-                    exit={{ opacity: 0, x: 0, y: 0 }}
-                    transition={{ duration: 0.5, delay: i * 0.04, ease: [0.16, 1, 0.3, 1] }}
-                    className="pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-white/20 bg-black/45 backdrop-blur-md px-3 py-1.5 text-[10px] uppercase tracking-[0.25em] text-white/85 hover:bg-white hover:text-black transition-colors"
-                  >
-                    {a.label}
-                  </motion.button>
-                );
-              })}
-              {/* center ring */}
-              <motion.div
-                initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                className="h-10 w-10 rounded-full border"
-                style={{
-                  borderColor: INTENT_COLOR_HEX[pickedNode.intent],
-                  boxShadow: `0 0 24px ${INTENT_COLOR_HEX[pickedNode.intent]}66`,
-                }}
-              />
-            </motion.div>
-
-            {/* Identity card (bottom-left) */}
-            <motion.div
-              key="id-card"
-              initial={{ opacity: 0, y: 14, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed left-8 bottom-8 z-30 w-[300px] rounded-2xl border border-white/15 bg-white/[0.04] backdrop-blur-xl p-5"
-            >
-              <p
-                className="text-[10px] uppercase tracking-[0.3em]"
-                style={{ color: INTENT_COLOR_HEX[pickedNode.intent] }}
-              >
-                Signal — {pickedNode.intent}
-              </p>
-              <div className="font-heading text-2xl mt-2">{pickedNode.name}</div>
-              <div className="text-xs text-white/55 mt-1">
-                {progressRef.current < 0.65 ? "somewhere in motion…" : pickedNode.city}
-              </div>
-              {/* stay ring */}
-              <div className="mt-4 flex items-center gap-3">
-                <svg width="36" height="36" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="2" />
-                  <circle
-                    cx="18" cy="18" r="14" fill="none"
-                    stroke={INTENT_COLOR_HEX[pickedNode.intent]}
-                    strokeWidth="2"
-                    strokeDasharray={`${Math.min(pickedNode.stayDays, 60) / 60 * 88} 88`}
-                    transform="rotate(-90 18 18)"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="text-[11px] text-white/55">
-                  {pickedNode.stayDays}-day stay<br/>
-                  <span className="text-white/40">{pickedNode.emotion}</span>
-                </div>
-              </div>
-              <p className="text-xs text-white/65 mt-3 italic">"{pickedNode.signal}"</p>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Camp panel button — global phase */}
-      <AnimatePresence>
-        {phaseIdx >= 5 && (
+        {layer === 0 && (
           <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setCampOpen((v) => !v)}
-            className="fixed bottom-8 right-8 z-30 rounded-full border border-white/15 bg-white/[0.04] backdrop-blur-xl px-5 py-3 text-[11px] uppercase tracking-[0.3em] hover:bg-white/[0.08] transition-colors"
+            key="entry"
+            type="button"
+            onClick={reveal}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 1.2 }}
+            className="relative z-10 flex min-h-screen w-full flex-col items-center justify-center gap-8 cursor-pointer"
           >
-            Camps · 3 forming
+            <motion.span
+              className="block h-24 w-24 rounded-full"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.15) 40%, rgba(255,255,255,0) 70%)",
+              }}
+              animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <BlurText
+              text="You are not alone in motion."
+              className="font-heading text-4xl md:text-5xl text-white/90 text-center"
+            />
+            <p className="text-xs uppercase tracking-[0.3em] text-white/40 font-body">
+              Move or click to explore the tribe
+            </p>
           </motion.button>
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {campOpen && (
-          <motion.aside
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 40 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed right-8 bottom-24 z-30 w-[320px] rounded-2xl border border-white/15 bg-white/[0.04] backdrop-blur-xl p-5"
-          >
-            <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Emergent camps</p>
-            <h3 className="font-heading text-2xl mt-2">Settlements forming</h3>
-            <div className="mt-4 space-y-3">
-              {[
-                { name: "Salt & Page",    city: "Lisbon",     members: 14, theme: "Writers by the Atlantic" },
-                { name: "Quiet Signal",   city: "Tbilisi",    members:  9, theme: "Builders in the Caucasus" },
-                { name: "Monsoon Studio", city: "Chiang Mai", members: 22, theme: "Filmmakers in SE Asia" },
-              ].map((c) => (
-                <div key={c.name} className="rounded-xl border border-white/10 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="font-heading text-lg">{c.name}</div>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{c.city}</span>
-                  </div>
-                  <div className="text-xs text-white/55 mt-1">{c.theme}</div>
-                  <div className="text-[11px] text-white/45 mt-2 flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
-                    {c.members} aligned now
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    <button className="text-[11px] uppercase tracking-[0.2em] rounded-full border border-white/20 px-3 py-1.5 hover:bg-white/[0.08]">Observe</button>
-                    <button className="text-[11px] uppercase tracking-[0.2em] rounded-full bg-white text-black px-3 py-1.5 hover:bg-white/90">Join</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+      {/* Layer 1+ — Living map */}
+      {layer >= 1 && (
+        <div className="relative z-10 min-h-screen w-full">
+          {/* Header */}
+          <header className="pt-28 px-8 lg:px-16 max-w-[1400px] mx-auto">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/40 font-body">
+              The Tribe — a living map
+            </p>
+            <h1 className="font-heading text-5xl md:text-6xl mt-3 text-white/95">
+              Nearby minds, in motion.
+            </h1>
+            <p className="font-body text-white/55 mt-3 max-w-xl text-sm">
+              The more you explore, the more this world reveals itself.
+            </p>
+          </header>
 
-      {/* Align my movement — top right in late phases */}
-      <AnimatePresence>
-        {phaseIdx >= 5 && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed top-8 right-8 z-30"
-          >
-            <button
-              onClick={() => setAlign((v) => !v)}
-              className={`rounded-full px-5 py-3 text-[11px] uppercase tracking-[0.3em] border transition-colors ${
-                align
-                  ? "bg-white text-black border-white"
-                  : "bg-white/[0.04] border-white/15 hover:bg-white/[0.08]"
-              }`}
+          {/* Map area */}
+          <div className="relative mx-auto mt-12 max-w-[1400px] px-8 lg:px-16">
+            <div
+              className="relative h-[640px] w-full rounded-[2rem] liquid-glass overflow-hidden"
+              onClick={() => bump()}
             >
-              {align ? "Movement aligned" : "Align my movement"}
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/* Connections */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {connections.map(({ a, b, strength }, i) => (
+                  <motion.line
+                    key={i}
+                    x1={`${a.x * 100}%`} y1={`${a.y * 100}%`}
+                    x2={`${b.x * 100}%`} y2={`${b.y * 100}%`}
+                    stroke={`rgba(255,255,255,${0.05 + strength * 0.25})`}
+                    strokeWidth={0.6}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 1.8, delay: i * 0.15 }}
+                  />
+                ))}
+              </svg>
 
-      {/* Privacy */}
-      {!pickedNode && phaseIdx >= 1 && (
-        <details className="fixed bottom-8 left-8 z-30 rounded-full border border-white/15 bg-white/[0.04] backdrop-blur-xl px-4 py-2 text-[11px] text-white/70">
-          <summary className="cursor-pointer list-none uppercase tracking-[0.3em]">Presence</summary>
-          <div className="mt-3 space-y-2 pb-1">
-            <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Visible to tribe</label>
-            <label className="flex items-center gap-2"><input type="checkbox" /> Anonymous mode</label>
-            <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> City-level only</label>
+              {/* Camps (glowing regions) */}
+              <AnimatePresence>
+                {showCamps && CAMPS.map((c, i) => (
+                  <motion.button
+                    key={c.id}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 1.4, delay: i * 0.3 }}
+                    onClick={(e) => { e.stopPropagation(); bump(); }}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 group"
+                    style={{ left: `${c.x * 100}%`, top: `${c.y * 100}%` }}
+                  >
+                    <span
+                      className="block h-40 w-40 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(180,160,255,0.18) 0%, rgba(180,160,255,0.05) 40%, rgba(0,0,0,0) 70%)",
+                      }}
+                    />
+                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-500 liquid-glass rounded-2xl px-4 py-3 text-center whitespace-nowrap">
+                      <div className="font-heading text-lg">{c.name}</div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-white/50 mt-1">{c.theme}</div>
+                      <div className="text-xs text-white/60 mt-2">{c.members} aligned</div>
+                      <button className="btn-pill btn-white sm mt-3">Join camp</button>
+                    </div>
+                  </motion.button>
+                ))}
+              </AnimatePresence>
+
+              {/* Nodes */}
+              {NODES.map((n, i) => (
+                <motion.button
+                  key={n.id}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedNode(n.id);
+                    setLayer((l) => Math.max(l, 2));
+                    bump();
+                  }}
+                  initial={{ opacity: 0, scale: 0.4 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 1.4, delay: 0.4 + i * 0.25, ease: "easeOut" }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 group"
+                  style={{ left: `${n.x * 100}%`, top: `${n.y * 100}%` }}
+                >
+                  {/* Pulse */}
+                  <motion.span
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 block rounded-full"
+                    style={{
+                      background:
+                        "radial-gradient(circle, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 70%)",
+                      height: 56, width: 56,
+                    }}
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0.15, 0.5] }}
+                    transition={{ duration: 4 + i * 0.3, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  {/* Stay ring */}
+                  <svg className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" width="34" height="34">
+                    <circle cx="17" cy="17" r="14" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                    <circle
+                      cx="17" cy="17" r="14" fill="none"
+                      stroke="rgba(255,255,255,0.7)" strokeWidth="1"
+                      strokeDasharray={`${Math.min(n.stayDays, 60) / 60 * 88} 88`}
+                      transform="rotate(-90 17 17)"
+                    />
+                  </svg>
+                  <span className="relative block h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]" />
+                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-white/40 whitespace-nowrap">
+                    {n.distance}
+                  </span>
+
+                  {/* Identity thought-bubble */}
+                  <AnimatePresence>
+                    {selectedNode === n.id && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                        transition={{ duration: 0.5 }}
+                        className="absolute left-6 top-4 liquid-glass rounded-2xl p-4 min-w-[200px] text-left"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="font-heading text-xl">{n.alias}</div>
+                        <div className="text-xs text-white/55 mt-0.5">{n.city}</div>
+                        <div className="flex items-center gap-2 mt-3 text-[11px] text-white/60">
+                          <span className="h-1.5 w-1.5 rounded-full"
+                            style={{ background: n.status === "open" ? "#7df0a0" : n.status === "focused" ? "#f0c97d" : "#888" }} />
+                          <span className="uppercase tracking-[0.2em]">{n.status}</span>
+                        </div>
+                        <div className="text-xs text-white/45 mt-2">{n.stayDays}-day stay</div>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {n.tags.map((t) => (
+                            <span key={t} className="tag-glass border border-white/10">{t}</span>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+              ))}
+
+              {/* Hint at edges */}
+              {layer < 3 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-[11px] uppercase tracking-[0.3em] text-white/35">
+                  Keep exploring — connections emerge
+                </div>
+              )}
+            </div>
+
+            {/* Layer 3 — alignment list */}
+            <AnimatePresence>
+              {layer >= 3 && (
+                <motion.section
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1 }}
+                  className="mt-16"
+                >
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/40">Soft alignments</p>
+                  <h2 className="font-heading text-3xl md:text-4xl mt-2">People you may naturally align with</h2>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                    {NODES.slice(0, 3).map((n) => (
+                      <div key={n.id} className="liquid-glass rounded-2xl p-5">
+                        <div className="font-heading text-xl">{n.alias}</div>
+                        <div className="text-xs text-white/50 mt-1">{n.city} · {n.stayDays}d</div>
+                        <div className="text-xs text-white/60 mt-3">
+                          Overlap on <span className="text-white/90">{n.tags.join(", ")}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
+
+            {/* Layer 6 — Build next to me */}
+            <AnimatePresence>
+              {showBuild && (
+                <motion.section
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1 }}
+                  className="my-24"
+                >
+                  <p className="text-xs uppercase tracking-[0.3em] text-white/40">Intentional connection</p>
+                  <h2 className="font-heading text-3xl md:text-4xl mt-2">Choose to align your path with others</h2>
+                  <div className="grid sm:grid-cols-3 gap-4 mt-6">
+                    {["Open to co-locate", "Open to shared workspace", "Open to temporary collaboration"].map((label) => (
+                      <button key={label} className="liquid-glass rounded-2xl p-6 text-left hover:bg-white/[0.04] transition-colors">
+                        <div className="font-heading text-2xl">{label}</div>
+                        <div className="text-xs text-white/50 mt-2 uppercase tracking-[0.2em]">Toggle intent</div>
+                      </button>
+                    ))}
+                  </div>
+                </motion.section>
+              )}
+            </AnimatePresence>
           </div>
-        </details>
-      )}
 
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { scrollbar-width: none; }
-      `}</style>
+          {/* Layer 4 — Side panel: nearby minds */}
+          <AnimatePresence>
+            {showPanel && (
+              <motion.aside
+                initial={{ x: 380, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: 380, opacity: 0 }}
+                transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+                className="fixed right-6 top-24 bottom-6 w-[320px] z-20 liquid-glass rounded-[1.5rem] p-5 overflow-y-auto"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/40">Nearby minds</p>
+                    <h3 className="font-heading text-2xl mt-1">In your window</h3>
+                  </div>
+                  <button onClick={() => setShowPanel(false)} className="text-white/40 hover:text-white text-xs">close</button>
+                </div>
+                <div className="mt-5 space-y-3">
+                  {NODES.map((n) => (
+                    <div key={n.id} className="rounded-xl border border-white/10 p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-heading text-lg">{n.alias}</div>
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-white/40">{n.distance}</span>
+                      </div>
+                      <div className="text-xs text-white/50">{n.city} · overlap {n.stayDays}d</div>
+                      <div className="mt-3 flex gap-2">
+                        <button className="btn-pill btn-white sm">Connect</button>
+                        <button className="btn-pill sm text-white/80 border border-white/15">Invite</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.aside>
+            )}
+          </AnimatePresence>
+
+          {/* Privacy — subtle corner */}
+          <AnimatePresence>
+            {showPrivacy && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed bottom-5 left-5 z-20"
+              >
+                <details className="liquid-glass rounded-full px-4 py-2 text-xs text-white/60 font-body">
+                  <summary className="cursor-pointer list-none">Presence</summary>
+                  <div className="mt-3 space-y-2 pb-2">
+                    <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> Visible to tribe</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" /> Anonymous mode</label>
+                    <label className="flex items-center gap-2"><input type="checkbox" defaultChecked /> City-level only</label>
+                  </div>
+                </details>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
