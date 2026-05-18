@@ -267,7 +267,7 @@ export default function Tribe() {
         ctx.beginPath();
         ctx.strokeStyle = `rgba(160,200,255,${alpha})`;
         ctx.lineWidth = 1;
-        ctx.arc(w / 2 - camX, h / 2 - camY, pr, 0, Math.PI * 2);
+        ctx.arc(w / 2 - camX, h / 2 - camY, Math.max(0, pr), 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -393,27 +393,37 @@ export default function Tribe() {
     <div className="relative min-h-screen w-full overflow-hidden bg-[#02030a] text-white">
       {/* Atmospheric background */}
       <div className="fixed inset-0 z-0">
-        {/* SVG turbulence filter for water displacement */}
-        <svg className="absolute -inset-0 w-0 h-0" aria-hidden>
-          <defs>
-            <filter id="ocean-wave" x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.012 0.022" numOctaves="2" seed="3">
-                <animate attributeName="baseFrequency" dur="22s" values="0.012 0.022;0.018 0.014;0.012 0.022" repeatCount="indefinite" />
-              </feTurbulence>
-              <feDisplacementMap in="SourceGraphic" scale="14" />
-            </filter>
-          </defs>
-        </svg>
-
         <img
           src={atlas}
           alt=""
           className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[2000ms]"
           style={{
-            filter: "blur(0.5px) saturate(0.85) url(#ocean-wave)",
+            filter: "blur(0.5px) saturate(0.85)",
             opacity: layer >= 1 ? 0.55 : 0,
           }}
         />
+
+        {/* Animated ocean shimmer blobs — sit over ocean regions, blend modes keep land mostly untouched */}
+        {layer >= 1 && (
+          <>
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-screen opacity-40"
+              style={{
+                background:
+                  "radial-gradient(60% 40% at 20% 60%, rgba(60,160,210,0.25), transparent 70%), radial-gradient(50% 35% at 75% 40%, rgba(80,200,220,0.18), transparent 70%), radial-gradient(45% 30% at 50% 80%, rgba(40,120,200,0.22), transparent 70%)",
+                animation: "oceanDrift 28s ease-in-out infinite",
+              }}
+            />
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-overlay opacity-25"
+              style={{
+                background:
+                  "repeating-linear-gradient(115deg, rgba(140,210,255,0.05) 0px, rgba(140,210,255,0.05) 2px, transparent 2px, transparent 9px)",
+                animation: "oceanShimmer 14s linear infinite",
+              }}
+            />
+          </>
+        )}
 
         {/* Animated ocean shimmer blobs */}
         {layer >= 1 && (
