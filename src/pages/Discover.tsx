@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, MapPin, Heart, Thermometer, CloudRain, Wallet, Wifi, ShieldCheck, X } from "lucide-react";
+import { ArrowUpRight, MapPin, X } from "lucide-react";
 import { REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
@@ -20,7 +20,6 @@ export default function Discover() {
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
-  const sitesRef = useRef<HTMLDivElement | null>(null);
   const globeRef = useRef<HTMLDivElement | null>(null);
   const [focusedSite, setFocusedSite] = useState<{ coords: [number, number]; title: string } | null>(null);
 
@@ -31,9 +30,6 @@ export default function Discover() {
 
   const handleRegionSelect = (id: RegionId) => {
     setSelectedRegion(id);
-    setTimeout(() => {
-      sitesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 2000);
   };
 
   const visibleSites = useMemo(
@@ -65,7 +61,7 @@ export default function Discover() {
         }}
       />
 
-      {/* Continent locations sidebar — appears after choosing a continent */}
+      {/* Continent locations + climate filters panel */}
       <AnimatePresence>
         {selectedRegion !== "all" && (
           <motion.aside
@@ -74,24 +70,46 @@ export default function Discover() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -360, opacity: 0 }}
             transition={{ duration: 0.45, ease: "easeOut" }}
-            className="fixed left-4 top-24 bottom-4 w-[320px] z-30 liquid-glass rounded-2xl flex flex-col overflow-hidden"
+            className="fixed left-4 top-24 bottom-4 w-[360px] z-30 liquid-glass rounded-2xl flex flex-col overflow-hidden"
           >
             <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10">
-              <div>
+              <div className="min-w-0">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body">Locations</p>
-                <h2 className="font-heading text-white text-2xl leading-none mt-1">
+                <h2 className="font-heading text-white text-2xl leading-none mt-1 truncate">
                   {REGION_LABEL[selectedRegion as Exclude<typeof selectedRegion, "all">]}
                 </h2>
                 <p className="text-xs text-white/60 font-body mt-1">{visibleSites.length} sites</p>
               </div>
               <button
-                onClick={() => { setSelectedRegion("all"); setFocusedSite(null); }}
+                onClick={() => { setSelectedRegion("all"); setFocusedSite(null); setSelectedClimate("all"); }}
                 className="liquid-glass w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
-                aria-label="Clear region"
+                aria-label="Close panel"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Climate filters */}
+            <div className="px-4 py-3 border-b border-white/10">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body mb-2">Climate</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[{ id: "all" as const, label: "All" }, ...CLIMATES].map((c) => {
+                  const isActive = selectedClimate === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedClimate(c.id)}
+                      className={`px-3 py-1 rounded-full text-[11px] font-body font-medium transition-colors ${
+                        isActive ? "bg-white text-black" : "liquid-glass text-white/90"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {visibleSites.length === 0 ? (
                 <p className="text-white/60 text-sm font-body p-3">No locations match these filters.</p>
@@ -99,27 +117,36 @@ export default function Discover() {
                 visibleSites.map((s) => {
                   const active = focusedSite?.title === s.title;
                   return (
-                    <button
+                    <div
                       key={s.title}
-                      onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
-                      className={`w-full text-left rounded-xl p-2 flex items-center gap-3 transition-colors ${
+                      className={`rounded-xl p-2 flex items-center gap-3 transition-colors ${
                         active ? "bg-white/15" : "hover:bg-white/8"
                       }`}
                     >
-                      <img
-                        src={s.image}
-                        alt=""
-                        loading="lazy"
-                        className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
-                        <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
-                          <MapPin className="h-3 w-3 shrink-0" /> {s.region}
-                        </p>
-                      </div>
-                      <MapPin className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-white/40"}`} />
-                    </button>
+                      <button
+                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                        className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                      >
+                        <img
+                          src={s.image}
+                          alt=""
+                          loading="lazy"
+                          className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                          <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
+                            <MapPin className="h-3 w-3 shrink-0" /> {s.region}
+                          </p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={handleConfigure}
+                        className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
+                      >
+                        Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                      </button>
+                    </div>
                   );
                 })
               )}
@@ -144,7 +171,7 @@ export default function Discover() {
             transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
             className="mt-6 max-w-xl mx-auto text-center text-sm md:text-base text-white/80 font-body font-light leading-tight"
           >
-            Browse pre-cleared parcels worldwide. Every site reports live solar, wind, and water yields.
+            Browse pre-cleared parcels worldwide. Tap a continent to reveal its sites.
           </motion.p>
 
           {/* Globe */}
@@ -160,7 +187,7 @@ export default function Discover() {
               onSelect={handleRegionSelect}
               focusPoint={focusedSite?.coords ?? null}
               focusLabel={focusedSite?.title}
-              className="w-full h-[420px] md:h-[520px]"
+              className="w-full h-[420px] md:h-[560px]"
             />
           </motion.div>
 
@@ -168,109 +195,6 @@ export default function Discover() {
           <div className="mt-5">
             <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
           </div>
-
-          {/* Filter pills */}
-          <div ref={sitesRef} className="scroll-mt-24" />
-          <motion.div
-            initial={blurInit}
-            animate={blurIn}
-            transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
-            className="mt-6 flex flex-wrap gap-2"
-          >
-            {[{ id: "all" as const, label: "All climates" }, ...CLIMATES].map((c) => {
-              const isActive = selectedClimate === c.id;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedClimate(c.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-body font-medium transition-colors ${
-                    isActive ? "bg-white text-black" : "liquid-glass text-white/90"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              );
-            })}
-          </motion.div>
-
-          {/* Cards grid */}
-          {visibleSites.length === 0 ? (
-            <p className="mt-10 text-white/70 font-body text-sm">
-              No voyages charted here yet. Try another region.
-            </p>
-          ) : (
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {visibleSites.map((s, i) => (
-                <motion.article
-                  key={s.title}
-                  initial={{ filter: "blur(10px)", opacity: 0, y: 30 }}
-                  animate={{ filter: "blur(0px)", opacity: 1, y: 0 }}
-                  transition={{ duration: 0.7, delay: 0.2 + i * 0.08, ease: "easeOut" }}
-                  className="liquid-glass rounded-[1.25rem] p-6 flex flex-col min-h-[280px]"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="liquid-glass icon-box-glass">
-                      <MapPin className="h-5 w-5 text-white" strokeWidth={1.5} />
-                    </div>
-                    <div className="flex flex-wrap justify-end gap-1.5 max-w-[65%]">
-                      <span className="liquid-glass tag-glass">Available</span>
-                    </div>
-                  </div>
-                  <div className="flex-1" />
-                  <div className="mt-6">
-                    <p className="text-xs text-white/70 font-body inline-flex items-center gap-1">
-                      <MapPin className="h-3 w-3" /> {s.region}
-                    </p>
-                    <div className="mt-3">
-                      <img
-                        src={s.image}
-                        alt={`${s.title} landscape`}
-                        loading="lazy"
-                        className="w-full h-56 rounded-xl object-cover border border-white/15"
-                      />
-                      <h3 className="mt-4 font-heading text-white text-3xl md:text-[2.25rem] tracking-[-1px] leading-none">
-                        {s.title}
-                      </h3>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      <span className="liquid-glass tag-glass">
-                        <Thermometer className="h-3 w-3" /> {s.temperature}
-                      </span>
-                      <span className="liquid-glass tag-glass">
-                        <CloudRain className="h-3 w-3" /> {s.rainfall}
-                      </span>
-                      <span className="liquid-glass tag-glass">
-                        <Wallet className="h-3 w-3" /> {s.costOfLiving}
-                      </span>
-                      <span className="liquid-glass tag-glass">
-                        <Wifi className="h-3 w-3" /> {s.internetSpeed}
-                      </span>
-                      <span className="liquid-glass tag-glass">
-                        <ShieldCheck className="h-3 w-3" /> {s.safety}
-                      </span>
-                    </div>
-                    <div className="mt-5 flex items-center gap-3">
-                      <button
-                        onClick={handleConfigure}
-                        className="liquid-glass-strong rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
-                      >
-                        Configure <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
-                      </button>
-                      <button
-                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
-                        className="liquid-glass rounded-full px-4 py-2 text-xs font-body font-medium text-white inline-flex items-center gap-1.5"
-                      >
-                        <MapPin className="h-3.5 w-3.5" strokeWidth={1.8} /> Show on map
-                      </button>
-                      <button className="liquid-glass w-9 h-9 rounded-full flex items-center justify-center text-white">
-                        <Heart className="h-4 w-4" strokeWidth={1.5} />
-                      </button>
-                    </div>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
