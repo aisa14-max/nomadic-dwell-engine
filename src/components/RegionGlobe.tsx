@@ -39,13 +39,14 @@ const REGION_LABELS_GEOJSON: GeoJSON.FeatureCollection = {
   })),
 };
 
-export default function RegionGlobe({ selectedRegion, onSelect, className }: RegionGlobeProps) {
+export default function RegionGlobe({ selectedRegion, onSelect, className, focusPoint, focusLabel }: RegionGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredRef = useRef<RegionId | null>(null);
   const userInteractedRef = useRef(false);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const focusMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Init map once
   useEffect(() => {
