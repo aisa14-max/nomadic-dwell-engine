@@ -59,8 +59,11 @@ export default function Configurator() {
               <button className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white">
                 Save draft
               </button>
-              <button className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium">
-                Continue to plan
+              <button
+                onClick={() => setShowNext(true)}
+                className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"
+              >
+                Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} />
               </button>
             </motion.div>
           </div>
