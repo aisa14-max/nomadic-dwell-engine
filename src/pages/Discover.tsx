@@ -182,8 +182,8 @@ export default function Discover() {
         )}
       </AnimatePresence>
 
-      <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
-        <div className="mx-auto max-w-[1400px]">
+      <div className="relative z-10 pt-32 pb-20">
+        <div className="mx-auto max-w-[1400px] px-8 md:px-16 lg:px-20">
           {/* Header */}
           <p className="text-sm font-body text-white/80 mb-4 text-center">// Voyages</p>
           <div className="max-w-3xl mx-auto text-center">
@@ -200,28 +200,29 @@ export default function Discover() {
           >
             Browse pre-cleared parcels worldwide. Tap a continent to reveal its sites.
           </motion.p>
+        </div>
 
-          {/* Globe */}
+        {/* Globe (wider, immersive) */}
+        <div className="mx-auto max-w-[1800px] px-4 md:px-8 mt-10">
           <motion.div
             ref={globeRef}
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
+            className="relative liquid-glass rounded-[1.5rem] overflow-hidden scroll-mt-24"
           >
             <RegionGlobe
               selectedRegion={selectedRegion}
               onSelect={handleRegionSelect}
               focusPoint={focusedSite?.coords ?? null}
               focusLabel={focusedSite?.title}
-              className="w-full h-[420px] md:h-[560px]"
+              className="w-full h-[460px] md:h-[620px] lg:h-[680px]"
             />
+            {/* Floating status/filter chip */}
+            <div className="absolute top-3 right-3 z-20">
+              <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
+            </div>
           </motion.div>
-
-          {/* Active region chip */}
-          <div className="mt-5">
-            <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
-          </div>
         </div>
       </div>
     </div>
