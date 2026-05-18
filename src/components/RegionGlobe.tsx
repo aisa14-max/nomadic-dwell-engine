@@ -11,6 +11,9 @@ interface RegionGlobeProps {
   selectedRegion: RegionId | "all";
   onSelect: (region: RegionId) => void;
   className?: string;
+  /** Optional [lng, lat] of a site to focus + pin on the globe */
+  focusPoint?: [number, number] | null;
+  focusLabel?: string;
 }
 
 const SOURCE_ID = "continents";
