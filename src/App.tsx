@@ -28,6 +28,7 @@ const RoutedApp = () => {
           <Route path="/discover" element={<Discover />} />
           <Route path="/configurator" element={<Configurator />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tribe" element={<Tribe />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
