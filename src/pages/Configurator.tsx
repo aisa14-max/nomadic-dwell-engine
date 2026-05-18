@@ -199,6 +199,85 @@ export default function Configurator() {
           </div>
         </div>
       </div>
+
+      {/* Slide-in: next configuration step */}
+      <AnimatePresence>
+        {showNext && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={() => setShowNext(false)}
+              className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.aside
+              key="next-panel"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed top-0 right-0 bottom-0 z-50 w-full max-w-[520px] bg-[#0a0a0a] border-l border-white/10 overflow-y-auto"
+            >
+              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-5 bg-[#0a0a0a]/90 backdrop-blur border-b border-white/10">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-white/60 font-body">Step 2 of 3</p>
+                  <h2 className="font-heading text-2xl text-white mt-1">Deployment plan</h2>
+                </div>
+                <button
+                  onClick={() => setShowNext(false)}
+                  className="liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div className="px-6 py-6 space-y-4">
+                <PanelRow icon={MapPin} label="Site" value="Skye Moor · 57.27°N, 6.21°W" />
+                <PanelRow icon={Calendar} label="Deployment window" value="Apr 14 – Apr 21, 2026" />
+                <PanelRow icon={Truck} label="Logistics" value="Marine drop · Portree dock" />
+                <PanelRow icon={Shield} label="Permit status" value="Cleared · Tier 2" />
+
+                <div className="liquid-glass rounded-[1rem] p-5 mt-2">
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/60 font-body">Notes</p>
+                  <p className="mt-2 text-sm font-body text-white/85 leading-relaxed">
+                    Your engine is within climate envelope. Confirm the deployment crew and
+                    finalize anchoring before the window opens.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowNext(false)}
+                    className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white flex-1"
+                  >
+                    Back
+                  </button>
+                  <button className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium flex-1 inline-flex items-center justify-center gap-2">
+                    Confirm plan <ArrowRight className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PanelRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+  return (
+    <div className="liquid-glass rounded-[1rem] p-4 flex items-center gap-3">
+      <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
+        <Icon className="h-4 w-4 text-white" strokeWidth={1.5} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
+        <p className="text-sm font-body text-white mt-0.5 truncate">{value}</p>
+      </div>
     </div>
   );
 }
