@@ -64,6 +64,70 @@ export default function Discover() {
             "radial-gradient(ellipse at center, transparent 50%, rgba(2,3,10,0.7) 100%)",
         }}
       />
+
+      {/* Continent locations sidebar — appears after choosing a continent */}
+      <AnimatePresence>
+        {selectedRegion !== "all" && (
+          <motion.aside
+            key="region-sidebar"
+            initial={{ x: -360, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: -360, opacity: 0 }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+            className="fixed left-4 top-24 bottom-4 w-[320px] z-30 liquid-glass rounded-2xl flex flex-col overflow-hidden"
+          >
+            <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body">Locations</p>
+                <h2 className="font-heading text-white text-2xl leading-none mt-1">
+                  {REGION_LABEL[selectedRegion as Exclude<typeof selectedRegion, "all">]}
+                </h2>
+                <p className="text-xs text-white/60 font-body mt-1">{visibleSites.length} sites</p>
+              </div>
+              <button
+                onClick={() => { setSelectedRegion("all"); setFocusedSite(null); }}
+                className="liquid-glass w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
+                aria-label="Clear region"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {visibleSites.length === 0 ? (
+                <p className="text-white/60 text-sm font-body p-3">No locations match these filters.</p>
+              ) : (
+                visibleSites.map((s) => {
+                  const active = focusedSite?.title === s.title;
+                  return (
+                    <button
+                      key={s.title}
+                      onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                      className={`w-full text-left rounded-xl p-2 flex items-center gap-3 transition-colors ${
+                        active ? "bg-white/15" : "hover:bg-white/8"
+                      }`}
+                    >
+                      <img
+                        src={s.image}
+                        alt=""
+                        loading="lazy"
+                        className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                        <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
+                          <MapPin className="h-3 w-3 shrink-0" /> {s.region}
+                        </p>
+                      </div>
+                      <MapPin className={`h-4 w-4 shrink-0 ${active ? "text-white" : "text-white/40"}`} />
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </motion.aside>
+        )}
+      </AnimatePresence>
+
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-20">
         <div className="mx-auto max-w-[1400px]">
           {/* Header */}
