@@ -116,36 +116,63 @@ export default function Discover() {
               ) : (
                 visibleSites.map((s) => {
                   const active = focusedSite?.title === s.title;
+                  const chip = (label: string, value: string, tone: "low" | "mid" | "high" = "mid") => {
+                    const toneCls =
+                      tone === "high"
+                        ? "bg-white/15 text-white"
+                        : tone === "low"
+                        ? "bg-white/5 text-white/60"
+                        : "bg-white/10 text-white/85";
+                    return (
+                      <span key={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full ${toneCls}`}>
+                        <span className="opacity-60">{label} · </span>
+                        {value}
+                      </span>
+                    );
+                  };
+                  const levelTone = (l: "Low" | "Medium" | "High") =>
+                    (l === "High" ? "high" : l === "Low" ? "low" : "mid") as "low" | "mid" | "high";
+                  const netTone = (n: "Slow" | "Medium" | "Fast") =>
+                    (n === "Fast" ? "high" : n === "Slow" ? "low" : "mid") as "low" | "mid" | "high";
                   return (
                     <div
                       key={s.title}
-                      className={`rounded-xl p-2 flex items-center gap-3 transition-colors ${
+                      className={`rounded-xl p-2 transition-colors ${
                         active ? "bg-white/15" : "hover:bg-white/8"
                       }`}
                     >
-                      <button
-                        onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
-                        className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                      >
-                        <img
-                          src={s.image}
-                          alt=""
-                          loading="lazy"
-                          className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
-                          <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
-                            <MapPin className="h-3 w-3 shrink-0" /> {s.region}
-                          </p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={handleConfigure}
-                        className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
-                      >
-                        Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
-                      </button>
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                          className="flex items-start gap-3 min-w-0 flex-1 text-left"
+                        >
+                          <img
+                            src={s.image}
+                            alt=""
+                            loading="lazy"
+                            className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                            <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
+                              <MapPin className="h-3 w-3 shrink-0" /> {s.region}
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={handleConfigure}
+                          className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
+                        >
+                          Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {chip("Temp", s.temperature)}
+                        {chip("Rain", s.rainfall)}
+                        {chip("Cost", s.costOfLiving, levelTone(s.costOfLiving))}
+                        {chip("Net", s.internetSpeed, netTone(s.internetSpeed))}
+                        {chip("Safety", s.safety, levelTone(s.safety))}
+                      </div>
                     </div>
                   );
                 })
