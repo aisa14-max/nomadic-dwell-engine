@@ -16,14 +16,7 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
-  const [selectedRegion, setSelectedRegionState] = useState<RegionId | "all">(() => {
-    if (typeof window === "undefined") return "all";
-    return (localStorage.getItem("voyages.selectedRegion") as RegionId | "all" | null) ?? "all";
-  });
-  const setSelectedRegion = (r: RegionId | "all") => {
-    setSelectedRegionState(r);
-    try { localStorage.setItem("voyages.selectedRegion", r); } catch {}
-  };
+  const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
 
