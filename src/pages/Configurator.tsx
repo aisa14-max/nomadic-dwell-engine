@@ -1,39 +1,110 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import { Bed, Cookie, Droplets, Sun, Wind, Wrench, Plus, Check, Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, X, Calendar, MapPin, Truck, Shield } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, X, Calendar, MapPin, Truck, Shield, Send } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-iso.png";
 
-type Mod = { id: string; name: string; icon: any; cat: string; kwh: number; weight: number };
-
-const modules: Mod[] = [
-  { id: "sleep", name: "Sleeping pod", icon: Bed, cat: "Habitation", kwh: 0.4, weight: 280 },
-  { id: "kitchen", name: "Galley module", icon: Cookie, cat: "Habitation", kwh: 1.2, weight: 320 },
-  { id: "water", name: "Water reclaim", icon: Droplets, cat: "Systems", kwh: 0.6, weight: 210 },
-  { id: "solar", name: "Solar array", icon: Sun, cat: "Energy", kwh: -4.2, weight: 140 },
-  { id: "wind", name: "Wind turbine", icon: Wind, cat: "Energy", kwh: -1.8, weight: 95 },
-  { id: "workshop", name: "Workshop bay", icon: Wrench, cat: "Aux", kwh: 0.8, weight: 360 },
-];
-
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
 export default function Configurator() {
-  const [added, setAdded] = useState<string[]>(["sleep", "solar", "water"]);
-  const [draft, setDraft] = useState({ kwh: 0, weight: 0 });
   const [showNext, setShowNext] = useState(false);
 
-  useEffect(() => {
-    const sel = modules.filter((m) => added.includes(m.id));
-    setDraft({
-      kwh: sel.reduce((s, m) => s + m.kwh, 0),
-      weight: sel.reduce((s, m) => s + m.weight, 0),
-    });
-  }, [added]);
+  // Engine Assistant chat
+  const [messages, setMessages] = useState<ChatMsg[]>([
+    {
+      role: "assistant",
+      content:
+        "Hi — I'm your Engine Assistant. Ask me about your site, climate fit, energy balance, or deployment window.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const toggle = (id: string) =>
-    setAdded((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, isStreaming]);
+
+  const send = async () => {
+    const text = input.trim();
+    if (!text || isStreaming) return;
+    const userMsg: ChatMsg = { role: "user", content: text };
+    const history = [...messages, userMsg];
+    setMessages(history);
+    setInput("");
+    setIsStreaming(true);
+
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/engine-chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!resp.ok || !resp.body) {
+        if (resp.status === 429) throw new Error("Rate limit reached. Try again shortly.");
+        if (resp.status === 402) throw new Error("AI credits exhausted. Add credits to continue.");
+        throw new Error("Assistant unavailable.");
+      }
+
+      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let done = false;
+      let acc = "";
+
+      while (!done) {
+        const { done: d, value } = await reader.read();
+        if (d) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) !== -1) {
+          let line = buffer.slice(0, nl);
+          buffer = buffer.slice(nl + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            done = true;
+            break;
+          }
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const delta = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (delta) {
+              acc += delta;
+              setMessages((prev) => {
+                const next = [...prev];
+                next[next.length - 1] = { role: "assistant", content: acc };
+                return next;
+              });
+            }
+          } catch {
+            buffer = line + "\n" + buffer;
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: e instanceof Error ? e.message : "Something went wrong." },
+      ]);
+    } finally {
+      setIsStreaming(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -68,56 +139,7 @@ export default function Configurator() {
             </motion.div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[260px_1fr_240px] gap-5">
-            {/* MODULES */}
-            <motion.aside
-              initial={blurInit}
-              animate={blurIn}
-              transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
-            >
-              <h3 className="text-xs uppercase tracking-[0.16em] mb-3 text-white/70 font-body">Modules</h3>
-              <div className="space-y-2">
-                {modules.map((m) => {
-                  const on = added.includes(m.id);
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => toggle(m.id)}
-                      className={`liquid-glass w-full text-left rounded-[1rem] p-4 flex items-center gap-3 transition-opacity ${
-                        on ? "opacity-100" : "opacity-70 hover:opacity-100"
-                      }`}
-                    >
-                      <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
-                        <m.icon className="h-4 w-4 text-white" strokeWidth={1.5} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-body font-medium text-white">{m.name}</p>
-                        <p className="text-xs text-white/60 font-body">
-                          {m.cat} · {m.kwh > 0 ? `+${m.kwh}` : m.kwh} kWh
-                        </p>
-                      </div>
-                      <AnimatePresence>
-                        {on ? (
-                          <motion.span
-                            key="added"
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            transition={{ duration: 0.18 }}
-                            className="bg-white text-black rounded-full px-2 py-0.5 text-[10px] font-body font-semibold inline-flex items-center gap-1"
-                          >
-                            <Check className="h-3 w-3" strokeWidth={3} /> Added
-                          </motion.span>
-                        ) : (
-                          <Plus className="h-4 w-4 text-white/60" strokeWidth={1.5} />
-                        )}
-                      </AnimatePresence>
-                    </button>
-                  );
-                })}
-              </div>
-            </motion.aside>
-
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
             {/* VIEWPORT */}
             <motion.div
               initial={blurInit}
@@ -131,17 +153,11 @@ export default function Configurator() {
               >
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="autorotate">
-                    <AnimatePresence mode="popLayout">
-                      <motion.img
-                        key={added.join("-")}
-                        src={dwelling}
-                        alt="Modular dwelling render"
-                        initial={{ scale: 1.06, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                        className="max-h-[50vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
-                      />
-                    </AnimatePresence>
+                    <img
+                      src={dwelling}
+                      alt="Modular dwelling render"
+                      className="max-h-[50vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                    />
                   </div>
                 </div>
 
@@ -154,47 +170,83 @@ export default function Configurator() {
                 </div>
 
                 <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
-                  <span className="liquid-glass tag-glass">{added.length} modules</span>
                   <span className="liquid-glass tag-glass">Site: Skye Moor</span>
                 </div>
               </div>
 
               {/* Performance strip */}
               <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label="Net energy" value={(-draft.kwh).toFixed(1)} unit="kWh/d" />
-                <Stat label="Total mass" value={(draft.weight / 1000).toFixed(2)} unit="t" />
-                <Stat
-                  label="Habitable"
-                  value={String(added.filter((id) => modules.find((m) => m.id === id)?.cat === "Habitation").length)}
-                  unit="modules"
-                />
+                <Stat label="Net energy" value="3.6" unit="kWh/d" />
+                <Stat label="Total mass" value="0.63" unit="t" />
+                <Stat label="Habitable" value="1" unit="modules" />
                 <Stat label="Climate fit" value="92" unit="%" />
               </div>
             </motion.div>
 
-            {/* AI ASSIST */}
+            {/* AI ASSIST — CHAT */}
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-5"
+              className="liquid-glass rounded-[1.25rem] p-5 flex flex-col"
+              style={{ height: "calc(58vh + 96px)" }}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
                 <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
               </div>
-              <div className="mt-5 space-y-4 text-sm font-body font-light text-white/90">
-                <AssistantMsg delay={0.1}>
-                  Your current setup yields a net surplus on Skye Moor. The wind turbine
-                  would push you well past 100% autonomy.
-                </AssistantMsg>
-                <AssistantMsg delay={0.6}>
-                  If you add the galley module, expect a 1.2 kWh/d draw — still within envelope.
-                </AssistantMsg>
-                <AssistantMsg delay={1.2} typing>
-                  Want me to suggest a deployment window with stable conditions
-                </AssistantMsg>
+
+              <div
+                ref={scrollRef}
+                className="mt-4 flex-1 overflow-y-auto pr-1 space-y-3 text-sm font-body"
+              >
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`rounded-2xl px-3.5 py-2 max-w-[88%] leading-relaxed ${
+                        m.role === "user"
+                          ? "bg-white text-black"
+                          : "bg-white/10 text-white/90 border border-white/10"
+                      }`}
+                    >
+                      {m.content || (
+                        <span className="inline-flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse [animation-delay:120ms]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse [animation-delay:240ms]" />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  send();
+                }}
+                className="mt-3 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-4 pr-1.5 py-1.5"
+              >
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask the Engine Assistant…"
+                  disabled={isStreaming}
+                  className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body"
+                />
+                <button
+                  type="submit"
+                  disabled={isStreaming || !input.trim()}
+                  className="bg-white text-black rounded-full w-9 h-9 inline-flex items-center justify-center disabled:opacity-40"
+                  aria-label="Send"
+                >
+                  <Send className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </form>
             </motion.aside>
           </div>
         </div>
@@ -287,33 +339,9 @@ function Stat({ label, value, unit }: { label: string; value: string; unit: stri
     <div className="liquid-glass rounded-[1rem] p-4">
       <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
       <div className="mt-2 flex items-baseline gap-1.5">
-        <motion.span
-          key={value}
-          initial={{ y: 8, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.18 }}
-          className="font-heading text-white text-3xl tracking-[-1px] leading-none"
-        >
-          {value}
-        </motion.span>
+        <span className="font-heading text-white text-3xl tracking-[-1px] leading-none">{value}</span>
         <span className="text-xs text-white/60 font-body">{unit}</span>
       </div>
     </div>
-  );
-}
-
-function AssistantMsg({ children, delay = 0, typing = false }: { children: React.ReactNode; delay?: number; typing?: boolean }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, maxHeight: 0 }}
-      animate={{ opacity: 1, maxHeight: 200 }}
-      transition={{ duration: 0.3, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="overflow-hidden"
-    >
-      <p>
-        {children}
-        {typing && <span className="caret text-white" />}
-      </p>
-    </motion.div>
   );
 }
