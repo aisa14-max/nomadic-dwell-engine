@@ -159,9 +159,9 @@
   .caret { display: inline-block; width: 7px; height: 14px; background: currentColor; vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(2,start) infinite; }
   @keyframes blink { to { visibility: hidden; } }
 
-  .autorotate { animation: autorotate 12s ease-in-out infinite; transform-origin: center; }
+  .autorotate { animation: autorotate 18s linear infinite; transform-origin: center; transform-style: preserve-3d; perspective: 1200px; }
   .autorotate:hover { animation-play-state: paused; }
-  @keyframes autorotate { 0%,100% { transform: rotate(-0.5deg); } 50% { transform: rotate(0.5deg); } }
+  @keyframes autorotate { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
 
   /* Day → Night crossfade scene (exact reference port, 6s loop) */
   .dn-wrap { position: relative; display: flex; flex-direction: column; }
