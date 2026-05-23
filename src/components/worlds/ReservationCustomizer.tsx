@@ -129,11 +129,11 @@ export default function ReservationCustomizer({ onClose }: Props) {
       <AnimatePresence>
         {r.stage === "configure" && (
           <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
+            initial={{ x: "-50%", y: 80, opacity: 0 }}
+            animate={{ x: "-50%", y: 0, opacity: 1 }}
+            exit={{ x: "-50%", y: 80, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
+            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
             onClick={(e) => e.stopPropagation()}
           >
             <PartsStrip
