@@ -8,7 +8,7 @@ type Props = {
 
 export default function PartsStrip({ activePart, configured, onClick }: Props) {
   return (
-    <div className="liquid-glass rounded-2xl p-2 flex gap-2 items-stretch">
+    <div className="liquid-glass rounded-2xl p-2 flex gap-2 items-stretch w-full">
       {PARTS.map((p) => {
         const optId = configured.get(p.id);
         const opt = optId ? findOption(p.id, optId) : null;
@@ -21,7 +21,7 @@ export default function PartsStrip({ activePart, configured, onClick }: Props) {
               e.stopPropagation();
               onClick(p.id);
             }}
-            className={`relative flex-1 min-w-[88px] rounded-xl px-3 py-3 text-left transition-all cust-ease ${
+            className={`relative flex-1 min-w-0 basis-0 rounded-xl px-3 py-3 text-left transition-all cust-ease ${
               isActive ? "bg-white/15 ring-1 ring-white/40" : "bg-white/[.04] hover:bg-white/[.08]"
             } ${isConfigured ? "opacity-100" : "opacity-[.62]"}`}
           >
