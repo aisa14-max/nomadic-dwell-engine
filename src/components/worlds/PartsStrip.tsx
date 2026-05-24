@@ -25,7 +25,7 @@ export default function PartsStrip({
         const opt = optId ? findOption(p.id, optId) : null;
         const isActive = activePart === p.id;
         const isConfigured = !!opt;
-        const pickerAlign = index === 0 ? "left-0" : index === PARTS.length - 1 ? "right-0" : "left-1/2 -translate-x-1/2";
+        const pickerAlign = "left-1/2 -translate-x-1/2";
         return (
           <div key={p.id} className="relative flex-1 min-w-0 basis-0">
             {showPicker && isActive && onSelectOption && (
