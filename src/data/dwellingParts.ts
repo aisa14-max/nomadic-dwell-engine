@@ -21,7 +21,7 @@ export const PARTS: Part[] = [
   {
     id: "membrane",
     label: "Membrane",
-    hotspot: { x: 50, y: 22 },
+    hotspot: { x: 52, y: 49 },
     options: [
       { id: "linen", name: "Linen White", hex: "#e8e2d4", price: 1200 },
       { id: "graphite", name: "Graphite", hex: "#3a3a3e", price: 1350 },
@@ -31,7 +31,7 @@ export const PARTS: Part[] = [
   {
     id: "endwall",
     label: "End Wall",
-    hotspot: { x: 18, y: 55 },
+    hotspot: { x: 26, y: 52 },
     options: [
       { id: "oak", name: "Smoked Oak", hex: "#6e5440", price: 980 },
       { id: "alu", name: "Brushed Aluminum", hex: "#b5b8bd", price: 1180 },
@@ -41,7 +41,7 @@ export const PARTS: Part[] = [
   {
     id: "interior",
     label: "Interior",
-    hotspot: { x: 50, y: 56 },
+    hotspot: { x: 72, y: 57 },
     options: [
       { id: "ash", name: "Pale Ash", hex: "#d6cfc0", price: 1640 },
       { id: "walnut", name: "Walnut", hex: "#5a3a2a", price: 1880 },
@@ -51,7 +51,7 @@ export const PARTS: Part[] = [
   {
     id: "rib",
     label: "Rib",
-    hotspot: { x: 38, y: 38 },
+    hotspot: { x: 42, y: 52 },
     options: [
       { id: "steel", name: "Cold Steel", hex: "#7a808a", price: 760 },
       { id: "bronze", name: "Bronze", hex: "#8a5a32", price: 920 },
@@ -61,7 +61,7 @@ export const PARTS: Part[] = [
   {
     id: "platform",
     label: "Platform",
-    hotspot: { x: 50, y: 84 },
+    hotspot: { x: 60, y: 66 },
     options: [
       { id: "stone", name: "Quarry Stone", hex: "#8a8278", price: 2100 },
       { id: "deck", name: "Cedar Deck", hex: "#a67648", price: 1980 },
@@ -71,7 +71,7 @@ export const PARTS: Part[] = [
   {
     id: "skylight",
     label: "Skylight",
-    hotspot: { x: 62, y: 18 },
+    hotspot: { x: 52, y: 31 },
     options: [
       { id: "clear", name: "Clear", hex: "#cfe6f2", price: 600 },
       { id: "tinted", name: "Tinted", hex: "#5a7280", price: 750 },
@@ -81,7 +81,7 @@ export const PARTS: Part[] = [
   {
     id: "door",
     label: "Entry Door",
-    hotspot: { x: 78, y: 62 },
+    hotspot: { x: 80, y: 60 },
     options: [
       { id: "cedar", name: "Cedar Plank", hex: "#a06a3a", price: 540 },
       { id: "steel", name: "Steel Pivot", hex: "#4a4e54", price: 720 },
