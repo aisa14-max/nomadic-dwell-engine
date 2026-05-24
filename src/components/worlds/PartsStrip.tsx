@@ -19,7 +19,7 @@ export default function PartsStrip({
   onSelectOption,
 }: Props) {
   return (
-    <div className="liquid-glass rounded-2xl p-2 flex gap-2 items-stretch w-full">
+    <div className="liquid-glass !overflow-visible rounded-2xl p-2 flex gap-2 items-stretch w-full">
       {PARTS.map((p, index) => {
         const optId = configured.get(p.id);
         const opt = optId ? findOption(p.id, optId) : null;
