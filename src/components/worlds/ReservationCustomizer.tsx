@@ -113,7 +113,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
             animate={{ x: "-50%", y: 0, opacity: 1 }}
             exit={{ x: "-50%", y: 80, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
+            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))] overflow-visible"
             onClick={(e) => e.stopPropagation()}
           >
             <PartsStrip
