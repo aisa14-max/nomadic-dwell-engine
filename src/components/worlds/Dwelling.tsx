@@ -89,7 +89,8 @@ export default function Dwelling({ colors, wireframePart, fullyColorized, classN
 
   return (
     <svg
-      viewBox="0 0 800 500"
+      viewBox="-80 -40 960 580"
+      preserveAspectRatio="xMidYMid meet"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
       style={{ overflow: "visible" }}
