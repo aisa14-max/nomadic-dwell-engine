@@ -153,7 +153,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 60, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute top-6 right-6 z-30"
+            className="absolute top-24 right-6 z-30"
             onClick={(e) => e.stopPropagation()}
           >
             <ReserveCard
