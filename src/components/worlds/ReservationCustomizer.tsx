@@ -54,14 +54,14 @@ export default function ReservationCustomizer({ onClose }: Props) {
   }, [flashAt]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black overflow-hidden" onClick={handleBackdrop}>
+    <div className="fixed inset-0 z-40 bg-black overflow-hidden" onClick={handleBackdrop}>
       {/* Close to return to base Configurator */}
       <button
         onClick={(e) => {
           e.stopPropagation();
           onClose();
         }}
-        className="absolute top-4 left-4 z-50 liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/80 hover:text-white"
+        className="absolute top-24 left-4 z-40 liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/80 hover:text-white"
         aria-label="Exit customizer"
       >
         <X className="h-4 w-4" strokeWidth={1.5} />
@@ -153,7 +153,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 60, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute top-6 right-6 z-30"
+            className="absolute top-24 right-6 z-30"
             onClick={(e) => e.stopPropagation()}
           >
             <ReserveCard
