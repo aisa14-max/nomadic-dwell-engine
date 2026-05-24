@@ -4,7 +4,9 @@ import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
 import { PARTS, PartId } from "@/data/dwellingParts";
 import Dwelling from "./Dwelling";
+import Hotspots from "./Hotspots";
 import PartsStrip from "./PartsStrip";
+import PickerColumn from "./PickerColumn";
 import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
 import PaymentPanel from "./PaymentPanel";
@@ -18,6 +20,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
   const r = useReservation();
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
 
+  // close picker on outside click — listener on overlay
   const handleBackdrop = () => {
     if (r.activePart) r.setActive(null);
   };
@@ -34,6 +37,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
     if (!wasConfigured) setFlashAt({ id: r.activePart, key: Date.now() });
   };
 
+  // clear flash after animation
   useEffect(() => {
     if (!flashAt) return;
     const t = setTimeout(() => setFlashAt(null), 1200);
@@ -42,6 +46,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
 
   const rightInset = r.stage === "payment" ? 880 : r.stage === "summary" ? 420 : 0;
 
+  const activePartCfg = r.activePart ? PARTS.find((p) => p.id === r.activePart)! : null;
   const flashPos = useMemo(() => {
     if (!flashAt) return null;
     const p = PARTS.find((x) => x.id === flashAt.id);
@@ -49,86 +54,65 @@ export default function ReservationCustomizer({ onClose }: Props) {
   }, [flashAt]);
 
   return (
-    <div
-      className="fixed top-24 inset-x-0 bottom-0 z-40 overflow-hidden"
-      onClick={handleBackdrop}
-    >
-      {/* Sky: deep navy gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(180deg, #050818 0%, #0a1230 30%, #131e48 55%, #2a2a3d 70%, #6b5a3e 78%, #b08a5a 88%, #d4a86a 100%)",
+    <div className="fixed inset-0 z-50 bg-black overflow-hidden" onClick={handleBackdrop}>
+      {/* Close to return to base Configurator */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
         }}
-      />
+        className="absolute top-4 left-4 z-50 liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/80 hover:text-white"
+        aria-label="Exit customizer"
+      >
+        <X className="h-4 w-4" strokeWidth={1.5} />
+      </button>
 
-      {/* Stars */}
-      <div
-        className="absolute inset-0 opacity-80 pointer-events-none"
-        style={{
-          background: `
-            radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.9), transparent 60%),
-            radial-gradient(1px 1px at 27% 32%, rgba(255,255,255,.7), transparent 60%),
-            radial-gradient(1.5px 1.5px at 42% 12%, rgba(255,255,255,.95), transparent 60%),
-            radial-gradient(1px 1px at 58% 24%, rgba(255,255,255,.6), transparent 60%),
-            radial-gradient(1px 1px at 71% 8%, rgba(255,255,255,.85), transparent 60%),
-            radial-gradient(1.5px 1.5px at 84% 28%, rgba(255,255,255,.8), transparent 60%),
-            radial-gradient(1px 1px at 92% 14%, rgba(255,255,255,.7), transparent 60%),
-            radial-gradient(1px 1px at 7% 42%, rgba(255,255,255,.65), transparent 60%),
-            radial-gradient(1px 1px at 33% 48%, rgba(255,255,255,.55), transparent 60%),
-            radial-gradient(1px 1px at 48% 38%, rgba(255,255,255,.5), transparent 60%),
-            radial-gradient(1px 1px at 64% 52%, rgba(255,255,255,.6), transparent 60%),
-            radial-gradient(1.2px 1.2px at 77% 44%, rgba(255,255,255,.7), transparent 60%),
-            radial-gradient(1px 1px at 89% 56%, rgba(255,255,255,.5), transparent 60%),
-            radial-gradient(1px 1px at 18% 60%, rgba(255,255,255,.45), transparent 60%)
-          `,
-          maskImage: "linear-gradient(180deg, #000 0%, #000 60%, transparent 75%)",
-          WebkitMaskImage: "linear-gradient(180deg, #000 0%, #000 60%, transparent 75%)",
-        }}
-      />
+      {/* Atmospheric background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0c] via-black to-[#050505]" />
+      <div className="absolute inset-0 opacity-30 pointer-events-none" style={{
+        background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(232,180,100,.18), transparent 70%)",
+      }} />
 
-      {/* Soft horizon glow */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 18% at 50% 78%, rgba(255,210,150,.25), transparent 70%)",
-        }}
-      />
-
-      {/* Close + page identity */}
-      <div className="absolute top-4 left-4 z-50 flex items-center gap-3">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          className="liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/80 hover:text-white"
-          aria-label="Exit customizer"
-        >
-          <X className="h-4 w-4" strokeWidth={1.5} />
-        </button>
-        <span className="text-xs font-body text-white/70 uppercase tracking-[.18em]">
-          // Worlds · Configure
-        </span>
-      </div>
-
-      {/* Main viewport */}
+      {/* Main viewport (slides left to accommodate right panels) */}
       <motion.div
         animate={{ x: -rightInset / 2 }}
         transition={{ duration: 0.6, ease: EASE }}
         className="relative w-full h-full flex flex-col items-center justify-center px-8"
       >
-        <div
-          className="relative w-full max-w-3xl aspect-[16/9]"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="relative w-full max-w-5xl aspect-[8/5]" onClick={(e) => e.stopPropagation()}>
           <Dwelling
             colors={r.colors}
             wireframePart={r.stage === "configure" ? r.activePart : null}
             fullyColorized={r.stage === "confirmed"}
             className="w-full h-full"
           />
+
+          {/* Hotspots */}
+          {r.stage === "configure" && !r.activePart && (
+            <Hotspots
+              activePart={r.activePart}
+              configured={r.configured}
+              onClick={handlePartClick}
+            />
+          )}
+
+          {/* Picker rising above active hotspot */}
+          {r.stage === "configure" && r.activePart && activePartCfg && (
+            <div
+              className="absolute -translate-x-1/2 -translate-y-full pb-4"
+              style={{
+                left: `${activePartCfg.hotspot.x}%`,
+                top: `${activePartCfg.hotspot.y}%`,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <PickerColumn
+                activePart={r.activePart}
+                selectedOptionId={r.configured.get(r.activePart)}
+                onSelect={handleSelectOption}
+              />
+            </div>
+          )}
 
           {/* Flash halo */}
           {flashPos && (
@@ -141,22 +125,21 @@ export default function ReservationCustomizer({ onClose }: Props) {
         </div>
       </motion.div>
 
-      {/* Parts strip */}
+      {/* Parts strip — hidden outside configure */}
       <AnimatePresence>
         {r.stage === "configure" && (
           <motion.div
-            initial={{ y: 80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 80, opacity: 0 }}
+            initial={{ x: "-50%", y: 80, opacity: 0 }}
+            animate={{ x: "-50%", y: 0, opacity: 1 }}
+            exit={{ x: "-50%", y: 80, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
+            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
             onClick={(e) => e.stopPropagation()}
           >
             <PartsStrip
               activePart={r.activePart}
               configured={r.configured}
               onClick={handlePartClick}
-              onSelectOption={handleSelectOption}
             />
           </motion.div>
         )}
@@ -182,6 +165,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
         )}
       </AnimatePresence>
 
+      {/* Summary panel */}
       <AnimatePresence>
         {(r.stage === "summary" || r.stage === "payment") && (
           <div onClick={(e) => e.stopPropagation()}>
@@ -196,6 +180,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
         )}
       </AnimatePresence>
 
+      {/* Payment panel */}
       <AnimatePresence>
         {r.stage === "payment" && (
           <div onClick={(e) => e.stopPropagation()}>
@@ -204,6 +189,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
         )}
       </AnimatePresence>
 
+      {/* Confirmed */}
       <AnimatePresence>
         {r.stage === "confirmed" && (
           <ConfirmedOverlay

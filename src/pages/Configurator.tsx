@@ -128,6 +128,9 @@ export default function Configurator() {
               transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
               className="flex gap-3"
             >
+              <button className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white">
+                Save draft
+              </button>
               <button
                 onClick={() => setShowNext(true)}
                 className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"

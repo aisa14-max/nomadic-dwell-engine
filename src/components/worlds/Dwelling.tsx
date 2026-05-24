@@ -89,8 +89,7 @@ export default function Dwelling({ colors, wireframePart, fullyColorized, classN
 
   return (
     <svg
-      viewBox="-80 -40 960 580"
-      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 800 500"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
       style={{ overflow: "visible" }}
@@ -101,7 +100,7 @@ export default function Dwelling({ colors, wireframePart, fullyColorized, classN
         cy={(FRONT.cy + BACK.cy) / 2 + 40}
         rx="320"
         ry="20"
-        fill="rgba(60,40,20,.45)"
+        fill="rgba(0,0,0,.45)"
         transform={`rotate(-12 ${(FRONT.cx + BACK.cx) / 2} ${(FRONT.cy + BACK.cy) / 2 + 40})`}
       />
 
