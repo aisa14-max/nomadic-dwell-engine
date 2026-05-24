@@ -6,7 +6,6 @@ import { PARTS, PartId } from "@/data/dwellingParts";
 import Dwelling from "./Dwelling";
 import Hotspots from "./Hotspots";
 import PartsStrip from "./PartsStrip";
-import PickerColumn from "./PickerColumn";
 import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
 import PaymentPanel from "./PaymentPanel";
@@ -46,7 +45,6 @@ export default function ReservationCustomizer({ onClose }: Props) {
 
   const rightInset = r.stage === "payment" ? 880 : r.stage === "summary" ? 420 : 0;
 
-  const activePartCfg = r.activePart ? PARTS.find((p) => p.id === r.activePart)! : null;
   const flashPos = useMemo(() => {
     if (!flashAt) return null;
     const p = PARTS.find((x) => x.id === flashAt.id);
@@ -96,24 +94,6 @@ export default function ReservationCustomizer({ onClose }: Props) {
             />
           )}
 
-          {/* Picker rising above active hotspot */}
-          {r.stage === "configure" && r.activePart && activePartCfg && (
-            <div
-              className="absolute -translate-x-1/2 -translate-y-full pb-4"
-              style={{
-                left: `${activePartCfg.hotspot.x}%`,
-                top: `${activePartCfg.hotspot.y}%`,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <PickerColumn
-                activePart={r.activePart}
-                selectedOptionId={r.configured.get(r.activePart)}
-                onSelect={handleSelectOption}
-              />
-            </div>
-          )}
-
           {/* Flash halo */}
           {flashPos && (
             <div
@@ -133,13 +113,16 @@ export default function ReservationCustomizer({ onClose }: Props) {
             animate={{ x: "-50%", y: 0, opacity: 1 }}
             exit={{ x: "-50%", y: 80, opacity: 0 }}
             transition={{ duration: 0.5, ease: EASE }}
-            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))]"
+            className="absolute bottom-6 left-1/2 z-30 w-[min(1100px,calc(100%-48px))] overflow-visible"
             onClick={(e) => e.stopPropagation()}
           >
             <PartsStrip
               activePart={r.activePart}
               configured={r.configured}
               onClick={handlePartClick}
+              showPicker
+              selectedOptionId={r.activePart ? r.configured.get(r.activePart) : undefined}
+              onSelectOption={handleSelectOption}
             />
           </motion.div>
         )}
