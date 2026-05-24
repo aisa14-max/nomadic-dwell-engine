@@ -1,12 +1,19 @@
-## Changes
+## Reposition pickers to open right above each visible part
 
-**1. `src/pages/Configurator.tsx`**
-- Remove the "Save draft" button from the header actions row. Keep only the "Continue configuration" button.
+The dwelling SVG (viewBox 800×500) renders the arches/structure in the lower half of the container, but the hotspots in `src/data/dwellingParts.ts` use percentages that don't match the new perspective geometry. The picker opens above the hotspot point, so each hotspot must sit at the top edge of its visible element.
 
-**2. `src/components/worlds/ReservationCustomizer.tsx`**
-- Keep the top Nav bar visible when the customizer opens (currently the full-screen `fixed inset-0 z-50` black overlay covers it).
-- Lower the overlay's z-index below the Nav (Nav is `z-50`) — use `z-40` on the customizer root, and adjust its inner controls (close button, parts strip, reserve card, summary/payment) so they still layer correctly under the Nav but above the page.
-- Pad the customizer top content (the close `X` and the Reserve card) down so they don't collide with the floating Nav pill (~`top-24` instead of `top-4` / `top-6`).
-- The Nav already shows "Worlds" as active because the route stays `/configurator`, so no Nav changes are needed.
+### Computed top-edge positions (per `Dwelling.tsx` geometry)
 
-No business logic changes; visuals/layout only.
+| Part | SVG anchor | New hotspot % (x, y) |
+|---|---|---|
+| Membrane | Front rib apex (660, 130) | 52, 28 |
+| End Wall | Back rib apex (190, 154) | 24, 33 |
+| Interior | Front opening top (660, 140) | 52, 30 |
+| Rib | Middle rib apex (~472, 150) | 59, 32 |
+| Platform | Above front-top edge | 70, 65 |
+| Skylight | Mid ridge (~425, 154) | 53, 33 |
+| Entry Door | Door top (682, 301) | 85, 62 |
+
+### Change
+
+Update only the `hotspot` values in `src/data/dwellingParts.ts` to the table above. No other files change. Result: clicking MEMBRANE (or any other part, via hotspot dot or bottom strip) opens the picker tucked just above that element's top edge in the perspective view.
