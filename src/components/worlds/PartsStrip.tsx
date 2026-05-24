@@ -20,16 +20,15 @@ export default function PartsStrip({
 }: Props) {
   return (
     <div className="liquid-glass !overflow-visible rounded-2xl p-2 flex gap-2 items-stretch w-full">
-      {PARTS.map((p, index) => {
+      {PARTS.map((p) => {
         const optId = configured.get(p.id);
         const opt = optId ? findOption(p.id, optId) : null;
         const isActive = activePart === p.id;
         const isConfigured = !!opt;
-        const pickerAlign = "left-1/2 -translate-x-1/2";
         return (
           <div key={p.id} className="relative flex-1 min-w-0 basis-0">
             {showPicker && isActive && onSelectOption && (
-              <div className={`absolute bottom-full mb-4 z-40 ${pickerAlign}`} onClick={(e) => e.stopPropagation()}>
+              <div className="absolute bottom-full left-1/2 z-40 mb-4 -translate-x-1/2" onClick={(e) => e.stopPropagation()}>
                 <PickerColumn
                   activePart={p.id}
                   selectedOptionId={selectedOptionId}
