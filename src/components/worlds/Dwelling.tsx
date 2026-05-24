@@ -101,7 +101,7 @@ export default function Dwelling({ colors, wireframePart, fullyColorized, classN
         cy={(FRONT.cy + BACK.cy) / 2 + 40}
         rx="320"
         ry="20"
-        fill="rgba(0,0,0,.45)"
+        fill="rgba(60,40,20,.45)"
         transform={`rotate(-12 ${(FRONT.cx + BACK.cx) / 2} ${(FRONT.cy + BACK.cy) / 2 + 40})`}
       />
 
