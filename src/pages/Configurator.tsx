@@ -200,7 +200,7 @@ export default function Configurator() {
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
               className="liquid-glass rounded-[1.25rem] p-5 flex flex-col"
-              style={{ height: "calc(58vh + 96px)" }}
+              style={{ height: "calc(48vh + 60px)" }}
             >
               <div className="flex items-center gap-2 shrink-0">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
