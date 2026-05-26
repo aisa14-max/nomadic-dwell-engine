@@ -11,6 +11,7 @@ import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
 import PaymentPanel from "./PaymentPanel";
 import EngineOnTheWayOverlay from "./EngineOnTheWayOverlay";
+import PartImageOverlay from "./PartImageOverlay";
 import NightSkyScene from "@/components/NightSkyScene";
 
 const EASE = [0.6, 0.2, 0.2, 1] as const;
@@ -88,6 +89,11 @@ export default function ReservationCustomizer({ onClose }: Props) {
             fullyColorized={r.stage === "confirmed"}
             className="w-full h-full"
           />
+
+          {/* Per-tab PNG overlay */}
+          {r.stage === "configure" && (
+            <PartImageOverlay activePart={r.activePart} />
+          )}
 
           {/* Hotspots */}
           {r.stage === "configure" && !r.activePart && (
