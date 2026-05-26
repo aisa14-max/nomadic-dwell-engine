@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, MapPin, X } from "lucide-react";
+import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield } from "lucide-react";
 import { REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
@@ -116,7 +116,7 @@ export default function Discover() {
               ) : (
                 visibleSites.map((s) => {
                   const active = focusedSite?.title === s.title;
-                  const chip = (label: string, value: string, tone: "low" | "mid" | "high" = "mid") => {
+                  const chip = (label: string, Icon: typeof Thermometer, value: string, tone: "low" | "mid" | "high" = "mid") => {
                     const toneCls =
                       tone === "high"
                         ? "bg-white/15 text-white"
@@ -124,8 +124,8 @@ export default function Discover() {
                         ? "bg-white/5 text-white/60"
                         : "bg-white/10 text-white/85";
                     return (
-                      <span key={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full ${toneCls}`}>
-                        <span className="opacity-60">{label} · </span>
+                      <span key={label} title={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${toneCls}`}>
+                        <Icon className="h-3 w-3 opacity-70" strokeWidth={2} />
                         {value}
                       </span>
                     );
@@ -159,19 +159,21 @@ export default function Discover() {
                             </p>
                           </div>
                         </button>
-                        <button
-                          onClick={handleConfigure}
-                          className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
-                        >
-                          Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
-                        </button>
+                        {active && (
+                          <button
+                            onClick={handleConfigure}
+                            className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
+                          >
+                            Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                          </button>
+                        )}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {chip("Temp", s.temperature)}
-                        {chip("Rain", s.rainfall)}
-                        {chip("Cost", s.costOfLiving, levelTone(s.costOfLiving))}
-                        {chip("Net", s.internetSpeed, netTone(s.internetSpeed))}
-                        {chip("Safety", s.safety, levelTone(s.safety))}
+                        {chip("Temperature", Thermometer, s.temperature)}
+                        {chip("Rainfall", CloudRain, s.rainfall)}
+                        {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
+                        {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
+                        {chip("Safety", Shield, s.safety, levelTone(s.safety))}
                       </div>
                     </div>
                   );
