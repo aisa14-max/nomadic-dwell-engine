@@ -1,1 +1,1 @@
-Replace `public/scenes/desert-nightfall.html` with the newly uploaded `Desert Nightfall _Lovable_.html`. The Landing hero iframe already points to that path, so no other changes needed.
+The scene letterboxes itself with `.frame { width: min(100vw, calc(100vh*(16/9))); aspect-ratio: 16/9 }`, which leaves black bars when the iframe isn't 16:9. Override `.frame` in `public/scenes/desert-nightfall.html` to fill the viewport (`width:100vw; height:100vh; aspect-ratio:auto`). The image layers already use `background-size:cover`, so they'll fill cleanly with no black space.
