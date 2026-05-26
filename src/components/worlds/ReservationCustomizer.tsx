@@ -83,12 +83,6 @@ export default function ReservationCustomizer({ onClose }: Props) {
         className="relative w-full h-full flex flex-col items-center justify-center px-8"
       >
         <div className="relative w-full max-w-5xl aspect-[8/5]" onClick={(e) => e.stopPropagation()}>
-          <Dwelling
-            colors={r.colors}
-            wireframePart={r.stage === "configure" ? r.activePart : null}
-            fullyColorized={r.stage === "confirmed"}
-            className="w-full h-full"
-          />
 
           {/* Per-tab PNG overlay */}
           {r.stage === "configure" && (
