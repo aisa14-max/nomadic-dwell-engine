@@ -174,10 +174,10 @@ export default function Configurator() {
 
               {/* Performance strip */}
               <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label="Assembly time" value="14" unit="days" />
+                <Stat label="Assembly time" value="10" unit="hours" />
                 <Stat label="Energy consumption" value="3.6" unit="kWh/d" />
                 <Stat label="Total mass" value="0.63" unit="t" />
-                <Stat label="Total area" value="42" unit="m²" />
+                <Stat label="Total area" value="25" unit="m²" />
               </div>
             </motion.div>
 
@@ -261,12 +261,16 @@ export default function Configurator() {
 
 function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="liquid-glass rounded-[1rem] p-4">
+    <motion.div
+      whileHover={{ scale: 1.03 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="liquid-glass rounded-[1rem] p-4 cursor-default border border-white/10 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.25)] transition-[background,border,box-shadow] duration-300"
+    >
       <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
       <div className="mt-2 flex items-baseline gap-1.5">
         <span className="font-heading text-white text-3xl tracking-[-1px] leading-none">{value}</span>
         <span className="text-xs text-white/60 font-body">{unit}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
