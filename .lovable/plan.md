@@ -1,20 +1,16 @@
 ## Plan
 
-Show the attached wireframe PNG as a default image on the reservation customizer immediately on landing, before any panel option is selected. Once the user selects a material option, the existing per-part PNG behavior takes over (replaces the default).
+Keep the currently shown part PNG (e.g. Exterior) visible after clicking **Reserve**, sliding along with the main viewport as the summary/payment panels open.
 
-### Steps
+### Change
 
-1. **Add asset**: Copy `user-uploads://dodatak_2.png` to `src/assets/parts/Default.png`.
+In `src/components/worlds/ReservationCustomizer.tsx`:
 
-2. **Update `PartImageOverlay.tsx`**:
-   - Import the new default image.
-   - Accept `activePart: PartId | null`. When `null`, render the default image with the same styling (screen blend, drop shadow, fade-in).
-   - Keep AnimatePresence so it cross-fades to the selected part image when one is chosen.
-
-3. **Update `ReservationCustomizer.tsx`**:
-   - Keep `shownPart` state as-is (starts `null`).
-   - Always render `<PartImageOverlay activePart={shownPart} />` during the `configure` stage (already the case). No logic change needed beyond the overlay now showing the default when `shownPart` is null.
+- Currently `<PartImageOverlay activePart={shownPart} />` is rendered only when `r.stage === "configure"`. Remove that stage gate so it also renders during `summary` and `payment`.
+- The overlay lives inside the main viewport `<motion.div>` that already animates `x: -rightInset / 2`, so it will automatically slide left as the right panels open — no extra animation work needed.
+- Hide it on `confirmed` (full-screen overlay takes over).
+- Do not reset `shownPart` when leaving `configure`; update the existing `useEffect` so it only clears on `confirmed` (or stays as-is and we simply guard rendering on stage !== "confirmed").
 
 ### Notes
-- No changes to selection logic, panels, hotspots, or totals.
-- The default PNG disappears (cross-fades) the moment a material is chosen and is replaced by the part-specific PNG.
+- No changes to selection logic, hotspots, panels, totals, or the default landing PNG behavior.
+- Default landing PNG continues to show until a material is chosen; whatever PNG is currently visible at Reserve time stays visible through summary/payment.

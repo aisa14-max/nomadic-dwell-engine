@@ -44,7 +44,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
   };
 
   useEffect(() => {
-    if (r.stage !== "configure") setShownPart(null);
+    if (r.stage === "confirmed") setShownPart(null);
   }, [r.stage]);
 
   // clear flash after animation
@@ -92,7 +92,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
         <div className="relative w-full max-w-5xl aspect-[8/5]" onClick={(e) => e.stopPropagation()}>
 
           {/* Per-tab PNG overlay */}
-          {r.stage === "configure" && (
+          {r.stage !== "confirmed" && (
             <PartImageOverlay activePart={shownPart} />
           )}
 
