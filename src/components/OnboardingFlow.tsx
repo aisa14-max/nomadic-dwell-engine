@@ -113,10 +113,8 @@ export default function OnboardingFlow() {
       completeOnboarding();
       setStepIdx(0);
       setAnswers({});
-      const cb = _pendingSuccess;
       _clearPendingSuccess();
-      if (cb) cb();
-      else navigate("/configurator");
+      navigate("/configurator");
     } else {
       setStepIdx((i) => i + 1);
     }
