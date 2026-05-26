@@ -174,10 +174,10 @@ export default function Configurator() {
 
               {/* Performance strip */}
               <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label="Net energy" value="3.6" unit="kWh/d" />
+                <Stat label="Assembly time" value="14" unit="days" />
+                <Stat label="Energy consumption" value="3.6" unit="kWh/d" />
                 <Stat label="Total mass" value="0.63" unit="t" />
-                <Stat label="Habitable" value="1" unit="modules" />
-                <Stat label="Climate fit" value="92" unit="%" />
+                <Stat label="Total area" value="42" unit="m²" />
               </div>
             </motion.div>
 
