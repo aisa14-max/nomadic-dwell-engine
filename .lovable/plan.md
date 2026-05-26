@@ -1,38 +1,22 @@
-# Fix: onboarding interrupted by redirect to Worlds
+## Summary
 
-## Root cause
+Update the Configurator Worlds page stat panel values and add a glow hover effect to all four panels.
 
-On the Voyages page, clicking **Configure** while signed out calls:
+## Changes
 
-```ts
-openLogin(() => navigate("/configurator"))
-```
+### File: `src/pages/Configurator.tsx`
 
-After the user signs in, two things happen at once:
+1. **Update stat values** (lines 177-180):
+   - Assembly time: `14` → `10`, unit: `days` → `hours`
+   - Total area: `42` → `25`
 
-1. `signIn()` opens the onboarding dialog (`setOnboardingOpen(true)` in `MockAuth`).
-2. The `pendingSuccess` callback fires `navigate("/configurator")` — this jumps the underlying route to the Worlds page while the onboarding modal is still mounted on top.
+2. **Add hover glow effect to `Stat` component** (around line 264):
+   - Wrap the panel `div` with `motion.div` from Framer Motion
+   - Add `whileHover` prop with a subtle scale (1.03) and brightness/glow effect
+   - Use a CSS box-shadow or border-color transition to create a "light up" feel on the liquid-glass panel
+   - Keep the transition smooth and subtle to match the premium aesthetic
 
-`OnboardingFlow` already handles its own navigation: on the last question's **See my proposal**, it closes itself and calls `navigate("/configurator")`. So the post-login callback is redundant and is what causes the premature jump to Worlds.
-
-## Change
-
-**File: `src/pages/Discover.tsx`** — drop the post-login navigation; let onboarding finish first.
-
-```ts
-const handleConfigure = () => {
-  if (user) navigate("/configurator");
-  else openLogin(); // onboarding modal opens on sign-in; it navigates to /configurator at the end
-};
-```
-
-No other files need changes:
-- `MockAuth.signIn` already opens onboarding.
-- `OnboardingFlow.goNext` already routes to `/configurator` after the 5th question.
-- `LoginDialog` already handles the `pendingSuccess` cleanly when it's null.
-
-## Result
-
-- Sign in → land on Question 1 of onboarding.
-- Answer all 5 questions → on **See my proposal**, modal closes and the app navigates to Worlds (`/configurator`).
-- No mid-onboarding redirect.
+## Technical approach
+- Use Framer Motion `motion.div` for the hover animation since it's already imported in the file
+- Apply a `whileHover={{ scale: 1.03 }}` with a transition that also brightens the border or adds a soft box-shadow glow
+- Ensure the liquid-glass background subtly brightens on hover using Tailwind hover classes combined with motion
