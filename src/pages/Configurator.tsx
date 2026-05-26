@@ -167,7 +167,7 @@ export default function Configurator() {
                     <img
                       src={dwelling}
                       alt="Modular dwelling render"
-                      className="max-h-[50vh] max-w-[80%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                      className="max-h-[80vh] max-w-[100%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
                     />
                   </div>
                 </div>
