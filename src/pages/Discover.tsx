@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, MapPin, X } from "lucide-react";
+import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield } from "lucide-react";
 import { REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
