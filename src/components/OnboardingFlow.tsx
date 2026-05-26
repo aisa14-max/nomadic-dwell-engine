@@ -84,7 +84,7 @@ const steps: Step[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { onboardingOpen, closeOnboarding } = useMockAuth();
+  const { onboardingOpen, closeOnboarding, completeOnboarding, _pendingSuccess, _clearPendingSuccess } = useMockAuth();
   const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -110,8 +110,13 @@ export default function OnboardingFlow() {
   const goNext = () => {
     if (!selected) return;
     if (isLast) {
-      handleOpenChange(false);
-      navigate("/configurator");
+      completeOnboarding();
+      setStepIdx(0);
+      setAnswers({});
+      const cb = _pendingSuccess;
+      _clearPendingSuccess();
+      if (cb) cb();
+      else navigate("/configurator");
     } else {
       setStepIdx((i) => i + 1);
     }

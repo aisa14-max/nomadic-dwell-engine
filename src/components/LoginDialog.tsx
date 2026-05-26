@@ -7,7 +7,7 @@ import VoyageScene from "@/components/VoyageScene";
 import { useMockAuth } from "@/context/MockAuth";
 
 export default function LoginDialog() {
-  const { signIn, loginOpen, closeLogin, _pendingSuccess, _clearPendingSuccess } = useMockAuth();
+  const { signIn, loginOpen, closeLogin } = useMockAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +15,6 @@ export default function LoginDialog() {
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       closeLogin();
-      _clearPendingSuccess();
       setError(null);
     }
   };
@@ -32,13 +31,11 @@ export default function LoginDialog() {
       return;
     }
     setError(null);
-    signIn(trimmed);
+    closeLogin();
     setEmail("");
     setPassword("");
-    closeLogin();
-    const cb = _pendingSuccess;
-    _clearPendingSuccess();
-    cb?.();
+    // signIn opens the onboarding flow; the pendingSuccess callback fires on completion.
+    signIn(trimmed);
   };
 
   return (
