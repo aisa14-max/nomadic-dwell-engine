@@ -22,6 +22,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
   const r = useReservation();
   const navigate = useNavigate();
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
+  const [shownPart, setShownPart] = useState<PartId | null>(null);
 
   // close picker on outside click — listener on overlay
   const handleBackdrop = () => {
@@ -36,9 +37,15 @@ export default function ReservationCustomizer({ onClose }: Props) {
   const handleSelectOption = (optionId: string) => {
     if (!r.activePart) return;
     const wasConfigured = r.configured.has(r.activePart);
-    r.selectOption(r.activePart, optionId);
-    if (!wasConfigured) setFlashAt({ id: r.activePart, key: Date.now() });
+    const part = r.activePart;
+    r.selectOption(part, optionId);
+    setShownPart(part);
+    if (!wasConfigured) setFlashAt({ id: part, key: Date.now() });
   };
+
+  useEffect(() => {
+    if (r.stage !== "configure") setShownPart(null);
+  }, [r.stage]);
 
   // clear flash after animation
   useEffect(() => {
@@ -86,7 +93,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
 
           {/* Per-tab PNG overlay */}
           {r.stage === "configure" && (
-            <PartImageOverlay activePart={r.activePart} />
+            <PartImageOverlay activePart={shownPart} />
           )}
 
           {/* Hotspots */}
