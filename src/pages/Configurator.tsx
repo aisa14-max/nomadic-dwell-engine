@@ -41,9 +41,10 @@ export default function Configurator() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if (!text || isStreaming) return;
+    setShowSuggestions(false);
     const userMsg: ChatMsg = { role: "user", content: text };
     const history = [...messages, userMsg];
     setMessages(history);
