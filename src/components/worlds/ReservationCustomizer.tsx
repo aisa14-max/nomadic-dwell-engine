@@ -96,14 +96,6 @@ export default function ReservationCustomizer({ onClose }: Props) {
             <PartImageOverlay activePart={shownPart} />
           )}
 
-          {/* Hotspots */}
-          {r.stage === "configure" && !r.activePart && (
-            <Hotspots
-              activePart={r.activePart}
-              configured={r.configured}
-              onClick={handlePartClick}
-            />
-          )}
 
           {/* Flash halo */}
           {flashPos && (
