@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
 import { PARTS, PartId } from "@/data/dwellingParts";
-import Dwelling from "./Dwelling";
+
 import Hotspots from "./Hotspots";
 import PartsStrip from "./PartsStrip";
 import ReserveCard from "./ReserveCard";
