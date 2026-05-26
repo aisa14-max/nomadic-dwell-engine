@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -84,22 +85,15 @@ const steps: Step[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { onboardingOpen, closeOnboarding, completeOnboarding, onboardingComplete, _clearPendingSuccess } = useMockAuth();
+  const { onboardingOpen, closeOnboarding, completeOnboarding, _clearPendingSuccess } = useMockAuth();
   const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [goToWorldsAfterComplete, setGoToWorldsAfterComplete] = useState(false);
 
   const total = steps.length;
   const step = steps[stepIdx];
   const selected = answers[stepIdx];
   const isLast = stepIdx === total - 1;
-
-  useEffect(() => {
-    if (!goToWorldsAfterComplete || !onboardingComplete) return;
-    setGoToWorldsAfterComplete(false);
-    navigate("/configurator", { replace: true });
-  }, [goToWorldsAfterComplete, navigate, onboardingComplete]);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -117,11 +111,13 @@ export default function OnboardingFlow() {
   const goNext = () => {
     if (!selected) return;
     if (isLast) {
-      completeOnboarding();
-      setStepIdx(0);
-      setAnswers({});
       _clearPendingSuccess();
-      setGoToWorldsAfterComplete(true);
+      flushSync(() => {
+        completeOnboarding();
+        setStepIdx(0);
+        setAnswers({});
+      });
+      navigate("/configurator", { replace: true });
     } else {
       setStepIdx((i) => i + 1);
     }
