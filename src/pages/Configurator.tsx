@@ -232,6 +232,26 @@ export default function Configurator() {
                     </div>
                   </div>
                 ))}
+
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                    className="grid grid-cols-3 gap-2 pt-1"
+                  >
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => send(s)}
+                        className="liquid-glass aspect-square rounded-2xl p-3 text-left text-[11px] leading-tight text-white/85 font-body border border-white/10 hover:border-white/30 hover:bg-white/[0.08] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.3)] transition-[background,border,box-shadow] duration-300 flex items-end"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
               </div>
 
               <form
