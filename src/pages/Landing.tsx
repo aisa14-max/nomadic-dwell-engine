@@ -18,9 +18,10 @@ export default function Landing() {
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
       <section className="relative h-screen min-h-[760px] w-full overflow-hidden bg-black">
-        <DayNightScene
-          className="absolute left-1/2 top-0 -translate-x-1/2 z-0"
-          style={{ width: "120%", height: "120%" }}
+        <iframe
+          src="/scenes/desert-nightfall.html"
+          title="Desert Nightfall"
+          className="absolute inset-0 w-full h-full z-0 border-0 pointer-events-none"
         />
 
         <div className="relative z-10 h-full flex flex-col">
