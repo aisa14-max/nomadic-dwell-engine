@@ -93,7 +93,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
 
           {/* Per-tab PNG overlay */}
           {r.stage === "configure" && (
-            <PartImageOverlay activePart={r.activePart} />
+            <PartImageOverlay activePart={shownPart} />
           )}
 
           {/* Hotspots */}
