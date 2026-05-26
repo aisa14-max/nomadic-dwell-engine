@@ -15,24 +15,36 @@ export default function Configurator() {
   const [showNext, setShowNext] = useState(false);
 
   // Engine Assistant chat
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi — I'm your Engine Assistant. Ask me about your site, climate fit, energy balance, or deployment window.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = ["Change layout", "Add more working space", "Add privacy features"];
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?",
+        },
+      ]);
+      setShowSuggestions(true);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (overrideText?: string) => {
+    const text = (overrideText ?? input).trim();
     if (!text || isStreaming) return;
+    setShowSuggestions(false);
     const userMsg: ChatMsg = { role: "user", content: text };
     const history = [...messages, userMsg];
     setMessages(history);
@@ -220,6 +232,26 @@ export default function Configurator() {
                     </div>
                   </div>
                 ))}
+
+                {showSuggestions && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                    className="grid grid-cols-3 gap-2 pt-1"
+                  >
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => send(s)}
+                        className="liquid-glass aspect-square rounded-2xl p-3 text-left text-[11px] leading-tight text-white/85 font-body border border-white/10 hover:border-white/30 hover:bg-white/[0.08] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.3)] transition-[background,border,box-shadow] duration-300 flex items-end"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
               </div>
 
               <form
