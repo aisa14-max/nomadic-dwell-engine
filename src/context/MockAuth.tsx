@@ -12,8 +12,11 @@ interface MockAuthValue {
   openLogin: (onSuccess?: () => void) => void;
   closeLogin: () => void;
   onboardingOpen: boolean;
+  openOnboarding: () => void;
   closeOnboarding: () => void;
-  /** internal: consumed by the global LoginDialog */
+  completeOnboarding: () => void;
+  onboardingComplete: boolean;
+  /** internal: consumed by OnboardingFlow when onboarding completes */
   _pendingSuccess: (() => void) | null;
   _clearPendingSuccess: () => void;
 }
@@ -24,19 +27,29 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MockUser | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [pendingSuccess, setPendingSuccess] = useState<(() => void) | null>(null);
 
   const signIn = useCallback((email: string) => {
     setUser({ email });
+    setOnboardingComplete(false);
     setOnboardingOpen(true);
   }, []);
-  const signOut = useCallback(() => setUser(null), []);
+  const signOut = useCallback(() => {
+    setUser(null);
+    setOnboardingComplete(false);
+  }, []);
   const openLogin = useCallback((onSuccess?: () => void) => {
     setPendingSuccess(() => onSuccess ?? null);
     setLoginOpen(true);
   }, []);
   const closeLogin = useCallback(() => setLoginOpen(false), []);
+  const openOnboarding = useCallback(() => setOnboardingOpen(true), []);
   const closeOnboarding = useCallback(() => setOnboardingOpen(false), []);
+  const completeOnboarding = useCallback(() => {
+    setOnboardingComplete(true);
+    setOnboardingOpen(false);
+  }, []);
   const _clearPendingSuccess = useCallback(() => setPendingSuccess(null), []);
 
   const value = useMemo(
@@ -48,11 +61,14 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       openLogin,
       closeLogin,
       onboardingOpen,
+      openOnboarding,
       closeOnboarding,
+      completeOnboarding,
+      onboardingComplete,
       _pendingSuccess: pendingSuccess,
       _clearPendingSuccess,
     }),
-    [user, signIn, signOut, loginOpen, openLogin, closeLogin, onboardingOpen, closeOnboarding, pendingSuccess, _clearPendingSuccess],
+    [user, signIn, signOut, loginOpen, openLogin, closeLogin, onboardingOpen, openOnboarding, closeOnboarding, completeOnboarding, onboardingComplete, pendingSuccess, _clearPendingSuccess],
   );
   return <MockAuthContext.Provider value={value}>{children}</MockAuthContext.Provider>;
 }
