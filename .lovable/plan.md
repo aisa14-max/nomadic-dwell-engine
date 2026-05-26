@@ -1,21 +1,20 @@
-## Change
+## Plan
 
-PNG overlay should be driven by the **last part the user picked an option for**, not by which tab is currently active.
+Show the attached wireframe PNG as a default image on the reservation customizer immediately on landing, before any panel option is selected. Once the user selects a material option, the existing per-part PNG behavior takes over (replaces the default).
 
-## Behavior
+### Steps
 
-- Open customizer → no PNG.
-- Click Ribs tab → picker opens, **no PNG yet**.
-- Click "Matte Black" (or Bronze / Cold Steel) → Ribs.png fades in.
-- Switch to Terraribs tab and just browse → Ribs.png **stays**.
-- Click "Poured Concrete" in Terraribs → cross-fade to Terraribs.png.
-- Same rule for all 7 panels.
-- Going to summary/payment → overlay hides (unchanged).
+1. **Add asset**: Copy `user-uploads://dodatak_2.png` to `src/assets/parts/Default.png`.
 
-## Implementation
+2. **Update `PartImageOverlay.tsx`**:
+   - Import the new default image.
+   - Accept `activePart: PartId | null`. When `null`, render the default image with the same styling (screen blend, drop shadow, fade-in).
+   - Keep AnimatePresence so it cross-fades to the selected part image when one is chosen.
 
-1. **`ReservationCustomizer.tsx`** — add local state `const [shownPart, setShownPart] = useState<PartId | null>(null)`. In `handleSelectOption`, after `r.selectOption(...)`, call `setShownPart(r.activePart)`. Pass `shownPart` (instead of `r.activePart`) to `<PartImageOverlay />`.
+3. **Update `ReservationCustomizer.tsx`**:
+   - Keep `shownPart` state as-is (starts `null`).
+   - Always render `<PartImageOverlay activePart={shownPart} />` during the `configure` stage (already the case). No logic change needed beyond the overlay now showing the default when `shownPart` is null.
 
-2. No changes to `PartImageOverlay.tsx`, picker, hotspots, totals, or reservation flow.
-
-3. Optional polish: reset `shownPart` to `null` when leaving the `configure` stage so reopening starts clean.
+### Notes
+- No changes to selection logic, panels, hotspots, or totals.
+- The default PNG disappears (cross-fades) the moment a material is chosen and is replaced by the part-specific PNG.
