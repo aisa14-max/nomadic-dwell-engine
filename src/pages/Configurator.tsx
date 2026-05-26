@@ -20,7 +20,8 @@ export default function Configurator() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const suggestions = ["Change layout", "Add more working space", "Add privacy features"];
+  const suggestions = ["Change layout", "Add workspace", "Privacy", "Storage", "Lighting", "Relax zone"];
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
