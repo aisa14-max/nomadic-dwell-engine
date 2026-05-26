@@ -44,7 +44,7 @@ export default function Discover() {
 
   const handleConfigure = () => {
     if (user) navigate("/configurator");
-    else openLogin(() => navigate("/configurator"));
+    else openLogin();
   };
 
   return (
