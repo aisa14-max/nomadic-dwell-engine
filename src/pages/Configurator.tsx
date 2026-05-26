@@ -15,15 +15,26 @@ export default function Configurator() {
   const [showNext, setShowNext] = useState(false);
 
   // Engine Assistant chat
-  const [messages, setMessages] = useState<ChatMsg[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi — I'm your Engine Assistant. Ask me about your site, climate fit, energy balance, or deployment window.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const suggestions = ["Change layout", "Add more working space", "Add privacy features"];
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?",
+        },
+      ]);
+      setShowSuggestions(true);
+    }, 1200);
+    return () => clearTimeout(t);
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
