@@ -44,7 +44,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
   };
 
   useEffect(() => {
-    if (r.stage !== "configure") setShownPart(null);
+    if (r.stage === "confirmed") setShownPart(null);
   }, [r.stage]);
 
   // clear flash after animation
