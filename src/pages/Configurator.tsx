@@ -20,7 +20,8 @@ export default function Configurator() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const suggestions = ["Change layout", "Add more working space", "Add privacy features"];
+  const suggestions = ["Change layout", "Add workspace", "Privacy", "Storage", "Lighting", "Relax zone"];
+  const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -199,7 +200,7 @@ export default function Configurator() {
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
               className="liquid-glass rounded-[1.25rem] p-5 flex flex-col"
-              style={{ height: "calc(58vh + 96px)" }}
+              style={{ height: "calc(48vh + 60px)" }}
             >
               <div className="flex items-center gap-2 shrink-0">
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
@@ -208,7 +209,7 @@ export default function Configurator() {
 
               <div
                 ref={scrollRef}
-                className="mt-4 flex-1 overflow-y-auto pr-1 space-y-3 text-sm font-body"
+                className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 text-sm font-body"
               >
                 {messages.map((m, i) => (
                   <div
@@ -216,7 +217,7 @@ export default function Configurator() {
                     className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`rounded-2xl px-3.5 py-2 max-w-[88%] leading-relaxed ${
+                      className={`rounded-2xl px-3.5 py-2 max-w-[94%] leading-relaxed ${
                         m.role === "user"
                           ? "bg-white text-black"
                           : "bg-white/10 text-white/90 border border-white/10"
@@ -238,18 +239,31 @@ export default function Configurator() {
                     initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                     transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-                    className="grid grid-cols-3 gap-2 pt-1"
+                    className="grid grid-cols-2 md:grid-cols-3 gap-2.5 pt-1"
                   >
-                    {suggestions.map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => send(s)}
-                        className="liquid-glass aspect-square rounded-2xl p-3 text-left text-[11px] leading-tight text-white/85 font-body border border-white/10 hover:border-white/30 hover:bg-white/[0.08] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.3)] transition-[background,border,box-shadow] duration-300 flex items-end"
-                      >
-                        {s}
-                      </button>
-                    ))}
+                    {suggestions.map((s) => {
+                      const isSelected = selectedSuggestion === s;
+                      return (
+                        <motion.button
+                          key={s}
+                          type="button"
+                          whileHover={{ scale: 1.03 }}
+                          whileTap={{ scale: 0.98 }}
+                          transition={{ duration: 0.25, ease: "easeOut" }}
+                          onClick={() => {
+                            setSelectedSuggestion(s);
+                            send(s);
+                          }}
+                          className={`liquid-glass min-h-[64px] rounded-2xl px-4 py-3 text-center text-xs leading-snug font-body border transition-[background,border,box-shadow] duration-300 flex items-center justify-center ${
+                            isSelected
+                              ? "bg-white/15 border-white/50 text-white shadow-[0_0_28px_-4px_rgba(255,255,255,0.45)]"
+                              : "text-white/85 border-white/10 hover:border-white/30 hover:bg-white/[0.08] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.3)]"
+                          }`}
+                        >
+                          {s}
+                        </motion.button>
+                      );
+                    })}
                   </motion.div>
                 )}
               </div>
@@ -259,7 +273,7 @@ export default function Configurator() {
                   e.preventDefault();
                   send();
                 }}
-                className="mt-3 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-4 pr-1.5 py-1.5"
+                className="mt-2 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-4 pr-1.5 py-1.5"
               >
                 <input
                   value={input}
