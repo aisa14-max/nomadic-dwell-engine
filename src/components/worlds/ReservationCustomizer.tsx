@@ -10,7 +10,7 @@ import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
 import PaymentPanel from "./PaymentPanel";
 import ConfirmedOverlay from "./ConfirmedOverlay";
-import VoyageScene from "@/components/VoyageScene";
+import NightSkyScene from "@/components/NightSkyScene";
 
 const EASE = [0.6, 0.2, 0.2, 1] as const;
 
