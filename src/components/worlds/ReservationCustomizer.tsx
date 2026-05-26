@@ -10,6 +10,7 @@ import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
 import PaymentPanel from "./PaymentPanel";
 import ConfirmedOverlay from "./ConfirmedOverlay";
+import VoyageScene from "@/components/VoyageScene";
 
 const EASE = [0.6, 0.2, 0.2, 1] as const;
 
@@ -65,10 +66,11 @@ export default function ReservationCustomizer({ onClose }: Props) {
         <X className="h-4 w-4" strokeWidth={1.5} />
       </button>
 
-      {/* Atmospheric background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0c] via-black to-[#050505]" />
-      <div className="absolute inset-0 opacity-30 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(232,180,100,.18), transparent 70%)",
+      {/* Atmospheric background — Voyages aesthetic */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#060c28] via-[#03081e] to-[#01030f]" />
+      <VoyageScene className="absolute inset-0 w-full h-full opacity-70 pointer-events-none" />
+      <div className="absolute inset-0 opacity-25 pointer-events-none" style={{
+        background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(232,180,100,.14), transparent 70%)",
       }} />
 
       {/* Main viewport (slides left to accommodate right panels) */}
