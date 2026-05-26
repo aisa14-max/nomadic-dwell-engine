@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
@@ -18,6 +19,7 @@ type Props = { onClose: () => void };
 
 export default function ReservationCustomizer({ onClose }: Props) {
   const r = useReservation();
+  const navigate = useNavigate();
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
 
   // close picker on outside click — listener on overlay
@@ -181,7 +183,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
             reservationRef={r.reservationRef}
             colors={r.colors}
             total={r.totals.total}
-            onContinue={() => r.setStage("configure")}
+            onContinue={() => navigate("/dashboard")}
           />
         )}
       </AnimatePresence>
