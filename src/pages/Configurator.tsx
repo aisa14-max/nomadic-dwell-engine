@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import ClaimSpotScene from "@/components/ClaimSpotScene";
-import dwelling from "@/assets/skye-moor.jpg";
+import dwelling from "@/assets/dwelling-hero.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
