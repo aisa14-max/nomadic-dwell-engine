@@ -1,16 +1,18 @@
 ## Plan
 
-Keep the currently shown part PNG (e.g. Exterior) visible after clicking **Reserve**, sliding along with the main viewport as the summary/payment panels open.
+Replace the option lists for all 7 parts in `src/data/dwellingParts.ts` with the new names. Keep existing prices (in order) and pick sensible hex swatches per name. No component changes required — `PartsStrip` / picker / totals read from this file.
 
-### Change
+### New options
 
-In `src/components/worlds/ReservationCustomizer.tsx`:
-
-- Currently `<PartImageOverlay activePart={shownPart} />` is rendered only when `r.stage === "configure"`. Remove that stage gate so it also renders during `summary` and `payment`.
-- The overlay lives inside the main viewport `<motion.div>` that already animates `x: -rightInset / 2`, so it will automatically slide left as the right panels open — no extra animation work needed.
-- Hide it on `confirmed` (full-screen overlay takes over).
-- Do not reset `shownPart` when leaving `configure`; update the existing `useEffect` so it only clears on `confirmed` (or stays as-is and we simply guard rendering on stage !== "confirmed").
+- **Ribs (`rib`)**: White `#f2f2f2`, Grey `#7a808a`, Black `#1a1a1c`
+- **Terraribs (`platform`)**: White `#ece9e2`, Grey `#9e9e9c`, Black `#1d1d1f`
+- **Solid Walls (`endwall`)**: Wooden Panels `#a67648`, Purple Panels `#6b4a8a`, White Panels `#ececec`
+- **Interior (`interior`)**: Green Boxy `#4a6b3a`, Yellow Organic `#d8b04a`, Cotton Grey `#bdbcb6`
+- **Membrane (`membrane`)**: ETFE `#e8e2d4`, PTFE `#cfcfcf`, PVC Coated Polyester `#5d6e4a`
+- **Additions (`skylight`)**: Solar Panel `#1c2a4a`, Bike Holder `#8a8a8e`, Extra Water Tank `#7aa0b8`
+- **Exterior (`door`)**: Sitting `#a06a3a`, Plants `#4a7a3a`, Foldable Pool `#3a8ab8`
 
 ### Notes
-- No changes to selection logic, hotspots, panels, totals, or the default landing PNG behavior.
-- Default landing PNG continues to show until a material is chosen; whatever PNG is currently visible at Reserve time stays visible through summary/payment.
+- Keep existing `id` slugs where stable (e.g. `steel`→`white`, etc.) — change IDs to short kebab strings matching new names so any stored selections from old IDs naturally reset (acceptable since reservation state is in-memory).
+- Prices keep current values per slot.
+- No other files touched.
