@@ -19,18 +19,28 @@ export type Part = {
 
 export const PARTS: Part[] = [
   {
-    id: "membrane",
-    label: "Membrane",
-    hotspot: { x: 52, y: 28 },
+    id: "rib",
+    label: "Ribs",
+    hotspot: { x: 59, y: 32 },
     options: [
-      { id: "linen", name: "Linen White", hex: "#e8e2d4", price: 1200 },
-      { id: "graphite", name: "Graphite", hex: "#3a3a3e", price: 1350 },
-      { id: "moss", name: "Moss", hex: "#5d6e4a", price: 1400 },
+      { id: "steel", name: "Cold Steel", hex: "#7a808a", price: 760 },
+      { id: "bronze", name: "Bronze", hex: "#8a5a32", price: 920 },
+      { id: "matte", name: "Matte Black", hex: "#1a1a1c", price: 820 },
+    ],
+  },
+  {
+    id: "platform",
+    label: "Terraribs",
+    hotspot: { x: 70, y: 65 },
+    options: [
+      { id: "stone", name: "Quarry Stone", hex: "#8a8278", price: 2100 },
+      { id: "deck", name: "Cedar Deck", hex: "#a67648", price: 1980 },
+      { id: "concrete", name: "Poured Concrete", hex: "#9e9e9c", price: 2240 },
     ],
   },
   {
     id: "endwall",
-    label: "End Wall",
+    label: "Solid Walls",
     hotspot: { x: 24, y: 33 },
     options: [
       { id: "oak", name: "Smoked Oak", hex: "#6e5440", price: 980 },
@@ -49,28 +59,18 @@ export const PARTS: Part[] = [
     ],
   },
   {
-    id: "rib",
-    label: "Rib",
-    hotspot: { x: 59, y: 32 },
+    id: "membrane",
+    label: "Membrane",
+    hotspot: { x: 52, y: 28 },
     options: [
-      { id: "steel", name: "Cold Steel", hex: "#7a808a", price: 760 },
-      { id: "bronze", name: "Bronze", hex: "#8a5a32", price: 920 },
-      { id: "matte", name: "Matte Black", hex: "#1a1a1c", price: 820 },
-    ],
-  },
-  {
-    id: "platform",
-    label: "Platform",
-    hotspot: { x: 70, y: 65 },
-    options: [
-      { id: "stone", name: "Quarry Stone", hex: "#8a8278", price: 2100 },
-      { id: "deck", name: "Cedar Deck", hex: "#a67648", price: 1980 },
-      { id: "concrete", name: "Poured Concrete", hex: "#9e9e9c", price: 2240 },
+      { id: "linen", name: "Linen White", hex: "#e8e2d4", price: 1200 },
+      { id: "graphite", name: "Graphite", hex: "#3a3a3e", price: 1350 },
+      { id: "moss", name: "Moss", hex: "#5d6e4a", price: 1400 },
     ],
   },
   {
     id: "skylight",
-    label: "Skylight",
+    label: "Additions",
     hotspot: { x: 53, y: 33 },
     options: [
       { id: "clear", name: "Clear", hex: "#cfe6f2", price: 600 },
@@ -80,7 +80,7 @@ export const PARTS: Part[] = [
   },
   {
     id: "door",
-    label: "Entry Door",
+    label: "Exterior",
     hotspot: { x: 85, y: 62 },
     options: [
       { id: "cedar", name: "Cedar Plank", hex: "#a06a3a", price: 540 },
