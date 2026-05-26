@@ -14,7 +14,6 @@ import PageTransition from "./components/PageTransition.tsx";
 import LoginDialog from "./components/LoginDialog.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import { MockAuthProvider } from "./context/MockAuth";
-import RequireOnboarding from "./components/RequireOnboarding.tsx";
 
 const queryClient = new QueryClient();
 
@@ -27,8 +26,8 @@ const RoutedApp = () => {
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
           <Route path="/discover" element={<Discover />} />
-          <Route path="/configurator" element={<RequireOnboarding><Configurator /></RequireOnboarding>} />
-          <Route path="/dashboard" element={<RequireOnboarding><Dashboard /></RequireOnboarding>} />
+          <Route path="/configurator" element={<Configurator />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tribe" element={<Tribe />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

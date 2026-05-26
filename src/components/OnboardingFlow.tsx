@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { flushSync } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
@@ -85,7 +84,7 @@ const steps: Step[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { onboardingOpen, closeOnboarding, completeOnboarding, _clearPendingSuccess } = useMockAuth();
+  const { onboardingOpen, closeOnboarding } = useMockAuth();
   const navigate = useNavigate();
   const [stepIdx, setStepIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -111,13 +110,8 @@ export default function OnboardingFlow() {
   const goNext = () => {
     if (!selected) return;
     if (isLast) {
-      _clearPendingSuccess();
-      flushSync(() => {
-        completeOnboarding();
-        setStepIdx(0);
-        setAnswers({});
-      });
-      navigate("/configurator", { replace: true });
+      handleOpenChange(false);
+      navigate("/configurator");
     } else {
       setStepIdx((i) => i + 1);
     }

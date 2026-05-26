@@ -52,19 +52,25 @@ export default function Nav() {
           {user ? (
             <button
               onClick={signOut}
-              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90 inline-flex items-center gap-2"
+              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
             >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              Signed in
+              Sign out
             </button>
           ) : (
-            <button
-              onClick={() => openLogin()}
-              className="bg-white text-black rounded-full px-4 py-2 text-sm font-body font-medium"
-            >
-              Sign in
-            </button>
-
+            <>
+              <button
+                onClick={() => openLogin()}
+                className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+              >
+                Sign in
+              </button>
+              <button
+                onClick={() => openLogin()}
+                className="bg-white text-black rounded-full px-4 py-2 text-sm font-body font-medium"
+              >
+                Log in
+              </button>
+            </>
           )}
         </div>
       </div>
