@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Play } from "lucide-react";
+import { ArrowUpRight, Play, Timer, Globe2 } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
@@ -83,24 +83,14 @@ export default function Landing() {
               className="flex items-stretch gap-4 mt-8"
             >
               <StatGlass
-                value="34.5 Min"
+                value="7.2 Hours"
                 label="Average Engine Setup Time"
-                icon={
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-white">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 7v5l3 2" strokeLinecap="round" />
-                  </svg>
-                }
+                icon={<Timer className="w-7 h-7 text-white" strokeWidth={1.5} />}
               />
               <StatGlass
-                value="2.8K+"
+                value="1.2K+"
                 label="Operators Across the Globe"
-                icon={
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-white">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-                  </svg>
-                }
+                icon={<Globe2 className="w-7 h-7 text-white" strokeWidth={1.5} />}
               />
             </motion.div>
           </div>
