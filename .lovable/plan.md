@@ -1,15 +1,12 @@
-## Update Landing Hero Stats
+## Add hover glow to hero stat cards
 
-In `src/pages/Landing.tsx`, update the two `StatGlass` cards in the hero:
+In `src/pages/Landing.tsx`, enhance the two `StatGlass` cards so they "light up" when hovered:
 
-1. **Average Engine Setup Time**
-   - Value: `34.5 Min` → `7.2 Hours`
-   - Icon: replace the generic clock SVG with a more fitting Lucide icon `Timer` (stopwatch-style, better represents setup duration)
+- Add a smooth transition + on-hover:
+  - Brighter glass background and border (`hover:bg-white/15`, `hover:border-white/40`)
+  - Soft amber outer glow via box-shadow (`hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]`)
+  - Slight lift (`hover:-translate-y-1`)
+  - Icon and value tint to warm amber on hover
+- Wrap with `transition-all duration-300 ease-out` and `group` so the icon/value can react via `group-hover:` classes.
 
-2. **Operators Across the Globe**
-   - Value: `2.8K+` → `1.2K+`
-   - Icon: replace the basic globe SVG with Lucide `Globe2` (more detailed continents, stronger visual)
-
-### Technical notes
-- Import `Timer` and `Globe2` from `lucide-react` (alongside existing `ArrowUpRight`, `Play`).
-- Pass them as `<Timer className="w-7 h-7 text-white" strokeWidth={1.5} />` etc. into the existing `StatGlass` `icon` prop — no structural changes needed.
+Scope: only the `StatGlass` component in `Landing.tsx`. No other sections, no logic changes.

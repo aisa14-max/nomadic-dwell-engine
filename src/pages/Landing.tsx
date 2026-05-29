@@ -165,10 +165,10 @@ export default function Landing() {
 
 function StatGlass({ value, label, icon }: { value: string; label: string; icon: React.ReactNode }) {
   return (
-    <div className="liquid-glass p-5 w-[220px] rounded-[1.25rem] text-left">
-      <div className="w-7 h-7 text-white">{icon}</div>
-      <p className="font-heading text-white text-4xl tracking-[-1px] leading-none mt-6">{value}</p>
-      <p className="text-xs text-white font-body font-light mt-2">{label}</p>
+    <div className="liquid-glass group p-5 w-[220px] rounded-[1.25rem] text-left cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]">
+      <div className="w-7 h-7 text-white transition-colors duration-300 group-hover:text-amber-300">{icon}</div>
+      <p className="font-heading text-white text-4xl tracking-[-1px] leading-none mt-6 transition-colors duration-300 group-hover:text-amber-200">{value}</p>
+      <p className="text-xs text-white font-body font-light mt-2 transition-colors duration-300 group-hover:text-white/90">{label}</p>
     </div>
   );
 }
