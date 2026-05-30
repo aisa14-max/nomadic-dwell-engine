@@ -107,7 +107,7 @@ export default function BlurText({
                   display: "inline-block",
                   color: s.color,
                   textShadow: s.textShadow,
-                  transition: "color 180ms ease-out, text-shadow 180ms ease-out",
+                  transition: "color 220ms cubic-bezier(0.22, 1, 0.36, 1), text-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               >
                 {ch}
