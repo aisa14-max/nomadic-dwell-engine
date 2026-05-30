@@ -26,8 +26,8 @@ export default function BlurText({
     setCursorX(e.clientX - rect.left);
   }, []);
 
-  const RADIUS_FULL = 60;
-  const RADIUS_FADE = 180;
+  const RADIUS_FULL = 40;
+  const RADIUS_FADE = 240;
 
   const getStyleForLetter = (idx: number) => {
     const el = letterRefs.current[idx];
@@ -38,22 +38,27 @@ export default function BlurText({
     const r = el.getBoundingClientRect();
     const centerX = r.left - parentRect.left + r.width / 2;
     const dist = Math.abs(centerX - cursorX);
-    let intensity = 0;
-    if (dist <= RADIUS_FULL) intensity = 1;
-    else if (dist >= RADIUS_FADE) intensity = 0;
-    else intensity = 1 - (dist - RADIUS_FULL) / (RADIUS_FADE - RADIUS_FULL);
+    let linear = 0;
+    if (dist <= RADIUS_FULL) linear = 1;
+    else if (dist >= RADIUS_FADE) linear = 0;
+    else linear = 1 - (dist - RADIUS_FULL) / (RADIUS_FADE - RADIUS_FULL);
+    // easeOutQuad
+    const intensity = 1 - (1 - linear) * (1 - linear);
 
-    // Blend white -> amber
+    // Blend white -> amber, capped at 70% to preserve legibility
+    const blend = intensity * 0.7;
     const r1 = 255, g1 = 255, b1 = 255;
     const r2 = 251, g2 = 191, b2 = 36;
-    const cr = Math.round(r1 + (r2 - r1) * intensity);
-    const cg = Math.round(g1 + (g2 - g1) * intensity);
-    const cb = Math.round(b1 + (b2 - b1) * intensity);
-    const glow = intensity * 0.95;
-    const blur = 4 + intensity * 18;
+    const cr = Math.round(r1 + (r2 - r1) * blend);
+    const cg = Math.round(g1 + (g2 - g1) * blend);
+    const cb = Math.round(b1 + (b2 - b1) * blend);
+
+    const coreAlpha = intensity * 0.55;
+    const coreBlur = intensity * 14;
+    const bloomAlpha = intensity * 0.25;
     return {
       color: `rgb(${cr},${cg},${cb})`,
-      textShadow: `0 0 ${blur}px rgba(251,191,36,${glow})`,
+      textShadow: `0 0 ${coreBlur}px rgba(251,191,36,${coreAlpha}), 0 0 28px rgba(251,191,36,${bloomAlpha})`,
     };
   };
 
@@ -102,7 +107,7 @@ export default function BlurText({
                   display: "inline-block",
                   color: s.color,
                   textShadow: s.textShadow,
-                  transition: "color 180ms ease-out, text-shadow 180ms ease-out",
+                  transition: "color 220ms cubic-bezier(0.22, 1, 0.36, 1), text-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1)",
                 }}
               >
                 {ch}
