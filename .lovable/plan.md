@@ -1,16 +1,17 @@
-## Click-triggered ombre glow on hero headline
+## Goal
+Make the hero headline "Live anywhere across the wild Earth" light up as the cursor moves across it — each letter glows amber when the cursor is near, fading back to white as the cursor moves away. No click required.
 
-Make the "Live anywhere across the wild Earth" headline light up letter-by-letter, left → right, in a warm amber ombre, every time the user clicks it. Fast wave (~700ms total), then letters settle back to white.
+## Approach
+Update `src/components/BlurText.tsx` only:
 
-### Implementation
+1. Remove the click handler and `glowKey` state.
+2. Track cursor position relative to the headline with `onMouseMove` (and clear on `onMouseLeave`).
+3. For each letter span, measure its center x-position via a ref.
+4. Compute each letter's glow intensity from its distance to the cursor x:
+   - Within ~80px → full glow (amber `#fbbf24`, textShadow `0 0 18px rgba(251,191,36,0.95)`)
+   - Falls off smoothly to 0 by ~180px → back to white, no shadow
+5. Apply the computed `color` and `textShadow` inline via style (no framer animation needed for the follow effect — pure CSS transition `transition: color 150ms ease, text-shadow 150ms ease` gives a smooth trailing feel).
+6. Keep the existing blur-in entrance animation untouched.
 
-Update `src/components/BlurText.tsx`:
-- Split each word into individual letters (still grouped by word so wrapping/spacing stays intact).
-- Add internal state `glowKey` that bumps on click; clicking the headline re-triggers the wave.
-- Each letter animates `textShadow` + `color` on a staggered delay based on its global letter index:
-  - From white → bright amber (`#fbbf24`) with strong glow (`0 0 18px rgba(251,191,36,0.9)`) → back to white.
-  - Per-letter duration ~280ms, stagger ~22ms per letter → full sweep ≈ 700ms across the line.
-- Wrap the `<p>` with `onClick` + `cursor-pointer` so the whole headline is the trigger.
-- Keep the existing blur-in entrance animation untouched.
-
-Scope: only `BlurText.tsx`. No changes to `Landing.tsx` needed (it already uses this component for the headline).
+## Result
+Moving the cursor left→right across the headline produces a soft amber "spotlight" of glowing letters that tracks the cursor, with a gentle ombre falloff on either side.
