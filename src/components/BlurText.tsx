@@ -32,7 +32,7 @@ export default function BlurText({
   const getStyleForLetter = (idx: number) => {
     const el = letterRefs.current[idx];
     if (!el || cursorX === null) {
-      return { color: "#ffffff", textShadow: "0 0 0px rgba(251,191,36,0)" };
+      return { color: "#ffffff", textShadow: "0 0 0px rgba(245,200,130,0)" };
     }
     const parentRect = ref.current!.getBoundingClientRect();
     const r = el.getBoundingClientRect();
@@ -45,20 +45,20 @@ export default function BlurText({
     // easeOutQuad
     const intensity = 1 - (1 - linear) * (1 - linear);
 
-    // Blend white -> amber, capped at 70% to preserve legibility
+    // Blend white -> warm sandy gold, capped at 70% to preserve legibility
     const blend = intensity * 0.7;
     const r1 = 255, g1 = 255, b1 = 255;
-    const r2 = 251, g2 = 191, b2 = 36;
+    const r2 = 245, g2 = 200, b2 = 130;
     const cr = Math.round(r1 + (r2 - r1) * blend);
     const cg = Math.round(g1 + (g2 - g1) * blend);
     const cb = Math.round(b1 + (b2 - b1) * blend);
 
     const coreAlpha = intensity * 0.55;
     const coreBlur = intensity * 14;
-    const bloomAlpha = intensity * 0.25;
+    const bloomAlpha = intensity * 0.22;
     return {
       color: `rgb(${cr},${cg},${cb})`,
-      textShadow: `0 0 ${coreBlur}px rgba(251,191,36,${coreAlpha}), 0 0 28px rgba(251,191,36,${bloomAlpha})`,
+      textShadow: `0 0 ${coreBlur}px rgba(245,200,130,${coreAlpha}), 0 0 22px rgba(245,200,130,${bloomAlpha})`,
     };
   };
 
