@@ -26,8 +26,8 @@ export default function BlurText({
     setCursorX(e.clientX - rect.left);
   }, []);
 
-  const RADIUS_FULL = 40;
-  const RADIUS_FADE = 240;
+  const RADIUS_FULL = 24;
+  const RADIUS_FADE = 140;
 
   const getStyleForLetter = (idx: number) => {
     const el = letterRefs.current[idx];
