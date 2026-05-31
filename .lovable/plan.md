@@ -1,21 +1,32 @@
 ## Goal
-Refine the cursor-follow glow on "Live anywhere across the wild Earth" — tighter spotlight + a more refined, on-brand warm yellow that harmonizes with the desert/nightfall hero.
 
-## Changes (in `src/components/BlurText.tsx` only)
+On the Voyages page (`/discover`), in the open Locations sidebar, restructure each site card so the metadata chips (Hot, Wet, Low, Slow, Low) sit to the **right of the thumbnail** instead of below the entire card. This also lets the thumbnail grow larger.
 
-**Smaller radius (more focused spotlight):**
-- `RADIUS_FULL`: 40 → **24px**
-- `RADIUS_FADE`: 240 → **140px**
+## Changes (single file: `src/pages/Discover.tsx`)
 
-**Better yellow shade — warmer, softer, less neon:**
-- Replace `rgb(251, 191, 36)` (Tailwind amber-400, a bit acidic/neon) with **`rgb(245, 200, 130)`** — a warm sandy gold that matches the desert nightfall palette (closer to candlelight / dune-at-dusk tone)
-- Apply the same color to both the core glow and the bloom layer
-- Letter color blend stays capped at 70% so text remains legible
+Currently each site card is structured as:
 
-**Subtle intensity tune to match the smaller radius:**
-- Core shadow alpha: keep `intensity * 0.55`
-- Bloom layer width: `28px` → **`22px`** (proportional to tighter radius)
-- Bloom alpha: `intensity * 0.25` → **`intensity * 0.22`**
+```text
+[ img 14x14 ] [ title + region ] [ Configure btn? ]
+[ chips row spanning full width below ]
+```
 
-## Result
-A tighter, more precise warm-gold spotlight that feels like candlelight tracing the headline — refined, desert-toned, and harmonious with the hero scene instead of neon amber.
+New structure:
+
+```text
+[ img ~20x20 ] [ title + region ]            [ Configure? ]
+                [ chips wrapping beside img ]
+```
+
+Specifically:
+- Wrap the thumbnail and the right-hand column (title + region + chips) in a single flex row.
+- Move the chips block (`Temperature, Rainfall, Cost, Internet, Safety`) from below the outer card into the right-hand column, under the title/region.
+- Enlarge the image from `w-14 h-14` to roughly `w-20 h-20` (80px) so it has more presence next to the chips.
+- Keep `flex-wrap` on chips so they reflow gracefully in the 360px sidebar.
+- Keep the Configure button position (top-right when active) unchanged.
+- No changes to data, filtering, click behavior, or styling tokens.
+
+## Out of scope
+
+- No changes to globe, filters, header, or other pages.
+- No design-system token changes.
