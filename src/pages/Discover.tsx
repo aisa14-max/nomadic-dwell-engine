@@ -150,13 +150,20 @@ export default function Discover() {
                             src={s.image}
                             alt=""
                             loading="lazy"
-                            className="w-14 h-14 rounded-lg object-cover border border-white/10 shrink-0"
+                            className="w-20 h-20 rounded-lg object-cover border border-white/10 shrink-0"
                           />
                           <div className="min-w-0 flex-1">
                             <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
                             <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
                               <MapPin className="h-3 w-3 shrink-0" /> {s.region}
                             </p>
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {chip("Temperature", Thermometer, s.temperature)}
+                              {chip("Rainfall", CloudRain, s.rainfall)}
+                              {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
+                              {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
+                              {chip("Safety", Shield, s.safety, levelTone(s.safety))}
+                            </div>
                           </div>
                         </button>
                         {active && (
@@ -167,13 +174,6 @@ export default function Discover() {
                             Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
                           </button>
                         )}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {chip("Temperature", Thermometer, s.temperature)}
-                        {chip("Rainfall", CloudRain, s.rainfall)}
-                        {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
-                        {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
-                        {chip("Safety", Shield, s.safety, levelTone(s.safety))}
                       </div>
                     </div>
                   );
