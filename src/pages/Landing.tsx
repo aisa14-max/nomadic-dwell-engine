@@ -66,9 +66,9 @@ export default function Landing() {
             >
               <Link
                 to="/discover"
-                className="liquid-glass-strong rounded-full px-5 py-2.5 text-sm font-medium text-white font-body inline-flex items-center gap-2"
+                className="liquid-glass-strong group rounded-full px-5 py-2.5 text-sm font-medium text-white font-body inline-flex items-center gap-2 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)] hover:text-amber-200"
               >
-                Start Your Voyage <ArrowUpRight className="h-5 w-5" strokeWidth={2} />
+                Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300 group-hover:text-amber-300" strokeWidth={2} />
               </Link>
               <Link to="/configurator" className="text-sm font-body text-white inline-flex items-center gap-2">
                 View Liftoff <Play className="h-4 w-4 fill-white" strokeWidth={0} />
@@ -190,11 +190,11 @@ function CapCard({
       whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="liquid-glass rounded-[1.25rem] p-6 min-h-[360px] flex flex-col"
+      className="liquid-glass group rounded-[1.25rem] p-6 min-h-[360px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="liquid-glass icon-box-glass">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white transition-colors duration-300 group-hover:text-amber-300">
             <path d={iconPath} />
           </svg>
         </div>
@@ -208,8 +208,8 @@ function CapCard({
       </div>
       <div className="flex-1" />
       <div className="mt-6">
-        <h3 className="font-heading text-white text-3xl md:text-4xl tracking-[-1px] leading-none">{title}</h3>
-        <p className="mt-3 text-sm text-white/90 font-body font-light leading-snug max-w-[32ch]">{body}</p>
+        <h3 className="font-heading text-white text-3xl md:text-4xl tracking-[-1px] leading-none transition-colors duration-300 group-hover:text-amber-200">{title}</h3>
+        <p className="mt-3 text-sm text-white/90 font-body font-light leading-snug max-w-[32ch] transition-colors duration-300 group-hover:text-white/90">{body}</p>
       </div>
     </motion.div>
   );
