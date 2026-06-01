@@ -46,6 +46,15 @@ import type { ClimateId } from "./climates";
 export type Level = "Low" | "Medium" | "High";
 export type InternetSpeed = "Slow" | "Medium" | "Fast";
 
+export interface SiteInsights {
+  tagline: string;
+  atmosphere: string;
+  activities: string[];
+  vibes: string[];
+  adaptations: string[];
+  nomadScore: number;
+}
+
 export interface Site {
   title: string;
   region: string;
@@ -59,6 +68,72 @@ export interface Site {
   image: string;
   /** [lng, lat] for map focus */
   coords: [number, number];
+  insights?: Partial<SiteInsights>;
+}
+
+const CLIMATE_TEMPLATES: Record<ClimateId, Omit<SiteInsights, "nomadScore">> = {
+  tropical: {
+    tagline: "Lush canopy, equatorial pulse, immersive off-grid retreat.",
+    atmosphere: "Humid mornings, monsoon afternoons, vivid nights alive with sound.",
+    activities: ["River kayaking", "Canopy walks", "Night-sky bathing"],
+    vibes: ["Remote", "Sensory", "Slow"],
+    adaptations: ["Humidity Shell", "Solar Canopy"],
+  },
+  "dry-arid": {
+    tagline: "Wide horizons, sculpted silence, deep-focus solitude.",
+    atmosphere: "Sun-bleached days, sharp cold nights, an endless quiet sky.",
+    activities: ["Dune trekking", "Stargazing", "Sunset rides"],
+    vibes: ["Quiet", "Remote", "Meditative"],
+    adaptations: ["Thermal Skin", "Dust Filtration"],
+  },
+  temperate: {
+    tagline: "Soft seasons, walkable landscapes, balanced work-life rhythm.",
+    atmosphere: "Mild light, drifting weather, a calm cadence to the day.",
+    activities: ["Coastal hikes", "Village markets", "Forest cycling"],
+    vibes: ["Social", "Creative", "Grounded"],
+    adaptations: ["All-Season Shell", "Rain Collector"],
+  },
+  continental: {
+    tagline: "Four full seasons, lakeside stillness, focused craft mode.",
+    atmosphere: "Crisp air, long shadows, distinct rhythms across the year.",
+    activities: ["Lake swims", "Snowshoeing", "Sauna circles"],
+    vibes: ["Quiet", "Creative", "Self-reliant"],
+    adaptations: ["Insulation Core", "Wood Stove Module"],
+  },
+  "mountain-alpine": {
+    tagline: "Thin air, vertical light, high-altitude clarity for builders.",
+    atmosphere: "Cold mornings, bright afternoons, the slow gravity of ridgelines.",
+    activities: ["Trail running", "Climbing routes", "Glacier walks"],
+    vibes: ["Remote", "Focused", "Adventurous"],
+    adaptations: ["Altitude Pack", "Reinforced Anchors"],
+  },
+  polar: {
+    tagline: "Aurora silence, deep cold, isolation engineered for deep work.",
+    atmosphere: "Long nights, slow light, weather that asks for full presence.",
+    activities: ["Aurora watching", "Ice hiking", "Cold-water swims"],
+    vibes: ["Quiet", "Remote", "Contemplative"],
+    adaptations: ["Arctic Shell", "Heated Core"],
+  },
+};
+
+function scoreFor(s: Site): number {
+  const net = s.internetSpeed === "Fast" ? 30 : s.internetSpeed === "Medium" ? 18 : 6;
+  const safe = s.safety === "High" ? 25 : s.safety === "Medium" ? 15 : 6;
+  const cost = s.costOfLiving === "Low" ? 25 : s.costOfLiving === "Medium" ? 18 : 10;
+  const base = 18; // baseline lifestyle
+  return Math.min(99, net + safe + cost + base);
+}
+
+export function getInsights(s: Site): SiteInsights {
+  const tpl = CLIMATE_TEMPLATES[s.climateId];
+  return {
+    tagline: s.insights?.tagline ?? tpl.tagline,
+    atmosphere: s.insights?.atmosphere ?? tpl.atmosphere,
+    activities: s.insights?.activities ?? tpl.activities,
+    vibes: s.insights?.vibes ?? tpl.vibes,
+    adaptations: s.insights?.adaptations ?? tpl.adaptations,
+    nomadScore: s.insights?.nomadScore ?? scoreFor(s),
+  };
 }
 
 export const SITES: Site[] = [
