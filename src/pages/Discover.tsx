@@ -143,7 +143,7 @@ export default function Discover() {
                     >
                       <div className="flex items-start gap-3">
                         <button
-                          onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                          onClick={() => handleShowOnMap(s)}
                           className="flex items-start gap-3 min-w-0 flex-1 text-left"
                         >
                           <img
