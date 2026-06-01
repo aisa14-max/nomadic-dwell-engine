@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config/mapbox";
 import { REGIONS, type RegionId } from "@/data/regions";
 import continentsGeo from "@/data/continents.geo.json";
+import type { Site } from "@/data/sites";
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -14,6 +15,8 @@ interface RegionGlobeProps {
   /** Optional [lng, lat] of a site to focus + pin on the globe */
   focusPoint?: [number, number] | null;
   focusLabel?: string;
+  focusSite?: Site | null;
+  onViewSite?: (site: Site) => void;
 }
 
 const SOURCE_ID = "continents";
