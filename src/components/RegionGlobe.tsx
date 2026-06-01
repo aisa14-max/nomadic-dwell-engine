@@ -4,7 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config/mapbox";
 import { REGIONS, type RegionId } from "@/data/regions";
 import continentsGeo from "@/data/continents.geo.json";
-import type { Site } from "@/data/sites";
+import { type Site, getInsights } from "@/data/sites";
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
