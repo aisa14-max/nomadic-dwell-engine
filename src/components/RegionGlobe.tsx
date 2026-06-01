@@ -42,7 +42,7 @@ const REGION_LABELS_GEOJSON: GeoJSON.FeatureCollection = {
   })),
 };
 
-export default function RegionGlobe({ selectedRegion, onSelect, className, focusPoint, focusLabel }: RegionGlobeProps) {
+export default function RegionGlobe({ selectedRegion, onSelect, className, focusPoint, focusLabel, focusSite, onViewSite }: RegionGlobeProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const hoveredRef = useRef<RegionId | null>(null);
