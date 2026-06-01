@@ -4,7 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config/mapbox";
 import { REGIONS, type RegionId } from "@/data/regions";
 import continentsGeo from "@/data/continents.geo.json";
-import type { Site } from "@/data/sites";
+import { type Site, getInsights } from "@/data/sites";
 
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
@@ -232,36 +232,50 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       if (!site) {
         return `<div style="font-family:inherit;font-size:12px;color:#fff;padding:2px 4px">${escapeHtml(fallbackLabel ?? "")}</div>`;
       }
-      const iconSvg = (path: string) =>
-        `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.7;flex:none">${path}</svg>`;
-      const ICONS = {
-        thermo: '<path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/>',
-        rain: '<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/>',
-        dollar: '<line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-        wifi: '<path d="M5 13a10 10 0 0 1 14 0"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M2 8.82a15 15 0 0 1 20 0"/><line x1="12" x2="12.01" y1="20" y2="20"/>',
-        shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+      const ins = getInsights(site);
+      const score = ins.nomadScore;
+      const scoreHue = score >= 75 ? "rgba(120,255,180,0.9)" : score >= 55 ? "rgba(255,220,130,0.9)" : "rgba(255,150,140,0.9)";
+      const scoreGlow = score >= 75 ? "rgba(80,220,150,0.35)" : score >= 55 ? "rgba(240,200,110,0.3)" : "rgba(240,130,120,0.3)";
+
+      const wrenchSvg = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;flex:none"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+
+      const pill = (text: string) =>
+        `<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);font-size:10px;line-height:1;white-space:nowrap">${escapeHtml(text)}</span>`;
+
+      const vibeDot = (text: string, i: number) => {
+        const dots = ["#7dd3fc", "#fca5a5", "#c4b5fd", "#86efac", "#fcd34d"];
+        return `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.85);font-size:10px;line-height:1;white-space:nowrap"><span style="width:5px;height:5px;border-radius:999px;background:${dots[i % dots.length]};box-shadow:0 0 6px ${dots[i % dots.length]}"></span>${escapeHtml(text)}</span>`;
       };
-      const chip = (icon: string, value: string) =>
-        `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.82);font-size:10px;line-height:1;white-space:nowrap">${iconSvg(icon)}<span>${escapeHtml(value)}</span></span>`;
+
+      const adaptChip = (text: string) =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.9);font-size:10px;line-height:1;white-space:nowrap">${wrenchSvg}<span>${escapeHtml(text)}</span></span>`;
+
+      const section = (label: string, body: string) =>
+        `<div><div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:5px">${label}</div>${body}</div>`;
 
       return `
-<div style="display:flex;flex-direction:column;gap:8px;width:248px;font-family:inherit;color:#fff">
-  <div style="display:flex;gap:10px;align-items:flex-start">
-    <img src="${escapeHtml(site.image)}" alt="" style="width:40px;height:40px;border-radius:8px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);flex:none" />
-    <div style="min-width:0;flex:1">
-      <div style="font-style:italic;font-size:14px;line-height:1.15;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(site.title)}</div>
-      <div style="font-size:11px;line-height:1.2;color:rgba(255,255,255,0.55);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(site.region)}</div>
+<div style="display:flex;flex-direction:column;width:300px;font-family:inherit;color:#fff;margin:-10px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#16161c 0%,#0d0d11 100%)">
+  <div style="position:relative;width:100%;height:130px;overflow:hidden">
+    <img src="${escapeHtml(site.image)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />
+    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,13,17,0) 30%,rgba(13,13,17,0.95) 100%)"></div>
+    <div style="position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:rgba(13,13,17,0.7);border:0.5px solid rgba(255,255,255,0.18);backdrop-filter:blur(8px);font-size:10px;color:${scoreHue};box-shadow:0 0 14px ${scoreGlow}">
+      <span style="opacity:0.7;letter-spacing:0.1em;text-transform:uppercase;font-size:8px;color:rgba(255,255,255,0.65)">Nomad</span>
+      <span style="font-weight:600">${score}</span>
+      <span style="opacity:0.5;font-size:9px">/100</span>
+    </div>
+    <div style="position:absolute;left:12px;bottom:8px;right:12px">
+      <div style="font-style:italic;font-size:16px;line-height:1.1;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.6)">${escapeHtml(site.title)}</div>
     </div>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:4px">
-    ${chip(ICONS.thermo, site.temperature)}
-    ${chip(ICONS.rain, site.rainfall)}
-    ${chip(ICONS.dollar, site.costOfLiving)}
-    ${chip(ICONS.wifi, site.internetSpeed)}
-    ${chip(ICONS.shield, site.safety)}
-  </div>
-  <div style="display:flex;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px">
-    <a href="#" data-rg-view="1" style="font-size:11px;color:#fff;text-decoration:none;letter-spacing:0.02em">View site →</a>
+  <div style="padding:12px 14px 12px;display:flex;flex-direction:column;gap:11px">
+    <div style="font-style:italic;font-size:12px;line-height:1.35;color:rgba(255,255,255,0.85)">${escapeHtml(ins.tagline)}</div>
+    <div style="font-size:11px;line-height:1.4;color:rgba(255,255,255,0.6)">${escapeHtml(ins.atmosphere)}</div>
+    ${section("Best nearby", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.activities.map(pill).join("")}</div>`)}
+    ${section("Community vibe", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.vibes.map((v, i) => vibeDot(v, i)).join("")}</div>`)}
+    ${section("Engine adaptations", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.adaptations.map(adaptChip).join("")}</div>`)}
+    <div style="display:flex;justify-content:flex-end;border-top:0.5px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:2px">
+      <a href="#" data-rg-view="1" style="font-size:11px;color:#fff;text-decoration:none;letter-spacing:0.02em">Open site dossier →</a>
+    </div>
   </div>
 </div>`;
     };
@@ -271,7 +285,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       const style = document.createElement("style");
       style.id = "rg-popup-style";
       style.textContent = `
-        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:#111114;border:0.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5);color:#fff;opacity:0;transition:opacity 200ms ease}
+        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:transparent;border:0.5px solid rgba(255,255,255,0.14);border-radius:14px;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.06);color:#fff;opacity:0;transition:opacity 200ms ease;overflow:hidden;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
         .mapboxgl-popup.rg-popup.rg-popup-visible .mapboxgl-popup-content{opacity:1}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-tip{border-top-color:#111114!important;border-bottom-color:#111114!important;border-left-color:#111114!important;border-right-color:#111114!important}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-close-button{color:rgba(255,255,255,0.6);font-size:18px;padding:4px 8px}
