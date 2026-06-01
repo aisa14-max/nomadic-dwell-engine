@@ -285,7 +285,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       const style = document.createElement("style");
       style.id = "rg-popup-style";
       style.textContent = `
-        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:#111114;border:0.5px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px;box-shadow:0 10px 30px rgba(0,0,0,0.5);color:#fff;opacity:0;transition:opacity 200ms ease}
+        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:transparent;border:0.5px solid rgba(255,255,255,0.14);border-radius:14px;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.06);color:#fff;opacity:0;transition:opacity 200ms ease;overflow:hidden;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
         .mapboxgl-popup.rg-popup.rg-popup-visible .mapboxgl-popup-content{opacity:1}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-tip{border-top-color:#111114!important;border-bottom-color:#111114!important;border-left-color:#111114!important;border-right-color:#111114!important}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-close-button{color:rgba(255,255,255,0.6);font-size:18px;padding:4px 8px}
