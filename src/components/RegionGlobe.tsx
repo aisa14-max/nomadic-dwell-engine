@@ -334,7 +334,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       });
 
       userInteractedRef.current = true;
-      map.flyTo({ center: focusPoint, zoom: 3.6, duration: 1800, essential: true });
+      map.flyTo({ center: focusPoint, zoom: 3.6, duration: 1800, essential: true, offset: [0, -180] });
     };
     if (map.isStyleLoaded()) place();
     else map.once("idle", place);
