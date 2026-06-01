@@ -219,7 +219,7 @@ export default function Discover() {
               focusPoint={focusedSite?.coords ?? null}
               focusLabel={focusedSite?.title}
               focusSite={focusedSite}
-              onViewSite={handleConfigure}
+              onViewSite={() => handleConfigure()}
               className="w-full h-[460px] md:h-[620px] lg:h-[680px]"
             />
             {/* Floating status/filter chip */}
