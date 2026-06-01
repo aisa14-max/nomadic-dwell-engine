@@ -21,9 +21,9 @@ export default function Discover() {
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
   const globeRef = useRef<HTMLDivElement | null>(null);
-  const [focusedSite, setFocusedSite] = useState<{ coords: [number, number]; title: string } | null>(null);
+  const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
 
-  const handleShowOnMap = (s: { coords: [number, number]; title: string }) => {
+  const handleShowOnMap = (s: typeof SITES[number]) => {
     setFocusedSite(s);
     globeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
