@@ -21,9 +21,9 @@ export default function Discover() {
   const navigate = useNavigate();
   const { user, openLogin } = useMockAuth();
   const globeRef = useRef<HTMLDivElement | null>(null);
-  const [focusedSite, setFocusedSite] = useState<{ coords: [number, number]; title: string } | null>(null);
+  const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
 
-  const handleShowOnMap = (s: { coords: [number, number]; title: string }) => {
+  const handleShowOnMap = (s: typeof SITES[number]) => {
     setFocusedSite(s);
     globeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -143,7 +143,7 @@ export default function Discover() {
                     >
                       <div className="flex items-start gap-3">
                         <button
-                          onClick={() => handleShowOnMap({ coords: s.coords, title: s.title })}
+                          onClick={() => handleShowOnMap(s)}
                           className="flex items-start gap-3 min-w-0 flex-1 text-left"
                         >
                           <img
@@ -218,6 +218,8 @@ export default function Discover() {
               onSelect={handleRegionSelect}
               focusPoint={focusedSite?.coords ?? null}
               focusLabel={focusedSite?.title}
+              focusSite={focusedSite}
+              onViewSite={() => handleConfigure()}
               className="w-full h-[460px] md:h-[620px] lg:h-[680px]"
             />
             {/* Floating status/filter chip */}
