@@ -1,31 +1,26 @@
 ## Goal
-
-Replace the current two‑vanishing‑point converging grid in `IsometricTerrainScene` with a **true isometric lattice** of parallel lines at ±30° from horizontal, matching the standard isometric x/y axes of the dwelling.
+Replace the sky + stars backdrop in the reservation customizer with terrain that fills the entire viewport.
 
 ## Changes
 
-**File:** `src/components/IsometricTerrainScene.tsx` — only the `drawIsoGround` function.
+**`src/components/worlds/ReservationCustomizer.tsx`**
+- Remove `<NightSkyScene />` and its import.
+- Remove the warm radial-gradient overlay div (the amber glow at top).
+- Keep `<IsometricTerrainScene />` as the sole backdrop layer.
+- Keep the dark base `bg-gradient-to-b` div (or swap to a flat dark ground tone) so the canvas has a neutral base while it paints.
 
-1. Remove the `-12°` shear (`ctx.rotate`) and the `vpA` / `vpB` converging logic.
-2. Draw two families of **parallel** lines covering the ground band (from `horizonY = 0.6 * h` to `h`, extended horizontally beyond canvas edges so rotated lines still fill the frame):
-   - **Family A** at **+30°** from horizontal (rising left→right) — the "receding x‑axis".
-   - **Family B** at **−30°** from horizontal (falling left→right) — the "receding y‑axis".
-3. For each family, generate ~28 evenly spaced lines. Spacing measured perpendicular to the line direction so the diamonds look uniform. Each line is drawn long enough to span the full ground band after rotation.
-4. Alpha falloff: fade lines toward the horizon (top of band) and toward the left/right edges, so focus stays under the dwelling. Use `rgba(255,255,255, 0.06–0.14)` and `lineWidth = 0.5`.
-5. Clip the grid drawing to the ground band (`ctx.rect(0, horizonY, w, h - horizonY); ctx.clip()`) so lines don't bleed into the sky.
-6. Keep the existing **fade overlay**, **side vignette**, **horizon haze**, **ridge silhouettes**, and **under‑glow** exactly as they are — they already work and are not the subject of this request.
-
-## Technical notes
-
-- Standard isometric projection uses 30° axes (tan 30° ≈ 0.577). To draw a line at angle `θ` passing through point `(x0, y0)`, extend by a large length `L` in both directions:
-  ```text
-  x1 = x0 - L*cos(θ),  y1 = y0 - L*sin(θ)
-  x2 = x0 + L*cos(θ),  y2 = y0 + L*sin(θ)
-  ```
-- To space parallel lines evenly perpendicular to direction `θ`, step the anchor point along the perpendicular `(−sin θ, cos θ)` by a constant `step` (e.g. `step = h * 0.06`).
-- Anchor range: start from a point well left/above the ground band and sweep until past the right/bottom, so the family covers the whole clipped region regardless of rotation.
+**`src/components/IsometricTerrainScene.tsx`**
+- Extend the isometric lattice to cover the full canvas height instead of only the bottom 40% band.
+  - Set `horizonY = 0` and `bandH = h` so the ±30° grid families fill top to bottom.
+  - Increase `halfCount` (e.g. 28 → 48) so the denser area still reads as ground at the wider coverage.
+  - Recenter `cy` to `h * 0.5`.
+- Remove sky-specific elements:
+  - Drop `drawHorizonHaze()` call (warm horizon band).
+  - Drop the distant ridge silhouettes (`ridges` array + `drawRidge` calls) — they imply a horizon line that no longer exists.
+- Adjust the fade overlay to be a full-canvas vignette instead of a horizon-anchored gradient:
+  - Replace the linear `fade` gradient (horizonY→bottom) with a subtle radial darkening from center so the grid stays legible behind the dwelling but edges fall off.
+- Keep `drawUnderGlow()` (warm pool under the dwelling) — it grounds the model visually.
 
 ## Out of scope
-
-- No changes to `Dwelling.tsx`, `ReservationCustomizer.tsx`, ridge silhouettes, glow, or sky layers.
-- No new dependencies; canvas 2D only.
+- Dwelling rendering, hotspots, parts strip, panels — untouched.
+- No new assets, no new dependencies.
