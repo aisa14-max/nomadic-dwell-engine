@@ -77,11 +77,12 @@ export default function ReservationCustomizer({ onClose }: Props) {
         <X className="h-4 w-4" strokeWidth={1.5} />
       </button>
 
-      {/* Atmospheric background — Voyages stars aesthetic */}
+      {/* Atmospheric background — Voyages stars + isometric terrain */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#060c28] via-[#03081e] to-[#01030f]" />
-      <NightSkyScene className="absolute inset-0 w-full h-full opacity-90 pointer-events-none" />
-      <div className="absolute inset-0 opacity-25 pointer-events-none" style={{
-        background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(232,180,100,.12), transparent 70%)",
+      <NightSkyScene className="absolute inset-0 w-full h-full opacity-80 pointer-events-none" />
+      <IsometricTerrainScene className="absolute inset-0 w-full h-full pointer-events-none" />
+      <div className="absolute inset-0 opacity-20 pointer-events-none" style={{
+        background: "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(232,180,100,.10), transparent 70%)",
       }} />
 
       {/* Main viewport (slides left to accommodate right panels) */}
