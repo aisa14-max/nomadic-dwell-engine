@@ -93,51 +93,54 @@ export default function IsometricTerrainScene({ className = "" }: Props) {
     };
 
     const drawIsoGround = () => {
-      // True two-axis isometric ground grid. Two off-screen vanishing points
-      // sit roughly on the horizon to the left and right, producing the
-      // classic iso "diamond" lattice rather than a one-point perspective.
+      // True isometric lattice: two families of parallel lines at ±30° from
+      // horizontal, matching the standard iso x/y axes of the dwelling.
       const horizonY = 0.6 * h;
       const groundBottom = h;
+      const bandH = groundBottom - horizonY;
 
       ctx.save();
+      // Clip to the ground band so rotated lines don't bleed into the sky.
+      ctx.beginPath();
+      ctx.rect(0, horizonY, w, bandH);
+      ctx.clip();
 
-      // Slight shear to match the dwelling's -12° ground rotation.
-      // Pivot around bottom-center so the grid still fills the frame.
-      const pivotX = w * 0.5;
-      const pivotY = groundBottom;
-      const angle = (-12 * Math.PI) / 180;
-      ctx.translate(pivotX, pivotY);
-      ctx.rotate(angle);
-      ctx.translate(-pivotX, -pivotY);
+      const drawFamily = (thetaDeg: number) => {
+        const theta = (thetaDeg * Math.PI) / 180;
+        const cos = Math.cos(theta);
+        const sin = Math.sin(theta);
+        // Perpendicular direction for stepping between parallel lines
+        const px = -sin;
+        const py = cos;
 
-      // Vanishing points (off-canvas, near the horizon)
-      const vpA = { x: -w * 0.6, y: horizonY };   // upper-left
-      const vpB = { x: w * 1.6,  y: horizonY };   // upper-right
+        const cx = w * 0.5;
+        const cy = horizonY + bandH * 0.55;
+        const step = h * 0.055;
+        const halfCount = 28;
+        const L = Math.max(w, h) * 1.6; // line half-length
 
-      const linesPerAxis = 22;
-      // Spread bottom anchor points across a wider-than-canvas band so the
-      // grid still covers the frame after the rotation.
-      const spread = w * 1.8;
-      const startX = w * 0.5 - spread * 0.5;
+        for (let i = -halfCount; i <= halfCount; i++) {
+          const ax = cx + px * step * i;
+          const ay = cy + py * step * i;
 
-      const drawConverging = (vp: { x: number; y: number }) => {
-        for (let i = 0; i <= linesPerAxis; i++) {
-          const t = i / linesPerAxis;
-          const xBottom = startX + t * spread;
-          // distance from canvas center for alpha falloff
-          const distNorm = Math.min(1, Math.abs(xBottom - w * 0.5) / (w * 0.55));
-          const alpha = 0.1 * (1 - distNorm * 0.55);
+          // Alpha falloff: dim toward horizon (top of band) and toward edges.
+          const vertNorm = Math.min(1, Math.abs(ay - cy) / (bandH * 0.6));
+          const horizNorm = Math.min(1, Math.abs(ax - cx) / (w * 0.55));
+          const alpha = 0.14 * (1 - vertNorm * 0.55) * (1 - horizNorm * 0.6);
+          if (alpha <= 0.01) continue;
+
           ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
           ctx.lineWidth = 0.5;
           ctx.beginPath();
-          ctx.moveTo(xBottom, groundBottom + 40);
-          ctx.lineTo(vp.x, vp.y);
+          ctx.moveTo(ax - cos * L, ay - sin * L);
+          ctx.lineTo(ax + cos * L, ay + sin * L);
           ctx.stroke();
         }
       };
 
-      drawConverging(vpA);
-      drawConverging(vpB);
+      // +30° rising left→right, and -30° falling left→right
+      drawFamily(-30); // rising to the right (screen y inverted)
+      drawFamily(30);  // falling to the right
 
       ctx.restore();
 
