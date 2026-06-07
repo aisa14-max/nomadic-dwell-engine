@@ -13,6 +13,7 @@ import PaymentPanel from "./PaymentPanel";
 import EngineOnTheWayOverlay from "./EngineOnTheWayOverlay";
 import PartImageOverlay from "./PartImageOverlay";
 import NightSkyScene from "@/components/NightSkyScene";
+import IsometricTerrainScene from "@/components/IsometricTerrainScene";
 
 const EASE = [0.6, 0.2, 0.2, 1] as const;
 
