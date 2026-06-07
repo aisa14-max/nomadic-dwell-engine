@@ -1,32 +1,31 @@
 ## Goal
-Make the terrain grid lines align with the isometric projection of the dwelling (which recedes from front-right toward back-left at roughly -12°), so the ground feels like one continuous iso plane under the structure instead of a centered one-point perspective.
 
-## Change — `src/components/IsometricTerrainScene.tsx`
+Replace the current two‑vanishing‑point converging grid in `IsometricTerrainScene` with a **true isometric lattice** of parallel lines at ±30° from horizontal, matching the standard isometric x/y axes of the dwelling.
 
-Replace the current centered grid (horizon lines + radial lines to center vanishing point) with a true **two-axis isometric grid** matching the dwelling's axes:
+## Changes
 
-1. **Two vanishing directions, not one center point**
-   - Axis A (depth, matching dwelling's receding axis): vanishing point off-screen to the **upper-left**, ~`(w * -0.1, h * 0.5)`.
-   - Axis B (cross-depth): vanishing point off-screen to the **upper-right**, ~`(w * 1.1, h * 0.5)`.
-   - This produces the classic iso "diamond" ground grid instead of a one-point perspective.
+**File:** `src/components/IsometricTerrainScene.tsx` — only the `drawIsoGround` function.
 
-2. **Grid construction**
-   - Horizon line at ~`y = 0.6 * h`.
-   - Draw ~18 lines along axis A spaced evenly along the bottom edge, each line going from its bottom-edge point toward vanishing point A.
-   - Draw ~18 lines along axis B similarly toward vanishing point B.
-   - Lines clipped above the horizon.
-   - Stroke `rgba(255,255,255,0.06–0.10)`, thinner toward horizon (alpha falloff by distance from bottom).
-
-3. **Subtle skew to match dwelling tilt**
-   - Apply `ctx.transform` with a slight shear so the grid axes match the dwelling's `-12°` ground rotation (the same rotation used on the platform shadow in `Dwelling.tsx`).
-
-4. **Keep existing layers**
-   - Ridge silhouettes, horizon haze, warm under-glow, side vignette, and ground fade overlay all unchanged.
-   - Only the grid line block (`drawIsoGround` line-drawing portion) is rewritten.
+1. Remove the `-12°` shear (`ctx.rotate`) and the `vpA` / `vpB` converging logic.
+2. Draw two families of **parallel** lines covering the ground band (from `horizonY = 0.6 * h` to `h`, extended horizontally beyond canvas edges so rotated lines still fill the frame):
+   - **Family A** at **+30°** from horizontal (rising left→right) — the "receding x‑axis".
+   - **Family B** at **−30°** from horizontal (falling left→right) — the "receding y‑axis".
+3. For each family, generate ~28 evenly spaced lines. Spacing measured perpendicular to the line direction so the diamonds look uniform. Each line is drawn long enough to span the full ground band after rotation.
+4. Alpha falloff: fade lines toward the horizon (top of band) and toward the left/right edges, so focus stays under the dwelling. Use `rgba(255,255,255, 0.06–0.14)` and `lineWidth = 0.5`.
+5. Clip the grid drawing to the ground band (`ctx.rect(0, horizonY, w, h - horizonY); ctx.clip()`) so lines don't bleed into the sky.
+6. Keep the existing **fade overlay**, **side vignette**, **horizon haze**, **ridge silhouettes**, and **under‑glow** exactly as they are — they already work and are not the subject of this request.
 
 ## Technical notes
-- All within one component, canvas 2D, no new deps.
-- Vanishing points placed off-canvas guarantees lines stay roughly parallel-looking on screen (true iso feel) rather than dramatically converging.
-- Bottom-edge spacing stays uniform; perceived convergence comes from the off-screen VPs.
 
-No other files change.
+- Standard isometric projection uses 30° axes (tan 30° ≈ 0.577). To draw a line at angle `θ` passing through point `(x0, y0)`, extend by a large length `L` in both directions:
+  ```text
+  x1 = x0 - L*cos(θ),  y1 = y0 - L*sin(θ)
+  x2 = x0 + L*cos(θ),  y2 = y0 + L*sin(θ)
+  ```
+- To space parallel lines evenly perpendicular to direction `θ`, step the anchor point along the perpendicular `(−sin θ, cos θ)` by a constant `step` (e.g. `step = h * 0.06`).
+- Anchor range: start from a point well left/above the ground band and sweep until past the right/bottom, so the family covers the whole clipped region regardless of rotation.
+
+## Out of scope
+
+- No changes to `Dwelling.tsx`, `ReservationCustomizer.tsx`, ridge silhouettes, glow, or sky layers.
+- No new dependencies; canvas 2D only.
