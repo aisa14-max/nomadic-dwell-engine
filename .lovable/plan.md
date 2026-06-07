@@ -1,48 +1,32 @@
 ## Goal
-When users click **Continue configuration**, the customizer currently shows only a dark sky behind the isometric dwelling. Add a subtle terrain layer so the scene reads as ground + horizon + sky, matching the isometric perspective of the dwelling render.
+Make the terrain grid lines align with the isometric projection of the dwelling (which recedes from front-right toward back-left at roughly -12°), so the ground feels like one continuous iso plane under the structure instead of a centered one-point perspective.
 
-## Scope
-- File: `src/components/worlds/ReservationCustomizer.tsx` (background layers only)
-- New file: `src/components/IsometricTerrainScene.tsx` (canvas-based terrain, similar style to `VoyageScene` / `NightSkyScene`)
-- No changes to dwelling render, hotspots, picker, summary, payment, or data.
+## Change — `src/components/IsometricTerrainScene.tsx`
 
-## Visual approach
+Replace the current centered grid (horizon lines + radial lines to center vanishing point) with a true **two-axis isometric grid** matching the dwelling's axes:
 
-```text
- ┌────────────────────────────────────────┐
- │  night sky (stars) — top 55%           │
- │  ······ ·  ·   ·   ··  ·               │
- │ ─ ─ ─ ─ ─ horizon haze ─ ─ ─ ─ ─ ─ ─    │
- │   distant ridge silhouette (faint)     │
- │  ▁▂▃▂▁▂▃▄▃▂▁▂▃▄▅▄▃▂▁                  │
- │   isometric ground plane (grid fades)  │
- │    ╱╲╱╲╱╲╱╲╱╲╱╲╱╲                      │
- │  warm amber glow under dwelling        │
- └────────────────────────────────────────┘
-```
+1. **Two vanishing directions, not one center point**
+   - Axis A (depth, matching dwelling's receding axis): vanishing point off-screen to the **upper-left**, ~`(w * -0.1, h * 0.5)`.
+   - Axis B (cross-depth): vanishing point off-screen to the **upper-right**, ~`(w * 1.1, h * 0.5)`.
+   - This produces the classic iso "diamond" ground grid instead of a one-point perspective.
 
-1. Keep existing `NightSkyScene` and base gradient — they handle the upper sky.
-2. Add a new `IsometricTerrainScene` layered above the sky but below the dwelling:
-   - Faint distant mountain ridge silhouette around 55–60% viewport height (one slow-drifting ridge, low alpha, similar to `VoyageScene` ridge generator).
-   - Isometric ground plane: a perspective grid drawn from a vanishing horizon, lines fading outward, tilted ~30°, matching the dwelling's isometric angle. Lines use `rgba(255,255,255,0.05–0.1)`.
-   - Soft radial warm-amber glow centered under the dwelling area to ground it (reuses the existing amber glow tone already in the file).
-3. Slight vignette at edges so the terrain blends into the page chrome.
+2. **Grid construction**
+   - Horizon line at ~`y = 0.6 * h`.
+   - Draw ~18 lines along axis A spaced evenly along the bottom edge, each line going from its bottom-edge point toward vanishing point A.
+   - Draw ~18 lines along axis B similarly toward vanishing point B.
+   - Lines clipped above the horizon.
+   - Stroke `rgba(255,255,255,0.06–0.10)`, thinner toward horizon (alpha falloff by distance from bottom).
 
-All drawing uses HTML canvas with `requestAnimationFrame` and `dpr` scaling, matching `VoyageScene` patterns. No external libs.
+3. **Subtle skew to match dwelling tilt**
+   - Apply `ctx.transform` with a slight shear so the grid axes match the dwelling's `-12°` ground rotation (the same rotation used on the platform shadow in `Dwelling.tsx`).
 
-## Integration
-In `ReservationCustomizer.tsx`, inside the background block:
+4. **Keep existing layers**
+   - Ridge silhouettes, horizon haze, warm under-glow, side vignette, and ground fade overlay all unchanged.
+   - Only the grid line block (`drawIsoGround` line-drawing portion) is rewritten.
 
-```text
-<bg gradient />
-<NightSkyScene />                  ← unchanged (stars)
-<IsometricTerrainScene />          ← NEW (ridge + iso ground + amber glow)
-<existing amber radial overlay />  ← keep, slightly reduced opacity
-```
+## Technical notes
+- All within one component, canvas 2D, no new deps.
+- Vanishing points placed off-canvas guarantees lines stay roughly parallel-looking on screen (true iso feel) rather than dramatically converging.
+- Bottom-edge spacing stays uniform; perceived convergence comes from the off-screen VPs.
 
-Z-order remains behind the dwelling viewport.
-
-## Acceptance
-- Background no longer looks like flat sky — clear horizon line, faint mountains, and an isometric ground plane visible behind the dwelling.
-- Performance stays smooth (single canvas, low line count).
-- Dark, futuristic feel preserved — no bright colors, no obvious texture seams.
+No other files change.

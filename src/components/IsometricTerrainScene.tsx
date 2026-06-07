@@ -93,49 +93,60 @@ export default function IsometricTerrainScene({ className = "" }: Props) {
     };
 
     const drawIsoGround = () => {
-      // Perspective grid radiating from a vanishing point near horizon center.
-      // Lines fade as they recede and as they go off to the sides.
-      const horizonY = 0.62 * h;
-      const vpX = w * 0.5;
+      // True two-axis isometric ground grid. Two off-screen vanishing points
+      // sit roughly on the horizon to the left and right, producing the
+      // classic iso "diamond" lattice rather than a one-point perspective.
+      const horizonY = 0.6 * h;
       const groundBottom = h;
 
       ctx.save();
 
-      // Horizontal grid lines (parallel to horizon, spaced via perspective)
-      const rows = 14;
-      for (let i = 1; i <= rows; i++) {
-        // non-linear spacing for perspective
-        const t = i / rows;
-        const y = horizonY + (groundBottom - horizonY) * Math.pow(t, 1.6);
-        const alpha = 0.05 + 0.08 * t;
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
-      }
+      // Slight shear to match the dwelling's -12° ground rotation.
+      // Pivot around bottom-center so the grid still fills the frame.
+      const pivotX = w * 0.5;
+      const pivotY = groundBottom;
+      const angle = (-12 * Math.PI) / 180;
+      ctx.translate(pivotX, pivotY);
+      ctx.rotate(angle);
+      ctx.translate(-pivotX, -pivotY);
 
-      // Radial lines converging to vanishing point
-      const cols = 22;
-      for (let i = -cols; i <= cols; i++) {
-        const xOffset = (i / cols) * w * 1.2;
-        const xBottom = vpX + xOffset;
-        const distNorm = Math.min(1, Math.abs(i) / cols);
-        const alpha = 0.12 * (1 - distNorm * 0.7);
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(vpX, horizonY);
-        ctx.lineTo(xBottom, groundBottom);
-        ctx.stroke();
-      }
+      // Vanishing points (off-canvas, near the horizon)
+      const vpA = { x: -w * 0.6, y: horizonY };   // upper-left
+      const vpB = { x: w * 1.6,  y: horizonY };   // upper-right
 
-      // Soft fade overlay on the ground to dim distant grid
+      const linesPerAxis = 22;
+      // Spread bottom anchor points across a wider-than-canvas band so the
+      // grid still covers the frame after the rotation.
+      const spread = w * 1.8;
+      const startX = w * 0.5 - spread * 0.5;
+
+      const drawConverging = (vp: { x: number; y: number }) => {
+        for (let i = 0; i <= linesPerAxis; i++) {
+          const t = i / linesPerAxis;
+          const xBottom = startX + t * spread;
+          // distance from canvas center for alpha falloff
+          const distNorm = Math.min(1, Math.abs(xBottom - w * 0.5) / (w * 0.55));
+          const alpha = 0.1 * (1 - distNorm * 0.55);
+          ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(xBottom, groundBottom + 40);
+          ctx.lineTo(vp.x, vp.y);
+          ctx.stroke();
+        }
+      };
+
+      drawConverging(vpA);
+      drawConverging(vpB);
+
+      ctx.restore();
+
+      // Soft fade overlay on the ground to dim distant grid (drawn after
+      // restore so it stays axis-aligned with the canvas)
       const fade = ctx.createLinearGradient(0, horizonY, 0, groundBottom);
-      fade.addColorStop(0, "rgba(1,3,15,0.85)");
-      fade.addColorStop(0.4, "rgba(1,3,15,0.25)");
-      fade.addColorStop(1, "rgba(1,3,15,0.6)");
+      fade.addColorStop(0, "rgba(1,3,15,0.9)");
+      fade.addColorStop(0.35, "rgba(1,3,15,0.25)");
+      fade.addColorStop(1, "rgba(1,3,15,0.55)");
       ctx.fillStyle = fade;
       ctx.fillRect(0, horizonY, w, groundBottom - horizonY);
 
@@ -148,8 +159,6 @@ export default function IsometricTerrainScene({ className = "" }: Props) {
       side.addColorStop(1, "rgba(0,0,0,0.55)");
       ctx.fillStyle = side;
       ctx.fillRect(0, horizonY - 20, w, groundBottom - horizonY + 20);
-
-      ctx.restore();
     };
 
     const drawUnderGlow = () => {
