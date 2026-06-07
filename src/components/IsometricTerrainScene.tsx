@@ -28,69 +28,7 @@ export default function IsometricTerrainScene({ className = "" }: Props) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
-    // Distant ridge points
-    const makeRidge = (seed: number, amp: number, freq: number) => {
-      const pts: number[] = [];
-      const N = 400;
-      for (let i = 0; i <= N; i++) {
-        const x = i / N;
-        const v =
-          Math.sin(x * freq + seed) * 0.5 +
-          Math.sin(x * freq * 2.3 + seed * 1.7) * 0.3 +
-          Math.sin(x * freq * 5.1 + seed * 2.9) * 0.2;
-        pts.push(v * amp);
-      }
-      return pts;
-    };
-
-    const ridges = [
-      { pts: makeRidge(2.1, 0.06, 7),  baseY: 0.58, alpha: 0.35, speed: 0.0008 },
-      { pts: makeRidge(5.6, 0.09, 10), baseY: 0.63, alpha: 0.55, speed: 0.0016 },
-    ];
-
-    const drawRidge = (r: typeof ridges[number], t: number) => {
-      const N = r.pts.length - 1;
-      const offset = (t * r.speed) % 1;
-      ctx.beginPath();
-      ctx.moveTo(0, h);
-      for (let i = 0; i <= N; i++) {
-        const x = (i / N) * w;
-        const idx = (i + Math.floor(offset * N)) % N;
-        const y = r.baseY * h + r.pts[idx] * h;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.lineTo(w, h);
-      ctx.closePath();
-      const g = ctx.createLinearGradient(0, r.baseY * h - 40, 0, h);
-      g.addColorStop(0, `rgba(20,28,52,${r.alpha * 0.5})`);
-      g.addColorStop(1, `rgba(2,4,12,${r.alpha})`);
-      ctx.fillStyle = g;
-      ctx.fill();
-
-      // Crisp ridge edge
-      ctx.beginPath();
-      for (let i = 0; i <= N; i++) {
-        const x = (i / N) * w;
-        const idx = (i + Math.floor(offset * N)) % N;
-        const y = r.baseY * h + r.pts[idx] * h;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = `rgba(255,255,255,${r.alpha * 0.25})`;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-    };
-
-    const drawHorizonHaze = () => {
-      const horizon = 0.6 * h;
-      const g = ctx.createLinearGradient(0, horizon - 60, 0, horizon + 30);
-      g.addColorStop(0, "rgba(232,180,100,0)");
-      g.addColorStop(0.6, "rgba(232,180,100,0.06)");
-      g.addColorStop(1, "rgba(232,180,100,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(0, horizon - 60, w, 90);
-    };
+    // (ridges + horizon haze removed — terrain now covers full viewport)
 
     const drawIsoGround = () => {
       // True isometric lattice: two families of parallel lines at ±30° from
