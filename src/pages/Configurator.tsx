@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2 } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-hero.png";
+import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
@@ -13,6 +14,13 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export default function Configurator() {
   const [showNext, setShowNext] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setEngineReady(true), 3500);
+    return () => clearTimeout(t);
+  }, []);
+
 
   // Engine Assistant chat
   const [messages, setMessages] = useState<ChatMsg[]>([]);
