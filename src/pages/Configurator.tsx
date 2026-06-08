@@ -20,21 +20,49 @@ export default function Configurator() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const suggestions = ["Change layout", "Add workspace", "Privacy", "Storage", "Lighting", "Relax zone"];
+  const suggestions = [
+    "Change Layout",
+    "Modify Components",
+    "Adjust Settings",
+    "Add Features",
+    "Materials & Finish",
+    "Something else",
+  ];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
 
+  // Intro sequence: idle -> typing dots -> streamed greeting -> chips visible
+  const greeting =
+    "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?";
+  const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      setMessages([
-        {
-          role: "assistant",
-          content:
-            "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?",
-        },
-      ]);
-      setShowSuggestions(true);
-    }, 1200);
-    return () => clearTimeout(t);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => setIntroPhase("typing"), 600),
+    );
+    timers.push(
+      setTimeout(() => {
+        setIntroPhase("streaming");
+        setMessages([{ role: "assistant", content: "" }]);
+        let i = 0;
+        const step = () => {
+          i += 1;
+          setMessages([{ role: "assistant", content: greeting.slice(0, i) }]);
+          if (i < greeting.length) {
+            timers.push(setTimeout(step, 18));
+          } else {
+            timers.push(
+              setTimeout(() => {
+                setIntroPhase("ready");
+                setShowSuggestions(true);
+              }, 250),
+            );
+          }
+        };
+        step();
+      }, 2000),
+    );
+    return () => timers.forEach(clearTimeout);
   }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
