@@ -270,8 +270,8 @@ export default function Configurator() {
               style={{ height: "calc(62vh + 80px)" }}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
-                <span className="relative inline-flex w-8 h-8 rounded-full bg-gradient-to-br from-white to-white/40 items-center justify-center">
-                  <span className="w-2 h-2 rounded-full bg-black" />
+                <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
+                  <img src={assistantAvatar} alt="Engine Assistant" width={36} height={36} loading="lazy" className="w-full h-full object-contain" />
                 </span>
                 <div className="flex flex-col leading-tight">
                   <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
@@ -291,11 +291,14 @@ export default function Configurator() {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="flex items-center gap-1.5 text-white/50"
+                    className="flex items-start gap-3"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                    <img src={assistantAvatar} alt="" width={28} height={28} loading="lazy" className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 object-contain" />
+                    <span className="inline-flex gap-1 items-center pt-2 text-white/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                    </span>
                   </motion.div>
                 )}
 
@@ -307,18 +310,23 @@ export default function Configurator() {
                       </div>
                     </div>
                   ) : (
-                    <div key={i} className="text-white/90 leading-relaxed pr-2">
-                      {m.content ||
-                        (isStreaming ? (
-                          <span className="inline-flex gap-1 items-center">
+                    <div key={i} className="flex items-start gap-3">
+                      <img src={assistantAvatar} alt="" width={28} height={28} loading="lazy" className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 object-contain" />
+                      <div className="text-white/90 leading-relaxed pr-2 flex-1 min-w-0 pt-0.5">
+                        {m.content ? (
+                          m.content
+                        ) : (
+                          <span className="inline-flex gap-1 items-center pt-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
                           </span>
-                        ) : null)}
+                        )}
+                      </div>
                     </div>
                   ),
                 )}
+
 
                 {showSuggestions && (
                   <div className="flex flex-wrap gap-2 pt-2">
