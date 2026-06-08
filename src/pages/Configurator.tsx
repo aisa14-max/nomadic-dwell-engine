@@ -20,21 +20,49 @@ export default function Configurator() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  const suggestions = ["Change layout", "Add workspace", "Privacy", "Storage", "Lighting", "Relax zone"];
+  const suggestions = [
+    "Change Layout",
+    "Modify Components",
+    "Adjust Settings",
+    "Add Features",
+    "Materials & Finish",
+    "Something else",
+  ];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
 
+  // Intro sequence: idle -> typing dots -> streamed greeting -> chips visible
+  const greeting =
+    "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?";
+  const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      setMessages([
-        {
-          role: "assistant",
-          content:
-            "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?",
-        },
-      ]);
-      setShowSuggestions(true);
-    }, 1200);
-    return () => clearTimeout(t);
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(
+      setTimeout(() => setIntroPhase("typing"), 600),
+    );
+    timers.push(
+      setTimeout(() => {
+        setIntroPhase("streaming");
+        setMessages([{ role: "assistant", content: "" }]);
+        let i = 0;
+        const step = () => {
+          i += 1;
+          setMessages([{ role: "assistant", content: greeting.slice(0, i) }]);
+          if (i < greeting.length) {
+            timers.push(setTimeout(step, 18));
+          } else {
+            timers.push(
+              setTimeout(() => {
+                setIntroPhase("ready");
+                setShowSuggestions(true);
+              }, 250),
+            );
+          }
+        };
+        step();
+      }, 2000),
+    );
+    return () => timers.forEach(clearTimeout);
   }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -199,86 +227,103 @@ export default function Configurator() {
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-5 flex flex-col"
+              className="liquid-glass rounded-[1.25rem] p-6 flex flex-col"
               style={{ height: "calc(62vh + 80px)" }}
             >
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
+              <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
+                <span className="relative inline-flex w-8 h-8 rounded-full bg-gradient-to-br from-white to-white/40 items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-black" />
+                </span>
+                <div className="flex flex-col leading-tight">
+                  <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body inline-flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    online
+                  </span>
+                </div>
               </div>
 
               <div
                 ref={scrollRef}
-                className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 text-sm font-body"
+                className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
-                {messages.map((m, i) => (
-                  <div
-                    key={i}
-                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                {introPhase === "typing" && messages.length === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex items-center gap-1.5 text-white/50"
                   >
-                    <div
-                      className={`rounded-2xl px-3.5 py-2 max-w-[94%] leading-relaxed ${
-                        m.role === "user"
-                          ? "bg-white text-black"
-                          : "bg-white/10 text-white/90 border border-white/10"
-                      }`}
-                    >
-                      {m.content || (
-                        <span className="inline-flex gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse [animation-delay:120ms]" />
-                          <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-pulse [animation-delay:240ms]" />
-                        </span>
-                      )}
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                  </motion.div>
+                )}
+
+                {messages.map((m, i) =>
+                  m.role === "user" ? (
+                    <div key={i} className="flex justify-end">
+                      <div className="bg-white text-black rounded-2xl px-4 py-2 max-w-[85%] leading-relaxed">
+                        {m.content}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <div key={i} className="text-white/90 leading-relaxed pr-2">
+                      {m.content ||
+                        (isStreaming ? (
+                          <span className="inline-flex gap-1 items-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                          </span>
+                        ) : null)}
+                    </div>
+                  ),
+                )}
 
                 {showSuggestions && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, filter: "blur(6px)" }}
-                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                    transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-2.5 pt-1"
-                  >
-                    {suggestions.map((s) => {
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {suggestions.map((s, idx) => {
                       const isSelected = selectedSuggestion === s;
                       return (
                         <motion.button
                           key={s}
                           type="button"
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.98 }}
-                          transition={{ duration: 0.25, ease: "easeOut" }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: idx * 0.06, ease: "easeOut" }}
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => {
                             setSelectedSuggestion(s);
                             send(s);
                           }}
-                          className={`liquid-glass min-h-[64px] rounded-2xl px-4 py-3 text-center text-xs leading-snug font-body border transition-[background,border,box-shadow] duration-300 flex items-center justify-center ${
+                          className={`rounded-full px-4 py-2 text-xs font-body border transition-[background,border,box-shadow] duration-300 ${
                             isSelected
-                              ? "bg-white/15 border-white/50 text-white shadow-[0_0_28px_-4px_rgba(255,255,255,0.45)]"
-                              : "text-white/85 border-white/10 hover:border-white/30 hover:bg-white/[0.08] hover:shadow-[0_0_24px_-6px_rgba(255,255,255,0.3)]"
+                              ? "bg-white/15 border-white/50 text-white shadow-[0_0_24px_-6px_rgba(255,255,255,0.5)]"
+                              : "bg-white/[0.06] text-white/85 border-white/15 hover:bg-white/15 hover:border-white/35 hover:shadow-[0_0_20px_-6px_rgba(255,255,255,0.35)]"
                           }`}
                         >
                           {s}
                         </motion.button>
                       );
                     })}
-                  </motion.div>
+                  </div>
                 )}
               </div>
+
 
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   send();
                 }}
-                className="mt-2 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-4 pr-1.5 py-1.5"
+                className="mt-3 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-5 pr-2 py-2"
               >
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask the Engine Assistant…"
+                  placeholder="Message Engine Assistant…"
                   disabled={isStreaming}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body"
                 />
