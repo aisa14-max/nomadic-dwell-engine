@@ -198,15 +198,46 @@ export default function Configurator() {
                 className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
                 style={{ height: "58vh" }}
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="autorotate">
-                    <img
-                      src={dwelling}
-                      alt="Modular dwelling render"
-                      className="max-h-[80vh] max-w-[100%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
-                    />
-                  </div>
-                </div>
+                <AnimatePresence mode="wait">
+                  {!engineReady ? (
+                    <motion.div
+                      key="loader"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, filter: "blur(12px)" }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-5"
+                    >
+                      <div className="absolute w-64 h-64 rounded-full bg-white/5 blur-3xl animate-pulse" />
+                      <Loader2 className="h-10 w-10 text-white/80 animate-spin relative" strokeWidth={1.5} />
+                      <div className="relative text-center">
+                        <p className="font-body text-white/85 text-sm tracking-wide">
+                          Preparing your Nomadic Engine...
+                        </p>
+                        <p className="font-body text-white/40 text-[11px] uppercase tracking-[0.18em] mt-2">
+                          Calibrating modules
+                        </p>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="engine"
+                      initial={{ opacity: 0, scale: 0.96, filter: "blur(12px)" }}
+                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <div className="autorotate">
+                        <img
+                          src={dwelling}
+                          alt="Modular dwelling render"
+                          className="max-h-[80vh] max-w-[100%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
 
                 <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
                   {[Box, RotateCw, ZoomIn, ZoomOut].map((I, i) => (
