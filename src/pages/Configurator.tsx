@@ -318,12 +318,12 @@ export default function Configurator() {
                   e.preventDefault();
                   send();
                 }}
-                className="mt-2 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-4 pr-1.5 py-1.5"
+                className="mt-3 shrink-0 flex items-center gap-2 liquid-glass rounded-full pl-5 pr-2 py-2"
               >
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask the Engine Assistant…"
+                  placeholder="Message Engine Assistant…"
                   disabled={isStreaming}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body"
                 />
