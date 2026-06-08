@@ -1,50 +1,46 @@
-# Engine Assistant chat redesign
+# Engine Assistant polish + Configurator loading state
 
-Scope: only the right-hand `<motion.aside>` in `src/pages/Configurator.tsx`. Backend (`supabase/functions/engine-chat`) and other components stay untouched.
+Scope: `src/pages/Configurator.tsx` plus one new asset. No backend changes.
 
-## Intro sequence (on tab mount)
+## 1. Alien avatar asset
 
-1. Empty transcript, no chips, no greeting.
-2. After ~600 ms delay, show a typing indicator bubble (animated dots) on its own row — assistant "is typing".
-3. After ~1.4 s of typing, replace the dots with the greeting message, then stream it in character-by-character (~18 ms/char) to feel like real typing:
-   > "Hi, I'm your Engine Assistant 👋 Do you want to make any changes to your Nomadic Engine?"
-4. Once the full text lands, fade + slide-up the action chips below the message (stagger ~60 ms each).
+Generate `src/assets/engine-assistant-avatar.png` (transparent PNG, ~512×512) — a small, cute, friendly alien character. Modern, minimal, professional but approachable. Soft pastel/neutral palette so it sits well on the dark glass UI. Import it and reuse for:
+- Header avatar (replacing current gradient dot)
+- Left-side avatar next to every assistant message and next to the typing indicator
 
-If the user types/sends before the intro finishes, skip remaining animation and reveal chips immediately.
+## 2. Typing indicator everywhere
 
-## Action chips
+Currently the typing indicator only shows during the intro. Extend it to every assistant response:
+- Show the avatar + 3 bouncing dots row whenever `isStreaming` is true and the last assistant message is empty, OR during the intro `typing` phase.
+- Dots disappear the instant the first character of the assistant message renders (intro) or the first streamed token arrives (chat). Use the existing transition; if the message has content, render text, otherwise render dots — no overlap.
 
-Replace the current 6 suggestions with engine-customization-flavored options:
-- Change Layout
-- Modify Components
-- Adjust Settings
-- Add Features
-- Materials & Finish
-- Something else
+## 3. Assistant message layout
 
-Clicking a chip sends it as a user message through the existing `send()` streaming flow (already wired to the edge function). Chips hide after first send, exactly like today.
+Each assistant row becomes: `[avatar 28px] [text]` with `items-start gap-3`. User messages stay right-aligned pill, no avatar. This applies to the streamed intro, normal replies, and the typing-only row.
 
-## Visual refresh — cleaner modern chatbot
+## 4. Intro flow (already implemented, keep)
 
-Stay on the dark base but lighten the chat surface:
+Empty → 600ms delay → typing dots (now with avatar) → ~1.4s → stream greeting char-by-char → reveal chips with stagger. No change to the timing logic; just swap dot-only row for `avatar + dots` and assistant messages for `avatar + text`.
 
-- Aside container: keep `liquid-glass` outer card but increase padding (`p-6`), thinner header, add subtle 1px divider under header.
-- Header: small gradient avatar dot + "Engine Assistant" + tiny muted "online" caption underneath.
-- Transcript: remove heavy bubbles for assistant — assistant messages render as plain text on the glass surface with generous line-height (`leading-relaxed`, `text-white/90`), no border, no background. Only user messages keep a filled pill (`bg-white text-black rounded-2xl px-4 py-2`, right-aligned, max-w 85%).
-- Spacing: `space-y-5` between turns, comfortable left padding on assistant rows aligned with avatar.
-- Typing indicator: three small dots in a row (no bubble), `text-white/50`, gentle bounce.
-- Chips: pill-shaped (`rounded-full`), subtle white/8 background, thin white/15 border, hover lifts to white/15 with soft glow. Wrap as a flex row, not a strict grid, so they read as conversational suggestions.
-- Composer: keep the rounded glass input + circular send button, slightly larger (h-11), refine placeholder to "Message Engine Assistant…".
+## 5. Configurator viewport loading state
+
+The left "Site: Skye Moor" viewport currently shows the dwelling PNG immediately. Replace initial render with a loading state:
+- New local state `engineReady: boolean`, false on mount.
+- While `!engineReady`: render a centered column inside the existing glass viewport:
+  - Animated loader — a thin circular spinner (lucide `Loader2` with `animate-spin`) plus a subtle pulsing radial glow behind it.
+  - Caption text: "Preparing your Nomadic Engine..." in body font, white/80, with a faint shimmer.
+  - Optional 3-step progress hint ("Calibrating modules · Aligning frame · Finalizing render") cycling every ~1s for life.
+- After ~3.5s, set `engineReady = true`.
+- Transition: cross-fade — loader fades/blurs out, the `autorotate` dwelling image fades + scales in (opacity 0→1, scale 0.96→1, blur 12px→0) over ~700ms using framer-motion + AnimatePresence.
+- Top-right control cluster and "Site: Skye Moor" tag stay visible during loading (they're scene chrome).
 
 ## Technical notes
 
-- All animation done with framer-motion + a couple of `setTimeout`s inside a single `useEffect`; cleanup on unmount.
-- New local state: `phase: "idle" | "typing" | "streaming-intro" | "ready"`, `introText: string` (progressively built), `chipsVisible: boolean`.
-- The existing `useEffect` that seeds the greeting and `showSuggestions` flag is replaced by the new intro sequencer.
-- Suggestions list updated to the 6 options above; chip onClick continues to call `send(label)`.
-- No changes to `messages` shape, `send()`, streaming logic, scroll behavior, or props.
+- Use `imagegen` (premium not required, fast tier is fine) to create the avatar with `transparent_background: true`.
+- Keep all existing chat logic, streaming, suggestion send flow, edge function — untouched.
+- One new import: the avatar PNG; one new icon: `Loader2` from lucide-react.
 - No new dependencies.
 
 ## Out of scope
 
-- Configurator viewport, stats strip, hero, reservation customizer overlay, edge function, routing.
+Reservation customizer overlay, stats strip, hero, routing, backend.

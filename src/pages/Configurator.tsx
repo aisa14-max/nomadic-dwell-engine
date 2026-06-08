@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2 } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-hero.png";
+import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
@@ -13,6 +14,13 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export default function Configurator() {
   const [showNext, setShowNext] = useState(false);
+  const [engineReady, setEngineReady] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setEngineReady(true), 3500);
+    return () => clearTimeout(t);
+  }, []);
+
 
   // Engine Assistant chat
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -190,15 +198,46 @@ export default function Configurator() {
                 className="liquid-glass relative rounded-[1.25rem] overflow-hidden"
                 style={{ height: "58vh" }}
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="autorotate">
-                    <img
-                      src={dwelling}
-                      alt="Modular dwelling render"
-                      className="max-h-[80vh] max-w-[100%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
-                    />
-                  </div>
-                </div>
+                <AnimatePresence mode="wait">
+                  {!engineReady ? (
+                    <motion.div
+                      key="loader"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, filter: "blur(12px)" }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-5"
+                    >
+                      <div className="absolute w-64 h-64 rounded-full bg-white/5 blur-3xl animate-pulse" />
+                      <Loader2 className="h-10 w-10 text-white/80 animate-spin relative" strokeWidth={1.5} />
+                      <div className="relative text-center">
+                        <p className="font-body text-white/85 text-sm tracking-wide">
+                          Preparing your Nomadic Engine...
+                        </p>
+                        <p className="font-body text-white/40 text-[11px] uppercase tracking-[0.18em] mt-2">
+                          Calibrating modules
+                        </p>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="engine"
+                      initial={{ opacity: 0, scale: 0.96, filter: "blur(12px)" }}
+                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <div className="autorotate">
+                        <img
+                          src={dwelling}
+                          alt="Modular dwelling render"
+                          className="max-h-[80vh] max-w-[100%] object-contain drop-shadow-[0_30px_60px_rgba(255,255,255,0.08)]"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
 
                 <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
                   {[Box, RotateCw, ZoomIn, ZoomOut].map((I, i) => (
@@ -231,8 +270,8 @@ export default function Configurator() {
               style={{ height: "calc(62vh + 80px)" }}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
-                <span className="relative inline-flex w-8 h-8 rounded-full bg-gradient-to-br from-white to-white/40 items-center justify-center">
-                  <span className="w-2 h-2 rounded-full bg-black" />
+                <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
+                  <img src={assistantAvatar} alt="Engine Assistant" width={36} height={36} loading="lazy" className="w-full h-full object-contain" />
                 </span>
                 <div className="flex flex-col leading-tight">
                   <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
@@ -252,11 +291,14 @@ export default function Configurator() {
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="flex items-center gap-1.5 text-white/50"
+                    className="flex items-start gap-3"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                    <img src={assistantAvatar} alt="" width={28} height={28} loading="lazy" className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 object-contain" />
+                    <span className="inline-flex gap-1 items-center pt-2 text-white/50">
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
+                    </span>
                   </motion.div>
                 )}
 
@@ -268,18 +310,23 @@ export default function Configurator() {
                       </div>
                     </div>
                   ) : (
-                    <div key={i} className="text-white/90 leading-relaxed pr-2">
-                      {m.content ||
-                        (isStreaming ? (
-                          <span className="inline-flex gap-1 items-center">
+                    <div key={i} className="flex items-start gap-3">
+                      <img src={assistantAvatar} alt="" width={28} height={28} loading="lazy" className="w-7 h-7 rounded-full bg-white/5 border border-white/10 shrink-0 object-contain" />
+                      <div className="text-white/90 leading-relaxed pr-2 flex-1 min-w-0 pt-0.5">
+                        {m.content ? (
+                          m.content
+                        ) : (
+                          <span className="inline-flex gap-1 items-center pt-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce" />
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:120ms]" />
                             <span className="w-1.5 h-1.5 rounded-full bg-white/60 animate-bounce [animation-delay:240ms]" />
                           </span>
-                        ) : null)}
+                        )}
+                      </div>
                     </div>
                   ),
                 )}
+
 
                 {showSuggestions && (
                   <div className="flex flex-wrap gap-2 pt-2">
