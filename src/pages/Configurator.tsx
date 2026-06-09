@@ -44,9 +44,10 @@ export default function Configurator() {
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
 
   useEffect(() => {
+    if (!engineReady) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
-      setTimeout(() => setIntroPhase("typing"), 600),
+      setTimeout(() => setIntroPhase("typing"), 1000),
     );
     timers.push(
       setTimeout(() => {
@@ -68,10 +69,10 @@ export default function Configurator() {
           }
         };
         step();
-      }, 2000),
+      }, 2400),
     );
     return () => timers.forEach(clearTimeout);
-  }, []);
+  }, [engineReady]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
