@@ -159,6 +159,27 @@ export default function ClaimSpotScene({ className = "" }: Props) {
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
       />
+      {/* Animated parallax grid layer */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ perspective: "1200px", transformStyle: "preserve-3d" }}
+      >
+        <div
+          ref={gridRef}
+          className="grid-drift absolute -inset-[10%] will-change-transform"
+          style={{
+            backgroundImage: GRID_BG,
+            backgroundSize: "48px 48px, 48px 48px",
+            opacity: 0.55,
+            mixBlendMode: "screen",
+            maskImage:
+              "radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+            transition: "transform 0.05s linear",
+          }}
+        />
+      </div>
       {/* subtle slow drifting fog/clouds */}
       <div className="absolute inset-0 claim-fog" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
