@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import claimNight from "@/assets/claim-night.jpg";
 
+const GRID_BG =
+  "linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)";
+
 type Props = { className?: string };
 
 /**
@@ -9,6 +12,41 @@ type Props = { className?: string };
  */
 export default function ClaimSpotScene({ className = "" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  // Mouse tilt parallax on the animated grid layer
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let tx = 0, ty = 0; // target -1..1
+    let cx = 0, cy = 0; // current
+    let raf = 0;
+
+    const onMove = (e: PointerEvent) => {
+      tx = (e.clientX / window.innerWidth) * 2 - 1;
+      ty = (e.clientY / window.innerHeight) * 2 - 1;
+    };
+
+    const loop = () => {
+      cx += (tx - cx) * 0.06;
+      cy += (ty - cy) * 0.06;
+      const rotY = cx * 8; // deg
+      const rotX = -cy * 6;
+      const trX = cx * -14;
+      const trY = cy * -10;
+      el.style.transform = `perspective(1200px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) translate3d(${trX.toFixed(2)}px, ${trY.toFixed(2)}px, 0)`;
+      raf = requestAnimationFrame(loop);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+    raf = requestAnimationFrame(loop);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -121,6 +159,27 @@ export default function ClaimSpotScene({ className = "" }: Props) {
         alt=""
         className="absolute inset-0 w-full h-full object-cover"
       />
+      {/* Animated parallax grid layer */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ perspective: "1200px", transformStyle: "preserve-3d" }}
+      >
+        <div
+          ref={gridRef}
+          className="grid-drift absolute -inset-[10%] will-change-transform"
+          style={{
+            backgroundImage: GRID_BG,
+            backgroundSize: "48px 48px, 48px 48px",
+            opacity: 0.55,
+            mixBlendMode: "screen",
+            maskImage:
+              "radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse at center, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 85%)",
+            transition: "transform 0.05s linear",
+          }}
+        />
+      </div>
       {/* subtle slow drifting fog/clouds */}
       <div className="absolute inset-0 claim-fog" />
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />

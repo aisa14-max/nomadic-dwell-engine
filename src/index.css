@@ -376,3 +376,14 @@
   0% { transform: translate3d(0,0,0); }
   100% { transform: translate3d(-240px,-240px,0); }
 }
+
+@keyframes grid-drift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 96px 96px, 96px 96px; }
+}
+.grid-drift {
+  animation: grid-drift 40s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .grid-drift { animation: none; }
+}
