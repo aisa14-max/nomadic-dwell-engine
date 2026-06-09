@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import claimNight from "@/assets/claim-night.jpg";
 
+const GRID_BG =
+  "linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)";
+
 type Props = { className?: string };
 
 /**
