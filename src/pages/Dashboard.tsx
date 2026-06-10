@@ -117,8 +117,9 @@ export default function Dashboard() {
           {/* Stat cards */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard delay={0.9} icon={Sun} label="Solar generation" value={solar} unit="%" />
-            <StatCard delay={1.0} icon={BatteryFull} label="Battery state" value={battery} unit="%" />
+            <PowerRunwayCard delay={1.0} value={battery} />
             <StatCard delay={1.1} icon={Wind} label="Wind speed" value={wind} unit="km/h" />
+
           </div>
 
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
