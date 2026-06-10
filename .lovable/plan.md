@@ -1,38 +1,42 @@
-## Goal
+# Power runway card
 
-Animate the grid background on `/configurator` with a continuous slow drift plus subtle mouse-driven 3D tilt, so the grid feels alive and spatial behind the engine model.
+Replace the middle stat card in the Engine dashboard Overview ("Battery state") with a dynamic **Power runway** card. Visual styling, layout, and italic serif number typography stay identical to the other stat cards — only content and ring behavior change.
 
-## Where it lives
+## Scope
+File: `src/pages/Dashboard.tsx` (plus a small keyframe in `src/index.css` for the amber pulse).
 
-The background is rendered by `src/components/ClaimSpotScene.tsx`, mounted via `ClaimSpotScene className="fixed inset-0 ..."` in `src/pages/Configurator.tsx` (line 162). It currently shows a static `claim-night.jpg` (the perspective grid you see) plus a starfield canvas and fog layer.
+Out of scope: other tabs, other cards, the climate panel, assistant panel.
 
-## Approach
+## What changes
 
-Add a dedicated animated SVG grid layer on top of the static image inside `ClaimSpotScene`, then drive two motion sources:
+1. **Card content**
+   - Label: `Power runway` (replaces `Battery state`)
+   - Big number: battery % (unchanged value source — still the `battery` state, still rolls with the existing flip animation)
+   - New line under the number/unit: `~{hours}h remaining at current draw`
+     - `hours = round(battery / drawRate)` where `drawRate` is a constant average draw (`% per hour`). Default `drawRate = 11` so 92% ≈ 8h, matching the spec example.
+     - Recomputes live as `battery` updates from the existing interval.
 
-1. **Continuous drift** — the grid pattern slowly pans diagonally (≈40s loop) using a CSS keyframe on `background-position`. Gives constant ambient motion.
-2. **Mouse tilt** — listen to `pointermove` on `window`; map cursor to a normalized `-1..1` range and apply a smoothed `rotateX` / `rotateY` (max ±6°) plus a tiny `translate` to the grid layer. `perspective: 1200px` on the parent gives real depth. Smooth with `requestAnimationFrame` + lerp so it never jitters.
+2. **Ring arc mount animation**
+   - The ring currently animates via Framer Motion `strokeDashoffset`. Switch this single card's ring to a pure **CSS animation**: 1.2s `ease-out`, fills from `offset = circumference` (empty) → `offset = circumference * (1 - value/100)` (target).
+   - Implemented with a CSS custom property `--ring-offset` and `@keyframes ring-fill` keyed to the value at mount. No re-trigger on every battery tick — value updates after mount transition smoothly via `transition: stroke-dashoffset 0.4s ease-out`.
 
-The existing starfield canvas and the static night image stay — the new layer sits between them, at low opacity, so the look is enhanced, not replaced.
+3. **Low-battery state (`battery < 20`)**
+   - Add `amber-pulse` class to the ring's `<circle>` stroke (and a faint matching `drop-shadow` filter).
+   - Keyframe in `index.css`:
+     ```
+     @keyframes ring-amber-pulse {
+       0%,100% { stroke: #f59e0b; filter: drop-shadow(0 0 2px rgba(245,158,11,0.4)); }
+       50%     { stroke: #fbbf24; filter: drop-shadow(0 0 8px rgba(245,158,11,0.85)); }
+     }
+     .ring-amber-pulse { animation: ring-amber-pulse 1.6s ease-in-out infinite; }
+     ```
+   - Card background, border, and text colors stay unchanged. Only the ring stroke pulses amber.
 
-## Files to change
+4. **Component shape**
+   - Extract a small `PowerRunwayCard` component inside `Dashboard.tsx` (mirrors `StatCard` styling/markup) so the existing `StatCard` stays untouched for Solar and Wind.
 
-- `src/components/ClaimSpotScene.tsx`
-  - Add a `gridRef` div with an SVG dot/line grid as `background-image` and a slow drift keyframe.
-  - Add a `useEffect` that attaches `pointermove`, runs a rAF lerp loop, and writes `transform: perspective(1200px) rotateX() rotateY() translate3d()` to `gridRef`.
-  - Wrap the new layer in a `perspective` container with `transform-style: preserve-3d`.
-  - Respect `prefers-reduced-motion` — skip the tilt loop and disable the drift keyframe.
-
-- `src/index.css`
-  - Add a `@keyframes grid-drift` (translate background-position from `0 0` to `80px 80px`) and a `.grid-drift` utility class with `animation: grid-drift 40s linear infinite`.
-
-## Tuning defaults
-
-- Grid: 48px cell, 1px lines at `rgba(255,255,255,0.06)` with a stronger dot at intersections at `rgba(255,255,255,0.12)`.
-- Tilt max: 6° on X, 8° on Y. Lerp factor 0.06.
-- Drift speed: 40s per loop, linear.
-- Opacity of new layer: 0.6, blend `screen` so it brightens the existing grid rather than overpowering it.
-
-## Out of scope
-
-No changes to the loader, engine reveal, chat, or any other Configurator behavior.
+## Technical notes
+- Circumference: `2π·28` (same as existing ring).
+- Mount animation runs once via `useRef`-guarded inline `<style>`-less approach: set `style={{ strokeDashoffset: targetOffset }}` after a `useEffect` tick, with CSS `transition: stroke-dashoffset 1.2s cubic-bezier(0, 0, 0.2, 1)` for the first paint. Subsequent battery changes use the same transition (shorter `0.4s` is acceptable; spec only mandates 1.2s on mount, so we keep 1.2s for simplicity).
+- `prefers-reduced-motion`: disable the amber pulse keyframe and shorten the ring fill to instant.
+- No new dependencies.

@@ -117,8 +117,9 @@ export default function Dashboard() {
           {/* Stat cards */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard delay={0.9} icon={Sun} label="Solar generation" value={solar} unit="%" />
-            <StatCard delay={1.0} icon={BatteryFull} label="Battery state" value={battery} unit="%" />
+            <PowerRunwayCard delay={1.0} value={battery} />
             <StatCard delay={1.1} icon={Wind} label="Wind speed" value={wind} unit="km/h" />
+
           </div>
 
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -247,6 +248,75 @@ function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
     </motion.div>
   );
 }
+
+const DRAW_RATE = 11; // % per hour
+const RING_R = 28;
+const RING_C = 2 * Math.PI * RING_R;
+
+function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }) {
+  const display = String(Math.round(value));
+  const hours = Math.max(0, Math.round(value / DRAW_RATE));
+  const low = value < 20;
+  const target = RING_C * (1 - Math.min(100, Math.max(0, value)) / 100);
+  const [offset, setOffset] = useState(RING_C);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setOffset(target));
+    return () => cancelAnimationFrame(id);
+  }, [target]);
+
+  return (
+    <motion.div
+      initial={blurInit}
+      animate={blurIn}
+      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      className="liquid-glass rounded-[1.25rem] p-6 relative overflow-hidden"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
+            <BatteryFull className="h-4 w-4 text-white" strokeWidth={1.5} />
+          </div>
+          <p className="text-xs mt-4 text-white/60 font-body">Power runway</p>
+          <div className="mt-2 flex items-baseline gap-2 overflow-hidden h-[44px]">
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={display}
+                initial={{ y: "100%" }}
+                animate={{ y: "0%" }}
+                exit={{ y: "-100%" }}
+                transition={{ duration: 0.18 }}
+                className="font-heading text-white text-4xl tracking-[-1px] leading-none"
+              >
+                {display}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-sm text-white/60 font-body">%</span>
+          </div>
+          <p className="mt-2 text-xs text-white/60 font-body">
+            ~{hours}h remaining at current draw
+          </p>
+        </div>
+        <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]">
+          <circle cx="34" cy="34" r={RING_R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
+          <circle
+            cx="34"
+            cy="34"
+            r={RING_R}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeDasharray={RING_C}
+            strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0, 0, 0.2, 1)" }}
+            className={low ? "ring-amber-pulse" : undefined}
+          />
+        </svg>
+      </div>
+    </motion.div>
+  );
+}
+
 
 function Sparkline() {
   const points = Array.from({ length: 28 }, (_, i) => 30 + Math.sin(i * 0.45) * 18 + Math.cos(i * 0.2) * 6);
