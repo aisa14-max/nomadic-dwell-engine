@@ -384,6 +384,12 @@
 .grid-drift {
   animation: grid-drift 40s linear infinite;
 }
+@keyframes ring-amber-pulse {
+  0%, 100% { stroke: #f59e0b; filter: drop-shadow(0 0 2px rgba(245,158,11,0.4)); }
+  50%      { stroke: #fbbf24; filter: drop-shadow(0 0 8px rgba(245,158,11,0.85)); }
+}
+.ring-amber-pulse { animation: ring-amber-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .grid-drift { animation: none; }
+  .ring-amber-pulse { animation: none; }
 }
