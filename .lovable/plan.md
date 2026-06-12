@@ -1,12 +1,36 @@
-Replace the Engine Assistant avatar image with the generated "Core" option and verify it renders clearly in the chat UI.
+# Engine dashboard — tactile interactivity
 
-1. **Swap asset file** — Copy `/mnt/documents/engine-assistant-v1.png` (the "Core" option) over `src/assets/engine-assistant-avatar.png`. The new image is a 512x512 transparent PNG abstract geometric intelligence node.
+Going with the **Tactile micro-interactions** direction. Keeps the existing dark glass layout and italic serif numerals intact, layers in physical-feeling hover/drag/scrub responses across the page.
 
-2. **Verify usage sites** — The avatar is imported in `src/pages/Configurator.tsx` and rendered at:
-   - Header: 36x36 (`w-full h-full` inside a 36px container)
-   - Chat assistant messages: 28x28 (`w-7 h-7`)
-   The user wants visual verification at 32px and 48px sizes in the chat UI.
+## What changes
 
-3. **Visual check** — Take a preview screenshot of the Configurator chat panel to confirm the new avatar reads clearly, has good contrast against the dark glass UI, and the transparent PNG edges look clean at small sizes.
+**Stat cards (Solar / Power runway / Wind)**
+- Magnetic pointer pull: card tilts/translates ~6px toward cursor on hover, springs back on leave.
+- Ring arc gains a soft white drop-shadow glow on hover.
+- Click → quick "press" scale (0.98) with inset shadow flash.
 
-No code changes required beyond the asset replacement — the existing `import assistantAvatar` path stays the same.
+**24h energy balance sparkline**
+- Add a hover scrubber: a vertical tracking line + glowing dot follows the cursor along the curve.
+- Tooltip pill above the dot shows the hovered hour + kW value (mocked).
+- Fades in on enter, out on leave.
+
+**Internal climate stat tiles (Temp / Humidity / AQI / Occupied)**
+- Hover lifts the icon chip and brightens the number; tiny number tick re-runs the entrance tween.
+
+**Alert banner**
+- Hover brightens the border to amber; Resolve button gets active-press scale + inset shadow.
+
+**Engine assistant**
+- Buttons get tactile press: active scale 0.98 + inset shadow on "Review schedule"; primary "Initiate relocation" gains a soft white glow on hover and an arrow that nudges right.
+- Module rows: hovered row brightens label and turns the OK chip emerald.
+
+**Tabs**
+- Add a sliding pill indicator that springs between tabs on click (Motion `layoutId`).
+
+## Technical notes
+
+- All work in `src/pages/Dashboard.tsx` plus a small keyframe/utility additions in `src/index.css`.
+- Use existing `framer-motion` (already imported) for spring tweens and `layoutId` on the tab pill.
+- Magnetic pull = `onMouseMove` reading bounding rect, mapping to a `motion` x/y with spring config `{ stiffness: 150, damping: 15 }`.
+- Sparkline scrubber: track `mousemove` on the SVG, project x onto the sampled points array to find nearest y; render a `<line>` + `<circle>` + foreignObject tooltip.
+- No layout changes, no color theme change, no new pages. Card backgrounds stay as-is.

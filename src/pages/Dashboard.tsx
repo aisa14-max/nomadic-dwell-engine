@@ -1,6 +1,6 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import { Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import BlurText from "@/components/BlurText";
 
@@ -77,16 +77,23 @@ export default function Dashboard() {
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-full inline-flex gap-0 p-1.5"
+            className="mt-10 liquid-glass rounded-full inline-flex gap-0 p-1.5 relative"
           >
             {tabs.map((t, i) => (
               <button
                 key={t}
                 onClick={() => setTab(i)}
-                className={`relative px-5 py-2 rounded-full text-sm font-body font-medium transition-colors ${
-                  tab === i ? "bg-white text-black" : "text-white/70"
+                className={`relative px-5 py-2 rounded-full text-sm font-body font-medium transition-colors z-10 ${
+                  tab === i ? "text-black" : "text-white/70 hover:text-white"
                 }`}
               >
+                {tab === i && (
+                  <motion.span
+                    layoutId="tab-pill"
+                    className="absolute inset-0 rounded-full bg-white -z-10"
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  />
+                )}
                 {t}
               </button>
             ))}
@@ -100,14 +107,14 @@ export default function Dashboard() {
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: -16, opacity: 0 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="liquid-glass mt-6 rounded-[1rem] p-4 flex items-center gap-3"
+                className="liquid-glass mt-6 rounded-[1rem] p-4 flex items-center gap-3 group transition-colors hover:border-amber-400/40"
               >
-                <AlertCircle className="h-5 w-5 text-white" strokeWidth={1.5} />
+                <AlertCircle className="h-5 w-5 text-white group-hover:text-amber-300 transition-colors" strokeWidth={1.5} />
                 <p className="flex-1 text-sm font-body text-white/90">
                   Wind speed exceeds optimal turbine range. Consider feathering blades.
                 </p>
-                <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white">Resolve</button>
-                <button onClick={() => setAlert(false)} className="text-white/70 hover:text-white">
+                <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white transition-transform active:scale-95 hover:bg-white/10">Resolve</button>
+                <button onClick={() => setAlert(false)} className="text-white/70 hover:text-white transition-transform active:scale-90">
                   <X className="h-4 w-4" />
                 </button>
               </motion.div>
@@ -119,7 +126,6 @@ export default function Dashboard() {
             <StatCard delay={0.9} icon={Sun} label="Solar generation" value={solar} unit="%" />
             <PowerRunwayCard delay={1.0} value={battery} />
             <StatCard delay={1.1} icon={Wind} label="Wind speed" value={wind} unit="km/h" />
-
           </div>
 
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -140,22 +146,27 @@ export default function Dashboard() {
                   { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
                   { i: Home, l: "Occupied", v: "2", u: "guests" },
                 ].map((s) => (
-                  <div key={s.l}>
-                    <div className="liquid-glass icon-box-glass mb-3" style={{ width: 36, height: 36 }}>
+                  <motion.div
+                    key={s.l}
+                    whileHover={{ y: -3 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="cursor-default group"
+                  >
+                    <div className="liquid-glass icon-box-glass mb-3 transition-all group-hover:bg-white/10" style={{ width: 36, height: 36 }}>
                       <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
                     </div>
-                    <p className="font-heading text-white text-2xl tracking-[-1px] leading-none">
+                    <p className="font-heading text-white text-2xl tracking-[-1px] leading-none transition-colors">
                       {s.v}{" "}
                       <span className="text-xs text-white/60 font-body">{s.u}</span>
                     </p>
                     <p className="text-xs mt-1 text-white/60 font-body">{s.l}</p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
               {/* Sparkline */}
               <div className="mt-8">
-                <p className="text-xs mb-3 text-white/60 font-body">24h energy balance</p>
+                <p className="text-xs mb-3 text-white/60 font-body">24h energy balance · hover to scrub</p>
                 <Sparkline />
               </div>
             </motion.div>
@@ -172,20 +183,31 @@ export default function Dashboard() {
                 battery topping at 22:00 and locked the solar array for storm mode.
               </p>
               <div className="mt-5 space-y-2">
-                <button className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white w-full">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ y: -1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white w-full hover:bg-white/10 transition-colors active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
+                >
                   Review schedule
-                </button>
-                <button className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium w-full">
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ y: -1, boxShadow: "0 0 24px rgba(255,255,255,0.35)" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium w-full inline-flex items-center justify-center gap-1.5 group"
+                >
                   Initiate relocation
-                </button>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
+                </motion.button>
               </div>
 
               <div className="mt-8 pt-6 border-t border-white/10">
                 <p className="text-[11px] uppercase tracking-[0.16em] mb-3 text-white/60 font-body">Modules online</p>
                 {["Sleep", "Galley", "Solar", "Water", "Sensors"].map((m) => (
-                  <div key={m} className="flex items-center justify-between py-2 text-sm font-body text-white/90">
+                  <div key={m} className="flex items-center justify-between py-2 text-sm font-body text-white/70 group cursor-default transition-colors hover:text-white">
                     <span>{m}</span>
-                    <span className="liquid-glass tag-glass text-[10px]">OK</span>
+                    <span className="liquid-glass tag-glass text-[10px] transition-all group-hover:text-emerald-300 group-hover:border-emerald-400/40">OK</span>
                   </div>
                 ))}
               </div>
@@ -197,14 +219,45 @@ export default function Dashboard() {
   );
 }
 
+/* ---------- Magnetic card wrapper ---------- */
+function useMagnet(strength = 8) {
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const sx = useSpring(x, { stiffness: 200, damping: 18 });
+  const sy = useSpring(y, { stiffness: 200, damping: 18 });
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  const onMove = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const nx = (e.clientX - r.left) / r.width - 0.5;
+    const ny = (e.clientY - r.top) / r.height - 0.5;
+    x.set(nx * strength * 2);
+    y.set(ny * strength * 2);
+  };
+  const onLeave = () => { x.set(0); y.set(0); };
+  const rotateX = useTransform(sy, [-strength, strength], [3, -3]);
+  const rotateY = useTransform(sx, [-strength, strength], [-3, 3]);
+  return { ref, sx, sy, rotateX, rotateY, onMove, onLeave };
+}
+
 function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
   const display = String(Math.round(value));
+  const mag = useMagnet();
+  const [hover, setHover] = useState(false);
   return (
     <motion.div
+      ref={mag.ref}
       initial={blurInit}
       animate={blurIn}
       transition={{ duration: 0.7, delay, ease: "easeOut" }}
-      className="liquid-glass rounded-[1.25rem] p-6 relative overflow-hidden"
+      onMouseMove={mag.onMove}
+      onMouseLeave={() => { mag.onLeave(); setHover(false); }}
+      onMouseEnter={() => setHover(true)}
+      whileTap={{ scale: 0.985 }}
+      style={{ x: mag.sx, y: mag.sy, rotateX: mag.rotateX, rotateY: mag.rotateY, transformPerspective: 800 }}
+      className="liquid-glass rounded-[1.25rem] p-6 relative overflow-hidden cursor-pointer will-change-transform"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -228,7 +281,7 @@ function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
             <span className="text-sm text-white/60 font-body">{unit}</span>
           </div>
         </div>
-        <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]">
+        <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]" style={{ filter: hover ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : "none", transition: "filter 0.3s" }}>
           <circle cx="34" cy="34" r="28" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
           <motion.circle
             cx="34"
@@ -259,6 +312,8 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
   const low = value < 20;
   const target = RING_C * (1 - Math.min(100, Math.max(0, value)) / 100);
   const [offset, setOffset] = useState(RING_C);
+  const [hover, setHover] = useState(false);
+  const mag = useMagnet();
   useEffect(() => {
     const id = requestAnimationFrame(() => setOffset(target));
     return () => cancelAnimationFrame(id);
@@ -266,10 +321,16 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
 
   return (
     <motion.div
+      ref={mag.ref}
       initial={blurInit}
       animate={blurIn}
       transition={{ duration: 0.7, delay, ease: "easeOut" }}
-      className="liquid-glass rounded-[1.25rem] p-6 relative overflow-hidden"
+      onMouseMove={mag.onMove}
+      onMouseLeave={() => { mag.onLeave(); setHover(false); }}
+      onMouseEnter={() => setHover(true)}
+      whileTap={{ scale: 0.985 }}
+      style={{ x: mag.sx, y: mag.sy, rotateX: mag.rotateX, rotateY: mag.rotateY, transformPerspective: 800 }}
+      className="liquid-glass rounded-[1.25rem] p-6 relative overflow-hidden cursor-pointer will-change-transform"
     >
       <div className="flex items-start justify-between">
         <div>
@@ -296,7 +357,7 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
             ~{hours}h remaining at current draw
           </p>
         </div>
-        <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]">
+        <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]" style={{ filter: hover && !low ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : "none", transition: "filter 0.3s" }}>
           <circle cx="34" cy="34" r={RING_R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
           <circle
             cx="34"
@@ -317,22 +378,47 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
   );
 }
 
-
 function Sparkline() {
-  const points = Array.from({ length: 28 }, (_, i) => 30 + Math.sin(i * 0.45) * 18 + Math.cos(i * 0.2) * 6);
-  const max = Math.max(...points),
-    min = Math.min(...points);
-  const w = 800,
-    h = 120;
-  const path = points
-    .map((p, i) => {
-      const x = (i / (points.length - 1)) * w;
-      const y = h - ((p - min) / (max - min)) * h;
-      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
+  const w = 800, h = 120;
+  const points = useMemo(
+    () => Array.from({ length: 28 }, (_, i) => 30 + Math.sin(i * 0.45) * 18 + Math.cos(i * 0.2) * 6),
+    []
+  );
+  const max = Math.max(...points), min = Math.min(...points);
+  const coords = points.map((p, i) => ({
+    x: (i / (points.length - 1)) * w,
+    y: h - ((p - min) / (max - min)) * h,
+    v: p,
+  }));
+  const path = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
+
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [hover, setHover] = useState<{ x: number; y: number; v: number; i: number } | null>(null);
+
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    const px = ((e.clientX - r.left) / r.width) * w;
+    let nearest = 0;
+    let best = Infinity;
+    coords.forEach((c, i) => {
+      const d = Math.abs(c.x - px);
+      if (d < best) { best = d; nearest = i; }
+    });
+    const c = coords[nearest];
+    setHover({ x: c.x, y: c.y, v: c.v, i: nearest });
+  };
+
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[120px]">
+    <svg
+      ref={svgRef}
+      viewBox={`0 0 ${w} ${h}`}
+      className="w-full h-[120px] cursor-crosshair"
+      preserveAspectRatio="none"
+      onMouseMove={onMove}
+      onMouseLeave={() => setHover(null)}
+    >
       <defs>
         <linearGradient id="g" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
@@ -349,6 +435,18 @@ function Sparkline() {
         animate={{ pathLength: 1 }}
         transition={{ duration: 1.2, ease: [0, 0, 0.2, 1] }}
       />
+      {hover && (
+        <g pointerEvents="none">
+          <line x1={hover.x} x2={hover.x} y1={0} y2={h} stroke="rgba(255,255,255,0.25)" strokeWidth="1" strokeDasharray="2 3" />
+          <circle cx={hover.x} cy={hover.y} r="5" fill="#fff" style={{ filter: "drop-shadow(0 0 6px rgba(255,255,255,0.9))" }} />
+          <g transform={`translate(${Math.min(Math.max(hover.x, 60), w - 60)}, ${Math.max(hover.y - 18, 14)})`}>
+            <rect x="-52" y="-14" width="104" height="22" rx="11" fill="#fff" />
+            <text x="0" y="1" textAnchor="middle" fontSize="11" fontFamily="Barlow, sans-serif" fontWeight="500" fill="#000" dominantBaseline="middle">
+              {`${String(hover.i).padStart(2,"0")}:00 · ${hover.v.toFixed(1)}kW`}
+            </text>
+          </g>
+        </g>
+      )}
     </svg>
   );
 }
