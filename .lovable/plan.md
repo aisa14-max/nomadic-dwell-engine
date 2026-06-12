@@ -1,36 +1,33 @@
-# Engine dashboard — tactile interactivity
+# Wire up Engine dashboard tabs
 
-Going with the **Tactile micro-interactions** direction. Keeps the existing dark glass layout and italic serif numerals intact, layers in physical-feeling hover/drag/scrub responses across the page.
+Tabs currently only style the active pill — content doesn't change. I'll switch the page body to render per-tab content with a soft crossfade-and-slide between panels.
 
-## What changes
+## Per-tab content
 
-**Stat cards (Solar / Power runway / Wind)**
-- Magnetic pointer pull: card tilts/translates ~6px toward cursor on hover, springs back on leave.
-- Ring arc gains a soft white drop-shadow glow on hover.
-- Click → quick "press" scale (0.98) with inset shadow flash.
+**Overview** (unchanged) — Alert banner, 3 stat ring cards (Solar / Power runway / Wind), Internal climate panel + sparkline, Engine assistant panel.
 
-**24h energy balance sparkline**
-- Add a hover scrubber: a vertical tracking line + glowing dot follows the cursor along the curve.
-- Tooltip pill above the dot shows the hovered hour + kW value (mocked).
-- Fades in on enter, out on leave.
+**Energy** — energy-focused dashboard:
+- Three cards: Solar generation (today vs. yesterday delta), Battery state with the existing PowerRunwayCard, Net export to grid (kWh).
+- Wide chart: 24h generation vs. draw, two stacked area lines (white solar, dimmer battery draw) — reuse the scrubbable sparkline pattern.
+- Source breakdown row: Solar / Wind / Reserve with thin horizontal bars showing share of last hour.
 
-**Internal climate stat tiles (Temp / Humidity / AQI / Occupied)**
-- Hover lifts the icon chip and brightens the number; tiny number tick re-runs the entrance tween.
+**Climate** — interior + exterior sensors:
+- Four large climate tiles (Temp, Humidity, Air quality, Occupied) promoted from the current Internal climate panel, sized up.
+- 12h temperature trace using the same scrub sparkline.
+- Exterior vs. interior comparison strip (two values side by side: 8.1°C outside / 19.4°C inside, etc.).
 
-**Alert banner**
-- Hover brightens the border to amber; Resolve button gets active-press scale + inset shadow.
+**Activity** — event log:
+- Timeline list of recent engine events (mock): "22:14 · Battery topping started", "21:47 · Solar array locked for storm mode", "19:02 · Guest arrival registered", etc. Each row has a timestamp, icon, and short body.
+- Filter chips above the list: All / System / Climate / Guests (visual only).
 
-**Engine assistant**
-- Buttons get tactile press: active scale 0.98 + inset shadow on "Review schedule"; primary "Initiate relocation" gains a soft white glow on hover and an arrow that nudges right.
-- Module rows: hovered row brightens label and turns the OK chip emerald.
+## Interaction
 
-**Tabs**
-- Add a sliding pill indicator that springs between tabs on click (Motion `layoutId`).
+- Tab click sets state; selected pill animates with the existing `layoutId` spring (already in place).
+- Panel container wraps content in `AnimatePresence mode="wait"` with `motion.div` keyed by tab index. Transition: `opacity 0→1` + `y: 12 → 0` over ~250ms, ease-out. Exit: opposite, slightly faster (~180ms).
+- The alert banner stays only on Overview (it's the contextual home view).
 
 ## Technical notes
 
-- All work in `src/pages/Dashboard.tsx` plus a small keyframe/utility additions in `src/index.css`.
-- Use existing `framer-motion` (already imported) for spring tweens and `layoutId` on the tab pill.
-- Magnetic pull = `onMouseMove` reading bounding rect, mapping to a `motion` x/y with spring config `{ stiffness: 150, damping: 15 }`.
-- Sparkline scrubber: track `mousemove` on the SVG, project x onto the sampled points array to find nearest y; render a `<line>` + `<circle>` + foreignObject tooltip.
-- No layout changes, no color theme change, no new pages. Card backgrounds stay as-is.
+- All changes in `src/pages/Dashboard.tsx`.
+- Extract the current Overview body into a `<OverviewPanel />` local component, add `<EnergyPanel />`, `<ClimatePanel />`, `<ActivityPanel />` siblings — all in the same file, reusing existing `StatCard`, `PowerRunwayCard`, `Sparkline`, magnetic-hover wrapper, and `liquid-glass` styling. No new files, no new deps.
+- Mock data lives inline; live ticking (solar/battery/wind interval) keeps running so values stay fresh across tabs.
