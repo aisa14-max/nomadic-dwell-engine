@@ -1,6 +1,9 @@
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight } from "lucide-react";
+import {
+  Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight,
+  Zap, Cloud, Users, Settings, Activity as ActivityIcon, Plug, ShieldCheck,
+} from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import BlurText from "@/components/BlurText";
 
@@ -99,127 +102,353 @@ export default function Dashboard() {
             ))}
           </motion.div>
 
-          {/* Alert */}
-          <AnimatePresence>
-            {alert && (
-              <motion.div
-                initial={{ y: -16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: -16, opacity: 0 }}
-                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                className="liquid-glass mt-6 rounded-[1rem] p-4 flex items-center gap-3 group transition-colors hover:border-amber-400/40"
-              >
-                <AlertCircle className="h-5 w-5 text-white group-hover:text-amber-300 transition-colors" strokeWidth={1.5} />
-                <p className="flex-1 text-sm font-body text-white/90">
-                  Wind speed exceeds optimal turbine range. Consider feathering blades.
-                </p>
-                <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white transition-transform active:scale-95 hover:bg-white/10">Resolve</button>
-                <button onClick={() => setAlert(false)} className="text-white/70 hover:text-white transition-transform active:scale-90">
-                  <X className="h-4 w-4" />
-                </button>
-              </motion.div>
-            )}
+          {/* Panels */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={tab}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
+            >
+              {tab === 0 && (
+                <OverviewPanel
+                  solar={solar} battery={battery} wind={wind}
+                  alert={alert} dismissAlert={() => setAlert(false)}
+                />
+              )}
+              {tab === 1 && <EnergyPanel solar={solar} battery={battery} />}
+              {tab === 2 && <ClimatePanel />}
+              {tab === 3 && <ActivityPanel />}
+            </motion.div>
           </AnimatePresence>
-
-          {/* Stat cards */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard delay={0.9} icon={Sun} label="Solar generation" value={solar} unit="%" />
-            <PowerRunwayCard delay={1.0} value={battery} />
-            <StatCard delay={1.1} icon={Wind} label="Wind speed" value={wind} unit="km/h" />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <motion.div
-              initial={blurInit}
-              animate={blurIn}
-              transition={{ duration: 0.7, delay: 1.2, ease: "easeOut" }}
-              className="liquid-glass lg:col-span-2 rounded-[1.25rem] p-6"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Internal climate</h3>
-                <span className="liquid-glass tag-glass">Stable</span>
-              </div>
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { i: Thermometer, l: "Temp", v: "19.4", u: "°C" },
-                  { i: Droplets, l: "Humidity", v: "48", u: "%" },
-                  { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
-                  { i: Home, l: "Occupied", v: "2", u: "guests" },
-                ].map((s) => (
-                  <motion.div
-                    key={s.l}
-                    whileHover={{ y: -3 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="cursor-default group"
-                  >
-                    <div className="liquid-glass icon-box-glass mb-3 transition-all group-hover:bg-white/10" style={{ width: 36, height: 36 }}>
-                      <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
-                    </div>
-                    <p className="font-heading text-white text-2xl tracking-[-1px] leading-none transition-colors">
-                      {s.v}{" "}
-                      <span className="text-xs text-white/60 font-body">{s.u}</span>
-                    </p>
-                    <p className="text-xs mt-1 text-white/60 font-body">{s.l}</p>
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Sparkline */}
-              <div className="mt-8">
-                <p className="text-xs mb-3 text-white/60 font-body">24h energy balance · hover to scrub</p>
-                <Sparkline />
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={blurInit}
-              animate={blurIn}
-              transition={{ duration: 0.7, delay: 1.3, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-6"
-            >
-              <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Engine assistant</h3>
-              <p className="mt-3 text-sm font-body font-light text-white/80 leading-snug">
-                Forecast suggests 6 hours of high wind tonight. I've scheduled
-                battery topping at 22:00 and locked the solar array for storm mode.
-              </p>
-              <div className="mt-5 space-y-2">
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ y: -1 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white w-full hover:bg-white/10 transition-colors active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
-                >
-                  Review schedule
-                </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  whileHover={{ y: -1, boxShadow: "0 0 24px rgba(255,255,255,0.35)" }}
-                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
-                  className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium w-full inline-flex items-center justify-center gap-1.5 group"
-                >
-                  Initiate relocation
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
-                </motion.button>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/10">
-                <p className="text-[11px] uppercase tracking-[0.16em] mb-3 text-white/60 font-body">Modules online</p>
-                {["Sleep", "Galley", "Solar", "Water", "Sensors"].map((m) => (
-                  <div key={m} className="flex items-center justify-between py-2 text-sm font-body text-white/70 group cursor-default transition-colors hover:text-white">
-                    <span>{m}</span>
-                    <span className="liquid-glass tag-glass text-[10px] transition-all group-hover:text-emerald-300 group-hover:border-emerald-400/40">OK</span>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Magnetic card wrapper ---------- */
+/* ============== Overview ============== */
+function OverviewPanel({ solar, battery, wind, alert, dismissAlert }: {
+  solar: number; battery: number; wind: number; alert: boolean; dismissAlert: () => void;
+}) {
+  return (
+    <>
+      <AnimatePresence>
+        {alert && (
+          <motion.div
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="liquid-glass mt-6 rounded-[1rem] p-4 flex items-center gap-3 group transition-colors hover:border-amber-400/40"
+          >
+            <AlertCircle className="h-5 w-5 text-white group-hover:text-amber-300 transition-colors" strokeWidth={1.5} />
+            <p className="flex-1 text-sm font-body text-white/90">
+              Wind speed exceeds optimal turbine range. Consider feathering blades.
+            </p>
+            <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white transition-transform active:scale-95 hover:bg-white/10">Resolve</button>
+            <button onClick={dismissAlert} className="text-white/70 hover:text-white transition-transform active:scale-90">
+              <X className="h-4 w-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard icon={Sun} label="Solar generation" value={solar} unit="%" />
+        <PowerRunwayCard value={battery} />
+        <StatCard icon={Wind} label="Wind speed" value={wind} unit="km/h" />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="liquid-glass lg:col-span-2 rounded-[1.25rem] p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Internal climate</h3>
+            <span className="liquid-glass tag-glass">Stable</span>
+          </div>
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { i: Thermometer, l: "Temp", v: "19.4", u: "°C" },
+              { i: Droplets, l: "Humidity", v: "48", u: "%" },
+              { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
+              { i: Home, l: "Occupied", v: "2", u: "guests" },
+            ].map((s) => (
+              <motion.div key={s.l} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="cursor-default group">
+                <div className="liquid-glass icon-box-glass mb-3 transition-all group-hover:bg-white/10" style={{ width: 36, height: 36 }}>
+                  <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
+                </div>
+                <p className="font-heading text-white text-2xl tracking-[-1px] leading-none">
+                  {s.v} <span className="text-xs text-white/60 font-body">{s.u}</span>
+                </p>
+                <p className="text-xs mt-1 text-white/60 font-body">{s.l}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="mt-8">
+            <p className="text-xs mb-3 text-white/60 font-body">24h energy balance · hover to scrub</p>
+            <Sparkline />
+          </div>
+        </div>
+
+        <div className="liquid-glass rounded-[1.25rem] p-6">
+          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Engine assistant</h3>
+          <p className="mt-3 text-sm font-body font-light text-white/80 leading-snug">
+            Forecast suggests 6 hours of high wind tonight. I've scheduled
+            battery topping at 22:00 and locked the solar array for storm mode.
+          </p>
+          <div className="mt-5 space-y-2">
+            <motion.button
+              whileTap={{ scale: 0.97 }} whileHover={{ y: -1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white w-full hover:bg-white/10 transition-colors active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
+            >
+              Review schedule
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.97 }} whileHover={{ y: -1, boxShadow: "0 0 24px rgba(255,255,255,0.35)" }}
+              transition={{ type: "spring", stiffness: 400, damping: 22 }}
+              className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium w-full inline-flex items-center justify-center gap-1.5 group"
+            >
+              Initiate relocation
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
+            </motion.button>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-white/10">
+            <p className="text-[11px] uppercase tracking-[0.16em] mb-3 text-white/60 font-body">Modules online</p>
+            {["Sleep", "Galley", "Solar", "Water", "Sensors"].map((m) => (
+              <div key={m} className="flex items-center justify-between py-2 text-sm font-body text-white/70 group cursor-default transition-colors hover:text-white">
+                <span>{m}</span>
+                <span className="liquid-glass tag-glass text-[10px] transition-all group-hover:text-emerald-300 group-hover:border-emerald-400/40">OK</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ============== Energy ============== */
+function EnergyPanel({ solar, battery }: { solar: number; battery: number }) {
+  const today = 42.6, yesterday = 38.1;
+  const delta = (((today - yesterday) / yesterday) * 100).toFixed(1);
+  const sources = [
+    { l: "Solar", v: 62, c: "bg-white" },
+    { l: "Wind", v: 23, c: "bg-white/60" },
+    { l: "Reserve", v: 15, c: "bg-white/30" },
+  ];
+  return (
+    <div className="mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="liquid-glass rounded-[1.25rem] p-6">
+          <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
+            <Sun className="h-4 w-4 text-white" strokeWidth={1.5} />
+          </div>
+          <p className="text-xs mt-4 text-white/60 font-body">Solar generation today</p>
+          <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
+            {today.toFixed(1)} <span className="text-sm text-white/60 font-body">kWh</span>
+          </p>
+          <p className="mt-2 text-xs text-emerald-300 font-body">▲ {delta}% vs. yesterday</p>
+        </div>
+        <PowerRunwayCard value={battery} />
+        <div className="liquid-glass rounded-[1.25rem] p-6">
+          <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
+            <Plug className="h-4 w-4 text-white" strokeWidth={1.5} />
+          </div>
+          <p className="text-xs mt-4 text-white/60 font-body">Net export to grid</p>
+          <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
+            8.4 <span className="text-sm text-white/60 font-body">kWh</span>
+          </p>
+          <p className="mt-2 text-xs text-white/60 font-body">last 24h</p>
+        </div>
+      </div>
+
+      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Generation vs. draw</h3>
+          <span className="liquid-glass tag-glass">24h</span>
+        </div>
+        <div className="mt-6 flex gap-4 text-xs font-body text-white/60">
+          <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white" />Generation</span>
+          <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white/50" />Draw</span>
+        </div>
+        <div className="mt-3">
+          <DualSparkline />
+        </div>
+      </div>
+
+      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+        <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Source breakdown</h3>
+        <p className="text-xs mt-1 text-white/60 font-body">share of last hour</p>
+        <div className="mt-6 space-y-4">
+          {sources.map((s) => (
+            <div key={s.l}>
+              <div className="flex items-center justify-between text-sm font-body text-white/80">
+                <span>{s.l}</span>
+                <span className="font-heading text-white text-lg">{s.v}<span className="text-xs text-white/60 ml-0.5">%</span></span>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }} animate={{ width: `${s.v}%` }}
+                  transition={{ duration: 0.9, ease: [0, 0, 0.2, 1] }}
+                  className={`h-full ${s.c}`}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============== Climate ============== */
+function ClimatePanel() {
+  const tiles = [
+    { i: Thermometer, l: "Temperature", v: "19.4", u: "°C" },
+    { i: Droplets, l: "Humidity", v: "48", u: "%" },
+    { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
+    { i: Home, l: "Occupied", v: "2", u: "guests" },
+  ];
+  const compare = [
+    { l: "Temperature", out: "8.1°C", in: "19.4°C" },
+    { l: "Humidity", out: "72%", in: "48%" },
+    { l: "Wind", out: "23 km/h", in: "—" },
+    { l: "Light", out: "12 lux", in: "240 lux" },
+  ];
+  return (
+    <div className="mt-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {tiles.map((s) => (
+          <motion.div key={s.l} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="liquid-glass rounded-[1.25rem] p-6 group cursor-default"
+          >
+            <div className="liquid-glass icon-box-glass group-hover:bg-white/10 transition-all" style={{ width: 36, height: 36 }}>
+              <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
+            </div>
+            <p className="text-xs mt-4 text-white/60 font-body">{s.l}</p>
+            <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
+              {s.v} <span className="text-xs text-white/60 font-body">{s.u}</span>
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Interior temperature · 12h</h3>
+          <span className="liquid-glass tag-glass">Stable</span>
+        </div>
+        <p className="text-xs mt-3 text-white/60 font-body">hover to scrub</p>
+        <div className="mt-3">
+          <Sparkline />
+        </div>
+      </div>
+
+      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+        <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Exterior vs. interior</h3>
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+          {compare.map((c) => (
+            <div key={c.l} className="liquid-glass rounded-[1rem] p-4">
+              <p className="text-[11px] uppercase tracking-[0.16em] text-white/50 font-body">{c.l}</p>
+              <div className="mt-3 flex items-baseline justify-between">
+                <div>
+                  <p className="text-[10px] text-white/40 font-body">out</p>
+                  <p className="font-heading text-white text-xl">{c.out}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-white/40 font-body">in</p>
+                  <p className="font-heading text-white text-xl">{c.in}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============== Activity ============== */
+const activityFilters = ["All", "System", "Climate", "Guests"];
+const events: { t: string; cat: string; i: any; title: string; body: string }[] = [
+  { t: "22:14", cat: "System", i: BatteryFull, title: "Battery topping started", body: "Charging from 86% to 100% — est. 38 min." },
+  { t: "21:47", cat: "System", i: ShieldCheck, title: "Solar array locked", body: "Storm mode engaged ahead of forecast wind." },
+  { t: "20:32", cat: "Climate", i: Thermometer, title: "Interior temp adjusted", body: "Target raised to 19.5°C for sleep cycle." },
+  { t: "19:02", cat: "Guests", i: Users, title: "Guest arrival registered", body: "2 occupants checked in at the south hatch." },
+  { t: "17:50", cat: "Climate", i: Cloud, title: "Air quality nominal", body: "AQI 12 — particulate filter cycled." },
+  { t: "16:21", cat: "System", i: Zap, title: "Wind turbine peak", body: "Output hit 1.8kW at 31 km/h gust." },
+  { t: "14:05", cat: "System", i: Settings, title: "Firmware sync", body: "Sensor module updated to v4.12.0." },
+];
+
+function ActivityPanel() {
+  const [filter, setFilter] = useState("All");
+  const list = filter === "All" ? events : events.filter((e) => e.cat === filter);
+  return (
+    <div className="mt-6">
+      <div className="flex items-center gap-2 flex-wrap">
+        {activityFilters.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-1.5 rounded-full text-xs font-body font-medium transition-colors ${
+              filter === f ? "bg-white text-black" : "liquid-glass text-white/70 hover:text-white"
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Event log</h3>
+          <span className="liquid-glass tag-glass inline-flex items-center gap-1.5">
+            <ActivityIcon className="h-3 w-3" strokeWidth={1.75} />
+            {list.length} events
+          </span>
+        </div>
+
+        <div className="mt-6 relative">
+          <div className="absolute left-[22px] top-2 bottom-2 w-px bg-white/10" aria-hidden />
+          <AnimatePresence mode="popLayout">
+            {list.map((e, idx) => (
+              <motion.div
+                key={`${filter}-${e.t}-${e.title}`}
+                layout
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.22, delay: idx * 0.03, ease: [0, 0, 0.2, 1] }}
+                className="relative flex gap-4 py-3 group"
+              >
+                <div className="relative z-10 liquid-glass icon-box-glass shrink-0 group-hover:bg-white/10 transition-colors" style={{ width: 44, height: 44 }}>
+                  <e.i className="h-4 w-4 text-white" strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-3">
+                    <p className="font-heading text-white text-lg tracking-[-0.5px] leading-none">{e.title}</p>
+                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-body">{e.cat}</span>
+                  </div>
+                  <p className="mt-1.5 text-sm font-body text-white/70 leading-snug">{e.body}</p>
+                </div>
+                <span className="text-xs font-body text-white/50 tabular-nums shrink-0">{e.t}</span>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {list.length === 0 && (
+            <p className="text-sm text-white/50 font-body py-6 text-center">No events in this category.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============== Magnetic card wrapper ============== */
 function useMagnet(strength = 8) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -242,16 +471,13 @@ function useMagnet(strength = 8) {
   return { ref, sx, sy, rotateX, rotateY, onMove, onLeave };
 }
 
-function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
+function StatCard({ icon: Icon, label, value, unit }: any) {
   const display = String(Math.round(value));
   const mag = useMagnet();
   const [hover, setHover] = useState(false);
   return (
     <motion.div
       ref={mag.ref}
-      initial={blurInit}
-      animate={blurIn}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
       onMouseMove={mag.onMove}
       onMouseLeave={() => { mag.onLeave(); setHover(false); }}
       onMouseEnter={() => setHover(true)}
@@ -269,9 +495,7 @@ function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={display}
-                initial={{ y: "100%" }}
-                animate={{ y: "0%" }}
-                exit={{ y: "-100%" }}
+                initial={{ y: "100%" }} animate={{ y: "0%" }} exit={{ y: "-100%" }}
                 transition={{ duration: 0.18 }}
                 className="font-heading text-white text-4xl tracking-[-1px] leading-none"
               >
@@ -284,13 +508,7 @@ function StatCard({ icon: Icon, label, value, unit, delay = 0 }: any) {
         <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]" style={{ filter: hover ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : "none", transition: "filter 0.3s" }}>
           <circle cx="34" cy="34" r="28" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
           <motion.circle
-            cx="34"
-            cy="34"
-            r="28"
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3"
-            strokeLinecap="round"
+            cx="34" cy="34" r="28" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"
             strokeDasharray={2 * Math.PI * 28}
             initial={{ strokeDashoffset: 2 * Math.PI * 28 }}
             animate={{ strokeDashoffset: 2 * Math.PI * 28 * (1 - Math.min(100, value) / 100) }}
@@ -306,7 +524,7 @@ const DRAW_RATE = 11; // % per hour
 const RING_R = 28;
 const RING_C = 2 * Math.PI * RING_R;
 
-function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }) {
+function PowerRunwayCard({ value }: { value: number }) {
   const display = String(Math.round(value));
   const hours = Math.max(0, Math.round(value / DRAW_RATE));
   const low = value < 20;
@@ -322,9 +540,6 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
   return (
     <motion.div
       ref={mag.ref}
-      initial={blurInit}
-      animate={blurIn}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
       onMouseMove={mag.onMove}
       onMouseLeave={() => { mag.onLeave(); setHover(false); }}
       onMouseEnter={() => setHover(true)}
@@ -342,9 +557,7 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
             <AnimatePresence mode="popLayout">
               <motion.span
                 key={display}
-                initial={{ y: "100%" }}
-                animate={{ y: "0%" }}
-                exit={{ y: "-100%" }}
+                initial={{ y: "100%" }} animate={{ y: "0%" }} exit={{ y: "-100%" }}
                 transition={{ duration: 0.18 }}
                 className="font-heading text-white text-4xl tracking-[-1px] leading-none"
               >
@@ -353,22 +566,13 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
             </AnimatePresence>
             <span className="text-sm text-white/60 font-body">%</span>
           </div>
-          <p className="mt-2 text-xs text-white/60 font-body">
-            ~{hours}h remaining at current draw
-          </p>
+          <p className="mt-2 text-xs text-white/60 font-body">~{hours}h remaining at current draw</p>
         </div>
         <svg width="68" height="68" viewBox="0 0 68 68" className="rotate-[-90deg]" style={{ filter: hover && !low ? "drop-shadow(0 0 8px rgba(255,255,255,0.55))" : "none", transition: "filter 0.3s" }}>
           <circle cx="34" cy="34" r={RING_R} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
           <circle
-            cx="34"
-            cy="34"
-            r={RING_R}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray={RING_C}
-            strokeDashoffset={offset}
+            cx="34" cy="34" r={RING_R} fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round"
+            strokeDasharray={RING_C} strokeDashoffset={offset}
             style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0, 0, 0.2, 1)" }}
             className={low ? "ring-amber-pulse" : undefined}
           />
@@ -378,6 +582,7 @@ function PowerRunwayCard({ value, delay = 0 }: { value: number; delay?: number }
   );
 }
 
+/* ============== Sparkline (scrubbable) ============== */
 function Sparkline() {
   const w = 800, h = 120;
   const points = useMemo(
@@ -400,20 +605,15 @@ function Sparkline() {
     if (!svg) return;
     const r = svg.getBoundingClientRect();
     const px = ((e.clientX - r.left) / r.width) * w;
-    let nearest = 0;
-    let best = Infinity;
-    coords.forEach((c, i) => {
-      const d = Math.abs(c.x - px);
-      if (d < best) { best = d; nearest = i; }
-    });
+    let nearest = 0, best = Infinity;
+    coords.forEach((c, i) => { const d = Math.abs(c.x - px); if (d < best) { best = d; nearest = i; } });
     const c = coords[nearest];
     setHover({ x: c.x, y: c.y, v: c.v, i: nearest });
   };
 
   return (
     <svg
-      ref={svgRef}
-      viewBox={`0 0 ${w} ${h}`}
+      ref={svgRef} viewBox={`0 0 ${w} ${h}`}
       className="w-full h-[120px] cursor-crosshair"
       preserveAspectRatio="none"
       onMouseMove={onMove}
@@ -427,12 +627,8 @@ function Sparkline() {
       </defs>
       <path d={`${path} L ${w} ${h} L 0 ${h} Z`} fill="url(#g)" />
       <motion.path
-        d={path}
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth="1.5"
-        initial={{ pathLength: 0 }}
-        animate={{ pathLength: 1 }}
+        d={path} fill="none" stroke="#ffffff" strokeWidth="1.5"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
         transition={{ duration: 1.2, ease: [0, 0, 0.2, 1] }}
       />
       {hover && (
@@ -447,6 +643,41 @@ function Sparkline() {
           </g>
         </g>
       )}
+    </svg>
+  );
+}
+
+/* ============== Dual sparkline (Energy tab) ============== */
+function DualSparkline() {
+  const w = 800, h = 160;
+  const N = 28;
+  const gen = useMemo(() => Array.from({ length: N }, (_, i) => 30 + Math.sin(i * 0.4) * 20 + Math.cos(i * 0.18) * 6), []);
+  const draw = useMemo(() => Array.from({ length: N }, (_, i) => 25 + Math.sin(i * 0.5 + 1) * 10 + Math.cos(i * 0.22) * 5), []);
+  const all = [...gen, ...draw];
+  const max = Math.max(...all), min = Math.min(...all);
+  const toPath = (arr: number[]) =>
+    arr.map((p, i) => {
+      const x = (i / (arr.length - 1)) * w;
+      const y = h - ((p - min) / (max - min)) * h;
+      return `${i === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    }).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[160px]" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${toPath(gen)} L ${w} ${h} L 0 ${h} Z`} fill="url(#g2)" />
+      <motion.path d={toPath(gen)} fill="none" stroke="#ffffff" strokeWidth="1.75"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+        transition={{ duration: 1.2, ease: [0, 0, 0.2, 1] }}
+      />
+      <motion.path d={toPath(draw)} fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.25" strokeDasharray="3 3"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }}
+        transition={{ duration: 1.2, delay: 0.2, ease: [0, 0, 0.2, 1] }}
+      />
     </svg>
   );
 }
