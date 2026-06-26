@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield } from "lucide-react";
 import { REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
@@ -18,8 +17,7 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
-  const navigate = useNavigate();
-  const { user, openLogin } = useMockAuth();
+  const { user, openLoginForSite, openOnboardingWithSite } = useMockAuth();
   const globeRef = useRef<HTMLDivElement | null>(null);
   const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
 
@@ -42,9 +40,18 @@ export default function Discover() {
     [selectedRegion, selectedClimate],
   );
 
-  const handleConfigure = () => {
-    if (user) navigate("/configurator");
-    else openLogin();
+  const handleConfigure = (s?: typeof SITES[number]) => {
+    const site = s ?? focusedSite;
+    if (!site) return;
+    const payload = {
+      name:         site.title,
+      location:     site.region,
+      temperature:  site.temperature,
+      precipitation: site.rainfall,
+      climate_zone: site.climateId,
+    };
+    if (user) openOnboardingWithSite(payload);
+    else openLoginForSite(payload);
   };
 
   return (
@@ -168,7 +175,7 @@ export default function Discover() {
                         </button>
                         {active && (
                           <button
-                            onClick={handleConfigure}
+                            onClick={() => handleConfigure()}
                             className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
                           >
                             Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
