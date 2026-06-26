@@ -18,10 +18,9 @@ export default function Landing() {
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
       <section className="relative h-screen min-h-[760px] w-full overflow-hidden bg-black">
-        <iframe
-          src="/scenes/desert-nightfall.html"
-          title="Desert Nightfall"
-          className="absolute inset-0 w-full h-full z-0 border-0 pointer-events-none"
+        <FadingVideo
+          src="/hero-bg.mp4"
+          className="absolute inset-0 w-full h-full z-0 object-cover pointer-events-none"
         />
 
         <div className="relative z-10 h-full flex flex-col">
