@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2 } from "lucide-react";
 import BlurText from "@/components/BlurText";
-import ClaimSpotScene from "@/components/ClaimSpotScene";
 import dwelling from "@/assets/dwelling-hero.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
@@ -302,7 +301,13 @@ export default function Configurator() {
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <ClaimSpotScene className="fixed inset-0 w-full h-full z-0" />
+      <video
+        src="/configurator-bg.mp4"
+        autoPlay
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none"
+      />
       <div className="fixed inset-0 z-0 bg-black/55" aria-hidden />
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">

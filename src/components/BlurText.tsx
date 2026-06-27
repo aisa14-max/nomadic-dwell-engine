@@ -1,79 +1,85 @@
 import { motion, useInView } from "framer-motion";
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function BlurText({
   text,
   className = "",
   stepDuration = 0.35,
   delayPerWord = 100,
+  enableSweep = false,
 }: {
   text: string;
   className?: string;
   stepDuration?: number;
   delayPerWord?: number;
+  enableSweep?: boolean;
 }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const inView = useInView(ref, { amount: 0.1, once: true });
   const letterRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const [cursorX, setCursorX] = useState<number | null>(null);
+  const [sweepIdx, setSweepIdx] = useState<number | null>(null);
 
   const words = text.split(" ");
-  let globalLetterIndex = 0;
+  const totalLetters = text.replace(/ /g, "").length;
 
-  const handleMove = useCallback((e: React.MouseEvent<HTMLParagraphElement>) => {
-    const rect = ref.current?.getBoundingClientRect();
-    if (!rect) return;
-    setCursorX(e.clientX - rect.left);
-  }, []);
+  // Sweep by letter index so it follows reading order: line 1 first, then line 2
+  useEffect(() => {
+    if (!inView || !enableSweep) return;
 
-  const RADIUS_FULL = 24;
-  const RADIUS_FADE = 140;
+    const sweepTimer = setTimeout(() => {
+      const SWEEP_DURATION = 4000;
+      const start = performance.now();
+      let raf: number;
+
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / SWEEP_DURATION, 1);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        setSweepIdx(eased * (totalLetters + 8) - 4);
+        if (t < 1) {
+          raf = requestAnimationFrame(tick);
+        } else {
+          setSweepIdx(null);
+        }
+      };
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, 200);
+
+    return () => clearTimeout(sweepTimer);
+  }, [inView, enableSweep, totalLetters]);
+
+  const RADIUS_FULL = 1.5;
+  const RADIUS_FADE = 8;
 
   const getStyleForLetter = (idx: number) => {
-    const el = letterRefs.current[idx];
-    if (!el || cursorX === null) {
-      return { color: "#ffffff", textShadow: "0 0 0px rgba(245,200,130,0)" };
+    if (sweepIdx === null) {
+      return { color: "#ffffff", textShadow: "none" };
     }
-    const parentRect = ref.current!.getBoundingClientRect();
-    const r = el.getBoundingClientRect();
-    const centerX = r.left - parentRect.left + r.width / 2;
-    const dist = Math.abs(centerX - cursorX);
+    const dist = Math.abs(idx - sweepIdx);
     let linear = 0;
     if (dist <= RADIUS_FULL) linear = 1;
     else if (dist >= RADIUS_FADE) linear = 0;
     else linear = 1 - (dist - RADIUS_FULL) / (RADIUS_FADE - RADIUS_FULL);
-    // easeOutQuad
     const intensity = 1 - (1 - linear) * (1 - linear);
 
-    // Blend white -> warm sandy gold, capped at 70% to preserve legibility
-    const blend = intensity * 0.7;
-    const r1 = 255, g1 = 255, b1 = 255;
-    const r2 = 245, g2 = 200, b2 = 130;
-    const cr = Math.round(r1 + (r2 - r1) * blend);
-    const cg = Math.round(g1 + (g2 - g1) * blend);
-    const cb = Math.round(b1 + (b2 - b1) * blend);
+    const blend = intensity * 0.75;
+    const cr = Math.round(255 + (245 - 255) * blend);
+    const cg = Math.round(255 + (200 - 255) * blend);
+    const cb = Math.round(255 + (130 - 255) * blend);
 
-    const coreAlpha = intensity * 0.55;
-    const coreBlur = intensity * 14;
-    const bloomAlpha = intensity * 0.22;
     return {
       color: `rgb(${cr},${cg},${cb})`,
-      textShadow: `0 0 ${coreBlur}px rgba(245,200,130,${coreAlpha}), 0 0 22px rgba(245,200,130,${bloomAlpha})`,
+      textShadow: `0 0 ${intensity * 18}px rgba(245,200,130,${intensity * 0.6}), 0 0 30px rgba(245,200,130,${intensity * 0.28})`,
     };
   };
+
+  let globalLetterIndex = 0;
 
   return (
     <p
       ref={ref}
       className={className}
-      onMouseMove={handleMove}
-      onMouseLeave={() => setCursorX(null)}
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: "center",
-        rowGap: "0.1em",
-      }}
+      style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", rowGap: "0.1em" }}
     >
       {words.map((w, wi) => (
         <motion.span
@@ -81,19 +87,10 @@ export default function BlurText({
           initial={{ filter: "blur(10px)", opacity: 0, y: 50 }}
           animate={
             inView
-              ? {
-                  filter: ["blur(10px)", "blur(5px)", "blur(0px)"],
-                  opacity: [0, 0.5, 1],
-                  y: [50, -5, 0],
-                }
+              ? { filter: ["blur(10px)", "blur(5px)", "blur(0px)"], opacity: [0, 0.5, 1], y: [50, -5, 0] }
               : {}
           }
-          transition={{
-            duration: stepDuration * 2,
-            times: [0, 0.5, 1],
-            ease: "easeOut",
-            delay: (wi * delayPerWord) / 1000,
-          }}
+          transition={{ duration: stepDuration * 2, times: [0, 0.5, 1], ease: "easeOut", delay: (wi * delayPerWord) / 1000 }}
           style={{ display: "inline-block", marginRight: "0.28em", whiteSpace: "nowrap" }}
         >
           {w.split("").map((ch) => {
@@ -107,7 +104,7 @@ export default function BlurText({
                   display: "inline-block",
                   color: s.color,
                   textShadow: s.textShadow,
-                  transition: "color 220ms cubic-bezier(0.22, 1, 0.36, 1), text-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  transition: "color 180ms ease-out, text-shadow 180ms ease-out",
                 }}
               >
                 {ch}

@@ -17,34 +17,10 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Dashboard() {
   const [tab, setTab] = useState(0);
-  const [solar, setSolar] = useState(0);
-  const [battery, setBattery] = useState(0);
-  const [wind, setWind] = useState(0);
+  const [solar] = useState(78);
+  const [battery] = useState(92);
+  const [wind] = useState(14);
   const [alert, setAlert] = useState(true);
-
-  useEffect(() => {
-    const targets = { solar: 78, battery: 92, wind: 14 };
-    const start = performance.now();
-    const dur = 1000;
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / dur);
-      const e = 1 - Math.pow(1 - p, 3);
-      setSolar(Math.round(targets.solar * e));
-      setBattery(Math.round(targets.battery * e));
-      setWind(Math.round(targets.wind * e));
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, []);
-
-  useEffect(() => {
-    const i = setInterval(() => {
-      setSolar((s) => Math.max(40, Math.min(99, s + (Math.random() - 0.5) * 4)));
-      setBattery((s) => Math.max(70, Math.min(100, s + (Math.random() - 0.5) * 2)));
-      setWind((s) => Math.max(4, Math.min(40, s + (Math.random() - 0.5) * 3)));
-    }, 2200);
-    return () => clearInterval(i);
-  }, []);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">

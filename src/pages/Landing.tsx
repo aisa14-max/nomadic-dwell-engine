@@ -18,10 +18,15 @@ export default function Landing() {
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
       <section className="relative h-screen min-h-[760px] w-full overflow-hidden bg-black">
-        <FadingVideo
+        <video
           src="/hero-bg.mp4"
+          autoPlay
+          muted
+          playsInline
           className="absolute inset-0 w-full h-full z-0 object-cover pointer-events-none"
         />
+        {/* bottom fade into capabilities */}
+        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#070b1f] to-transparent z-10 pointer-events-none" />
 
         <div className="relative z-10 h-full flex flex-col">
           <div className="flex-1 flex flex-col items-center justify-center pt-24 px-4 text-center">
@@ -41,6 +46,7 @@ export default function Landing() {
               <BlurText
                 text="Live anywhere across the wild Earth"
                 className="text-6xl md:text-7xl lg:text-[5.5rem] font-heading text-white leading-[0.85] tracking-[-4px]"
+                enableSweep
               />
             </div>
 
@@ -99,7 +105,7 @@ export default function Landing() {
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.7, delay: 1.4, ease: "easeOut" }}
-            className="flex flex-col items-center gap-4 pb-8 px-4"
+            className="flex flex-col items-center gap-4 pb-8 px-4 mt-8"
           >
             <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body">
               Collaborating with off-grid pioneers globally
@@ -116,11 +122,13 @@ export default function Landing() {
       </section>
 
       {/* ============ CAPABILITIES ============ */}
-      <section className="relative min-h-screen w-full overflow-hidden bg-black">
+      <section className="relative w-full overflow-hidden bg-black">
         <StarfieldScene className="absolute inset-0 w-full h-full z-0" />
+        {/* top fade from hero */}
+        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-[#070b1f] to-transparent z-10 pointer-events-none" />
 
-        <div className="relative z-10 px-8 md:px-16 lg:px-20 pt-24 pb-10 flex flex-col min-h-screen">
-          <div className="mb-auto">
+        <div className="relative z-20 px-8 md:px-16 lg:px-20 pt-24 pb-20 flex flex-col">
+          <div>
             <p className="text-sm font-body text-white/80 mb-6">// Capabilities</p>
             <h2 className="font-heading text-white text-6xl md:text-7xl lg:text-[6rem] leading-[0.9] tracking-[-3px]">
               Habitat
@@ -149,15 +157,15 @@ export default function Landing() {
               iconPath="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7Z"
             />
           </div>
+
+          <footer className="mt-16 pt-8 border-t border-white/10 text-white/60 text-sm font-body">
+            <div className="flex flex-wrap justify-between gap-4">
+              <span>© 2026 Nomadic Engine</span>
+              <span>Designed for terrain. Built for return.</span>
+            </div>
+          </footer>
         </div>
       </section>
-
-      <footer className="px-8 md:px-16 py-10 bg-black text-white/60 text-sm font-body">
-        <div className="mx-auto max-w-[1400px] flex flex-wrap justify-between gap-4">
-          <span>© 2026 Nomadic Engine</span>
-          <span>Designed for terrain. Built for return.</span>
-        </div>
-      </footer>
     </div>
   );
 }
