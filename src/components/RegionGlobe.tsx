@@ -254,27 +254,24 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
         `<div><div style="font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:rgba(255,255,255,0.45);margin-bottom:5px">${label}</div>${body}</div>`;
 
       return `
-<div style="display:flex;flex-direction:column;width:300px;font-family:inherit;color:#fff;margin:-10px;border-radius:14px;overflow:hidden;background:linear-gradient(180deg,#16161c 0%,#0d0d11 100%)">
-  <div style="position:relative;width:100%;height:130px;overflow:hidden">
-    <img src="${escapeHtml(site.image)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block" />
-    <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,13,17,0) 30%,rgba(13,13,17,0.95) 100%)"></div>
-    <div style="position:absolute;top:8px;right:8px;display:inline-flex;align-items:center;gap:4px;padding:4px 8px;border-radius:999px;background:rgba(13,13,17,0.7);border:0.5px solid rgba(255,255,255,0.18);backdrop-filter:blur(8px);font-size:10px;color:${scoreHue};box-shadow:0 0 14px ${scoreGlow}">
-      <span style="opacity:0.7;letter-spacing:0.1em;text-transform:uppercase;font-size:8px;color:rgba(255,255,255,0.65)">Nomad</span>
-      <span style="font-weight:600">${score}</span>
-      <span style="opacity:0.5;font-size:9px">/100</span>
-    </div>
-    <div style="position:absolute;left:12px;bottom:8px;right:12px">
-      <div style="font-style:italic;font-size:16px;line-height:1.1;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.6)">${escapeHtml(site.title)}</div>
-    </div>
+<div style="position:relative;width:300px;height:420px;font-family:inherit;color:#fff;margin:-10px;border-radius:14px;overflow:hidden">
+  <img src="${escapeHtml(site.image)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block" />
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.15) 0%,rgba(0,0,0,0.05) 30%,rgba(0,0,0,0.75) 60%,rgba(0,0,0,0.97) 100%)"></div>
+  <div style="position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,0.5);border:0.5px solid rgba(255,255,255,0.18);backdrop-filter:blur(10px);font-size:10px;color:${scoreHue};box-shadow:0 0 14px ${scoreGlow}">
+    <span style="opacity:0.7;letter-spacing:0.1em;text-transform:uppercase;font-size:8px;color:rgba(255,255,255,0.6)">Nomad</span>
+    <span style="font-weight:600">${score}</span>
+    <span style="opacity:0.45;font-size:9px">/100</span>
   </div>
-  <div style="padding:12px 14px 12px;display:flex;flex-direction:column;gap:11px">
-    <div style="font-style:italic;font-size:12px;line-height:1.35;color:rgba(255,255,255,0.85)">${escapeHtml(ins.tagline)}</div>
-    <div style="font-size:11px;line-height:1.4;color:rgba(255,255,255,0.6)">${escapeHtml(ins.atmosphere)}</div>
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px">
+    <div>
+      <div style="font-family:'Instrument Serif',serif;font-style:italic;font-size:22px;line-height:1.1;color:#fff;letter-spacing:-0.5px;text-shadow:0 2px 12px rgba(0,0,0,0.8)">${escapeHtml(site.title)}</div>
+      <div style="font-size:11px;font-style:italic;line-height:1.4;color:rgba(255,255,255,0.75);margin-top:5px">${escapeHtml(ins.tagline)}</div>
+    </div>
     ${section("Best nearby", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.activities.map(pill).join("")}</div>`)}
     ${section("Community vibe", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.vibes.map((v, i) => vibeDot(v, i)).join("")}</div>`)}
     ${section("Engine adaptations", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.adaptations.map(adaptChip).join("")}</div>`)}
-    <div style="display:flex;justify-content:flex-end;border-top:0.5px solid rgba(255,255,255,0.08);padding-top:8px;margin-top:2px">
-      <a href="#" data-rg-view="1" style="font-size:11px;color:#fff;text-decoration:none;letter-spacing:0.02em">Open site dossier →</a>
+    <div style="display:flex;justify-content:flex-end;border-top:0.5px solid rgba(255,255,255,0.12);padding-top:8px;margin-top:2px">
+      <a href="#" data-rg-view="1" style="font-size:11px;color:rgba(255,255,255,0.85);text-decoration:none;letter-spacing:0.06em;text-transform:uppercase">Open site dossier →</a>
     </div>
   </div>
 </div>`;
@@ -285,7 +282,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       const style = document.createElement("style");
       style.id = "rg-popup-style";
       style.textContent = `
-        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:transparent;border:0.5px solid rgba(255,255,255,0.14);border-radius:14px;padding:10px;box-shadow:0 20px 60px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.06);color:#fff;opacity:0;transition:opacity 200ms ease;overflow:hidden;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+        .mapboxgl-popup.rg-popup .mapboxgl-popup-content{background:transparent;border:0.5px solid rgba(255,255,255,0.14);border-radius:14px;padding:10px;box-shadow:0 24px 80px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.08);color:#fff;opacity:0;transition:opacity 200ms ease;overflow:hidden}
         .mapboxgl-popup.rg-popup.rg-popup-visible .mapboxgl-popup-content{opacity:1}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-tip{border-top-color:#111114!important;border-bottom-color:#111114!important;border-left-color:#111114!important;border-right-color:#111114!important}
         .mapboxgl-popup.rg-popup .mapboxgl-popup-close-button{color:rgba(255,255,255,0.6);font-size:18px;padding:4px 8px}
