@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import habitatNight from "@/assets/dwelling-home.png";
+import habitatNight from "@/assets/habitat-elevation.jpg";
 
 type Props = { className?: string };
 
