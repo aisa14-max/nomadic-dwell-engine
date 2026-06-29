@@ -22,7 +22,8 @@ export default function ReservationCustomizer({ onClose }: Props) {
   const r = useReservation();
   const navigate = useNavigate();
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
-  const [shownPart, setShownPart] = useState<PartId | null>(null);
+  const [shownPart, setShownPart] = useState<PartId | null>("rib");
+  const [shownOption, setShownOption] = useState<string | undefined>("square");
 
   // close picker on outside click — listener on overlay
   const handleBackdrop = () => {
@@ -40,11 +41,12 @@ export default function ReservationCustomizer({ onClose }: Props) {
     const part = r.activePart;
     r.selectOption(part, optionId);
     setShownPart(part);
+    setShownOption(optionId);
     if (!wasConfigured) setFlashAt({ id: part, key: Date.now() });
   };
 
   useEffect(() => {
-    if (r.stage === "confirmed") setShownPart(null);
+    if (r.stage === "confirmed") { setShownPart(null); setShownOption(undefined); }
   }, [r.stage]);
 
   // clear flash after animation
@@ -90,7 +92,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
 
           {/* Per-tab PNG overlay */}
           {r.stage !== "confirmed" && (
-            <PartImageOverlay activePart={shownPart} />
+            <PartImageOverlay activePart={shownPart} activeOption={shownOption} />
           )}
 
 

@@ -1,27 +1,35 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { PartId } from "@/data/dwellingParts";
 import ribs from "@/assets/parts/Ribs.png";
-import terraribs from "@/assets/parts/Terraribs.png";
-import solidWalls from "@/assets/parts/Solid_Walls.png";
-import interior from "@/assets/parts/Interior.png";
-import membrane from "@/assets/parts/Membrane.png";
-import additions from "@/assets/parts/Additions.png";
-import exterior from "@/assets/parts/Exterior.png";
+import darkFloor from "@/assets/panels-dark-floor.png";
+import pinkWalls from "@/assets/panels-pink-walls.png";
+import panelsMembrane from "@/assets/panels-membrane-v2.png";
+import solarPanels from "@/assets/panels-solar-v2.png";
+import seating from "@/assets/panels-seating-v2.png";
 import defaultImg from "@/assets/parts/Default.png";
+import indoorSquare from "@/assets/panels-square.png";
+import indoorOrganic from "@/assets/panels-organic.png";
 
-const IMAGES: Record<PartId, string> = {
+const PART_IMAGES: Record<PartId, string> = {
   rib: ribs,
-  platform: terraribs,
-  endwall: solidWalls,
-  interior,
-  membrane,
-  skylight: additions,
-  door: exterior,
+  platform: darkFloor,
+  endwall: pinkWalls,
+  membrane: panelsMembrane,
+  skylight: solarPanels,
+  door: seating,
 };
 
-export default function PartImageOverlay({ activePart }: { activePart: PartId | null }) {
-  const src = activePart ? IMAGES[activePart] : defaultImg;
-  const key = activePart ?? "__default__";
+const OPTION_IMAGES: Partial<Record<PartId, Record<string, string>>> = {
+  rib: {
+    square: indoorSquare,
+    organic: indoorOrganic,
+  },
+};
+
+export default function PartImageOverlay({ activePart, activeOption }: { activePart: PartId | null; activeOption?: string }) {
+  const optionSrc = activePart && activeOption ? OPTION_IMAGES[activePart]?.[activeOption] : undefined;
+  const src = optionSrc ?? (activePart ? PART_IMAGES[activePart] : defaultImg);
+  const key = activePart ? `${activePart}-${activeOption ?? "default"}` : "__default__";
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
       <AnimatePresence mode="wait">

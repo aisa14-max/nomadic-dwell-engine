@@ -1,7 +1,6 @@
 export type PartId =
   | "membrane"
   | "endwall"
-  | "interior"
   | "rib"
   | "platform"
   | "skylight"
@@ -20,42 +19,32 @@ export type Part = {
 export const PARTS: Part[] = [
   {
     id: "rib",
-    label: "Ribs",
+    label: "Indoor Furniture",
     hotspot: { x: 59, y: 32 },
     options: [
-      { id: "white", name: "White", hex: "#f2f2f2", price: 760 },
-      { id: "grey", name: "Grey", hex: "#7a808a", price: 920 },
-      { id: "black", name: "Black", hex: "#1a1a1c", price: 820 },
+      { id: "square", name: "Square", hex: "#ffffff", price: 920 },
+      { id: "organic", name: "Organic", hex: "#f4a7c3", price: 760 },
+      { id: "rectangular", name: "Rectangular", hex: "#f5e642", price: 820 },
     ],
   },
   {
     id: "platform",
-    label: "Terraribs",
+    label: "Flooring",
     hotspot: { x: 70, y: 65 },
     options: [
-      { id: "white", name: "White", hex: "#ece9e2", price: 2100 },
-      { id: "grey", name: "Grey", hex: "#9e9e9c", price: 1980 },
-      { id: "black", name: "Black", hex: "#1d1d1f", price: 2240 },
+      { id: "light-ash", name: "Light Ash", hex: "#d4c4a0", price: 2100 },
+      { id: "european-oak", name: "European Oak", hex: "#a07848", price: 1980 },
+      { id: "smoked-walnut", name: "Smoked Walnut", hex: "#4a3020", price: 2240 },
     ],
   },
   {
     id: "endwall",
-    label: "Solid Walls",
+    label: "Walls Panels",
     hotspot: { x: 24, y: 33 },
     options: [
-      { id: "wooden", name: "Wooden Panels", hex: "#a67648", price: 980 },
-      { id: "purple", name: "Purple Panels", hex: "#6b4a8a", price: 1180 },
-      { id: "white", name: "White Panels", hex: "#ececec", price: 1100 },
-    ],
-  },
-  {
-    id: "interior",
-    label: "Interior",
-    hotspot: { x: 52, y: 30 },
-    options: [
-      { id: "green-boxy", name: "Green Boxy", hex: "#4a6b3a", price: 1640 },
-      { id: "yellow-organic", name: "Yellow Organic", hex: "#d8b04a", price: 1880 },
-      { id: "cotton-grey", name: "Cotton Grey", hex: "#bdbcb6", price: 1720 },
+      { id: "white", name: "White Panels", hex: "#ececec", price: 980 },
+      { id: "pink", name: "Pink Panels", hex: "#f4a7c3", price: 1180 },
+      { id: "grey", name: "Grey Panels", hex: "#8a8a8e", price: 1100 },
     ],
   },
   {
@@ -70,7 +59,7 @@ export const PARTS: Part[] = [
   },
   {
     id: "skylight",
-    label: "Additions",
+    label: "Off Grid Elements",
     hotspot: { x: 53, y: 33 },
     options: [
       { id: "solar", name: "Solar Panel", hex: "#1c2a4a", price: 600 },
@@ -80,7 +69,7 @@ export const PARTS: Part[] = [
   },
   {
     id: "door",
-    label: "Exterior",
+    label: "Outdoor Furniture",
     hotspot: { x: 85, y: 62 },
     options: [
       { id: "sitting", name: "Sitting", hex: "#a06a3a", price: 540 },
