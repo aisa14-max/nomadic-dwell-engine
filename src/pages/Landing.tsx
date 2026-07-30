@@ -71,9 +71,9 @@ export default function Landing() {
             >
               <Link
                 to="/discover"
-                className="liquid-glass-strong group rounded-full px-5 py-2.5 text-sm font-medium text-white font-body inline-flex items-center gap-2 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] hover:text-white"
+                className="liquid-glass-strong group rounded-full px-5 py-2.5 text-sm font-medium text-white font-body inline-flex items-center gap-2 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)] hover:text-amber-200"
               >
-                Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300 group-hover:text-white" strokeWidth={2} />
+                Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300 group-hover:text-amber-300" strokeWidth={2} />
               </Link>
               <Link to="/configurator" className="text-sm font-body text-white inline-flex items-center gap-2">
                 View Liftoff <Play className="h-4 w-4 fill-white" strokeWidth={0} />
@@ -121,15 +121,48 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ============ LIFECYCLE ============ */}
+      <section className="relative w-full overflow-hidden bg-transparent">
+        <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-30" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#070b1f] to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#031b2b] to-transparent z-10 pointer-events-none" />
+
+        <div className="relative z-20 px-8 md:px-16 lg:px-20 py-20 mx-auto max-w-6xl">
+          <div className="mb-10 text-center">
+            <h2 className="font-heading text-white text-5xl md:text-6xl leading-tight tracking-[-2px]">
+              From Order to Return: The Life Cycle
+            </h2>
+            <p className="mt-4 text-base md:text-lg text-white/70 max-w-3xl mx-auto font-body leading-relaxed">
+              Watch how Nomadic Engine transforms assembly, habitation, disassembly, and reuse into one continuous life cycle.
+            </p>
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.25 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="relative liquid-glass group rounded-[1.25rem] overflow-hidden border border-white/10 bg-white/5 min-h-[360px] shadow-[0_0_40px_rgba(0,0,0,0.3)]"
+          >
+            <FadingVideo
+              src="/videos/production-to-assembly-lifecycle-1.mp4"
+              className="w-full h-full object-cover"
+              muted
+              loop
+              playsInline
+            />
+          </motion.div>
+        </div>
+      </section>
+
       {/* ============ CAPABILITIES ============ */}
       <section className="relative w-full overflow-hidden bg-black">
         <StarfieldScene className="absolute inset-0 w-full h-full z-0" />
         {/* top fade from hero */}
-        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-[#070b1f] to-transparent z-10 pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-[#031b2b] to-transparent z-10 pointer-events-none" />
 
         <div className="relative z-20 px-8 md:px-16 lg:px-20 pt-24 pb-20 flex flex-col">
           <div>
-            <p className="text-sm font-body text-white/80 mb-6">// Capabilities</p>
             <h2 className="font-heading text-white text-6xl md:text-7xl lg:text-[6rem] leading-[0.9] tracking-[-3px]">
               Habitat
               <br />
@@ -172,9 +205,9 @@ export default function Landing() {
 
 function StatGlass({ value, label, icon }: { value: string; label: string; icon: React.ReactNode }) {
   return (
-    <div className="liquid-glass group p-5 w-[220px] rounded-[1.25rem] text-left cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(255,255,255,0.25)]">
-      <div className="w-7 h-7 text-white transition-colors duration-300 group-hover:text-white">{icon}</div>
-      <p className="font-heading text-white text-4xl tracking-[-1px] leading-none mt-6 transition-colors duration-300 group-hover:text-white">{value}</p>
+    <div className="liquid-glass group p-5 w-[220px] rounded-[1.25rem] text-left cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]">
+      <div className="w-7 h-7 text-white transition-colors duration-300 group-hover:text-amber-300">{icon}</div>
+      <p className="font-heading text-white text-4xl tracking-[-1px] leading-none mt-6 transition-colors duration-300 group-hover:text-amber-200">{value}</p>
       <p className="text-xs text-white font-body font-light mt-2 transition-colors duration-300 group-hover:text-white/90">{label}</p>
     </div>
   );
@@ -197,11 +230,11 @@ function CapCard({
       whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.7, ease: "easeOut" }}
-      className="liquid-glass group rounded-[1.25rem] p-6 min-h-[360px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(255,255,255,0.25)]"
+      className="liquid-glass group rounded-[1.25rem] p-6 min-h-[360px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="liquid-glass icon-box-glass">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white transition-colors duration-300 group-hover:text-white">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white transition-colors duration-300 group-hover:text-amber-300">
             <path d={iconPath} />
           </svg>
         </div>
@@ -215,7 +248,7 @@ function CapCard({
       </div>
       <div className="flex-1" />
       <div className="mt-6">
-        <h3 className="font-heading text-white text-3xl md:text-4xl tracking-[-1px] leading-none transition-colors duration-300 group-hover:text-white">{title}</h3>
+        <h3 className="font-heading text-white text-3xl md:text-4xl tracking-[-1px] leading-none transition-colors duration-300 group-hover:text-amber-200">{title}</h3>
         <p className="mt-3 text-sm text-white/90 font-body font-light leading-snug max-w-[32ch] transition-colors duration-300 group-hover:text-white/90">{body}</p>
       </div>
     </motion.div>
