@@ -37,8 +37,8 @@ export default function Configurator() {
 
   // ── Read onboarding init data ─────────────────────────────────────────────────
   type InitState = {
-    spec?: Record<string, unknown>; image_b64?: string;
-    reply?: string; suggestions?: string[];
+    spec?: Record<string, unknown>; dwelling_spec?: Record<string, unknown>;
+    image_b64?: string; reply?: string; suggestions?: string[];
     site?: Record<string, unknown>; answers?: Record<string, string>;
   };
   // Read directly from storage on every render — cheap, synchronous, always fresh.
@@ -78,10 +78,13 @@ export default function Configurator() {
   }, []);
 
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  // Dwelling spec fetched from backend — used so section editors match what's in the dwelling view.
-  const [dwellingSpec, setDwellingSpec] = useState<Record<string, unknown> | null>(null);
+  // Dwelling spec: seeded from onboarding (has correct W + roof_style), falls back to /dwelling-spec.
+  const [dwellingSpec, setDwellingSpec] = useState<Record<string, unknown> | null>(
+    locationState?.dwelling_spec ?? null,
+  );
 
   useEffect(() => {
+    if (dwellingSpec) return; // already have it from onboarding
     fetch(`${API}/dwelling-spec`)
       .then((r) => r.json())
       .then((d) => setDwellingSpec(d))
@@ -121,11 +124,12 @@ export default function Configurator() {
       d:             fn.d            ?? 3,
       seed:          fn.seed         ?? 42,
       dining_style:  fn.dining_style ?? "compact",
-      roof_style:    fn.roof_style   ?? "any",
+      roof_style:    dwellingSpec.roof_style ?? fn.roof_style ?? "any",
       corridor_side: dwellingSpec.corridor_side ?? "none",
       corridor_w:    dwellingSpec.corridor_w    ?? 2,
       num_chairs:    fn.num_chairs   ?? 2,
       preferred_tags: fn.preferred_tags ?? [],
+      w:             dwellingSpec.W  ?? undefined,
     };
   };
 

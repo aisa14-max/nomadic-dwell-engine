@@ -146,12 +146,13 @@ export default function OnboardingFlow() {
         });
         const data = resp.ok ? await resp.json() : null;
         localStorage.setItem("configuratorInit", JSON.stringify({
-          spec:        data?.spec        ?? null,
-          image_b64:   data?.image_b64   ?? null,
-          reply:       data?.reply       ?? null,
-          suggestions: data?.suggestions ?? null,
-          site:        sitePayload,
-          answers:     namedAnswers,
+          spec:          data?.spec          ?? null,
+          dwelling_spec: data?.dwelling_spec ?? null,
+          image_b64:     data?.image_b64     ?? null,
+          reply:         data?.reply         ?? null,
+          suggestions:   data?.suggestions   ?? null,
+          site:          sitePayload,
+          answers:       namedAnswers,
         }));
         localStorage.setItem("configuratorReady", "true");
         handleOpenChange(false);
