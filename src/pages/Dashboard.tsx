@@ -52,15 +52,50 @@ export default function Dashboard() {
   const [battery] = useState(92);
   const [wind] = useState(14);
   const [alert, setAlert] = useState(true);
-<<<<<<< HEAD
   const portal = useMemo(readEnginePortalState, []);
+
+  // Reverse-playback loop for the background video — must be declared before
+  // any early return below (Rules of Hooks: hooks can't be called
+  // conditionally, and which state renders can change between mounts).
+  const videoBgRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = videoBgRef.current;
+    if (!video) return;
+    let raf: number;
+    const onEnded = () => {
+      const step = () => {
+        video.currentTime = Math.max(0, video.currentTime - 0.033);
+        if (video.currentTime > 0) {
+          raf = requestAnimationFrame(step);
+        } else {
+          video.play();
+        }
+      };
+      raf = requestAnimationFrame(step);
+    };
+    video.addEventListener("ended", onEnded);
+    return () => { video.removeEventListener("ended", onEnded); cancelAnimationFrame(raf); };
+  }, []);
+
+  const bg = (
+    <>
+      <video
+        ref={videoBgRef}
+        src="/engine-bg.mp4"
+        autoPlay
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-40"
+      />
+      <div className="fixed inset-0 z-0 bg-[#070b1f]/70" aria-hidden />
+    </>
+  );
 
   // No design started yet — nothing to monitor or resume.
   if (!portal.siteName) {
     return (
       <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-        <FadingVideo src={HERO_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-40" />
-        <div className="fixed inset-0 z-0 bg-black/60" aria-hidden />
+        {bg}
         <div className="relative z-10 min-h-screen flex items-center justify-center px-8">
           <div className="liquid-glass border border-white/10 rounded-[2rem] p-10 max-w-lg text-center">
             <p className="text-sm font-body text-white/60 mb-3">// Engine</p>
@@ -89,8 +124,7 @@ export default function Dashboard() {
     const pct = Math.round((portal.configuredCount / TOTAL_PARTS) * 100);
     return (
       <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-        <FadingVideo src={HERO_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-40" />
-        <div className="fixed inset-0 z-0 bg-black/60" aria-hidden />
+        {bg}
         <div className="relative z-10 min-h-screen flex items-center justify-center px-8">
           <div className="liquid-glass border border-white/10 rounded-[2rem] p-10 max-w-lg text-center">
             <p className="text-sm font-body text-white/60 mb-3">// Engine</p>
@@ -118,40 +152,10 @@ export default function Dashboard() {
       </div>
     );
   }
-=======
-  const videoBgRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const video = videoBgRef.current;
-    if (!video) return;
-    let raf: number;
-    const onEnded = () => {
-      const step = () => {
-        video.currentTime = Math.max(0, video.currentTime - 0.033);
-        if (video.currentTime > 0) {
-          raf = requestAnimationFrame(step);
-        } else {
-          video.play();
-        }
-      };
-      raf = requestAnimationFrame(step);
-    };
-    video.addEventListener("ended", onEnded);
-    return () => { video.removeEventListener("ended", onEnded); cancelAnimationFrame(raf); };
-  }, []);
->>>>>>> 2a080f1832fb96e480cb5441bbf5bd4904951212
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <video
-        ref={videoBgRef}
-        src="/engine-bg.mp4"
-        autoPlay
-        muted
-        playsInline
-        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-40"
-      />
-      <div className="fixed inset-0 z-0 bg-[#070b1f]/70" aria-hidden />
+      {bg}
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-16">
         <div className="mx-auto max-w-[1400px]">

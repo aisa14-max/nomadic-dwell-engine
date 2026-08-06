@@ -143,44 +143,52 @@ export default function OnboardingFlow() {
     else openLogin(ensurePlan);
   };
 
-  const goNext = async () => {
-    if (!selected) return;
-    if (isLast) {
-      setIsSubmitting(true);
-      const keys = ["occupants", "duration", "purpose", "priority", "scale"];
-      const namedAnswers = Object.fromEntries(
-        Object.entries(answers).map(([i, v]) => [keys[Number(i)], v]),
-      );
-      try {
-        const resp = await fetch(`${API}/onboarding`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ site: sitePayload, answers: namedAnswers }),
-        });
-        const data = resp.ok ? await resp.json() : null;
-        localStorage.setItem("configuratorInit", JSON.stringify({
-          spec:          data?.spec          ?? null,
-          dwelling_spec: data?.dwelling_spec ?? null,
-          image_b64:     data?.image_b64     ?? null,
-          reply:         data?.reply         ?? null,
-          suggestions:   data?.suggestions   ?? null,
-          site:          sitePayload,
-          answers:       namedAnswers,
-        }));
-        localStorage.setItem("configuratorReady", "true");
-        revealResults();
-      } catch {
-        localStorage.setItem("configuratorInit", JSON.stringify({
-          spec: null, image_b64: null, reply: null, suggestions: null,
-          site: sitePayload, answers: namedAnswers,
-        }));
-        localStorage.setItem("configuratorReady", "true");
-        revealResults();
-      } finally {
-        setIsSubmitting(false);
-      }
-    } else {
-      setStepIdx(i => i + 1);
+  // Selecting an option advances immediately on the first 4 questions — no
+  // separate "Continue" click, and "Back" is what changing your mind is for.
+  // The last question is different: picking an option there just selects it
+  // (same as before), and a separate "See your design" button submits —
+  // since submitting is a bigger, less reversible action than moving between
+  // questions, it gets its own explicit confirmation.
+  const selectOption = (optionId: string) => {
+    if (isSubmitting) return;
+    setAnswers(a => ({ ...a, [stepIdx]: optionId }));
+    if (!isLast) setStepIdx(i => i + 1);
+  };
+
+  const submitProposal = async () => {
+    if (!selected || isSubmitting) return;
+    setIsSubmitting(true);
+    const keys = ["occupants", "duration", "purpose", "priority", "scale"];
+    const namedAnswers = Object.fromEntries(
+      Object.entries(answers).map(([i, v]) => [keys[Number(i)], v]),
+    );
+    try {
+      const resp = await fetch(`${API}/onboarding`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ site: sitePayload, answers: namedAnswers }),
+      });
+      const data = resp.ok ? await resp.json() : null;
+      localStorage.setItem("configuratorInit", JSON.stringify({
+        spec:          data?.spec          ?? null,
+        dwelling_spec: data?.dwelling_spec ?? null,
+        image_b64:     data?.image_b64     ?? null,
+        reply:         data?.reply         ?? null,
+        suggestions:   data?.suggestions   ?? null,
+        site:          sitePayload,
+        answers:       namedAnswers,
+      }));
+      localStorage.setItem("configuratorReady", "true");
+      revealResults();
+    } catch {
+      localStorage.setItem("configuratorInit", JSON.stringify({
+        spec: null, image_b64: null, reply: null, suggestions: null,
+        site: sitePayload, answers: namedAnswers,
+      }));
+      localStorage.setItem("configuratorReady", "true");
+      revealResults();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -244,9 +252,10 @@ export default function OnboardingFlow() {
                     <button
                       key={opt.id}
                       type="button"
-                      onClick={() => setAnswers(a => ({ ...a, [stepIdx]: opt.id }))}
+                      disabled={isSubmitting}
+                      onClick={() => selectOption(opt.id)}
                       className={[
-                        "group relative flex flex-col items-start text-left gap-3 rounded-2xl px-5 py-6 border transition-all",
+                        "group relative flex flex-col items-start text-left gap-3 rounded-2xl px-5 py-6 border transition-all disabled:opacity-40 disabled:cursor-not-allowed",
                         isSelected
                           ? "bg-white text-black border-white shadow-[0_8px_30px_-10px_rgba(255,255,255,0.4)]"
                           : "bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06] hover:border-white/20",
@@ -267,25 +276,30 @@ export default function OnboardingFlow() {
                 })}
               </div>
 
-              {/* Footer */}
+              {/* Footer — Back always; on the last question, an explicit
+                  submit button too (picking an option there only selects
+                  it, doesn't submit) */}
               <div className="flex items-center justify-between mt-12">
                 <button
                   type="button"
                   onClick={goBack}
-                  className="inline-flex items-center gap-2 text-sm font-body text-white/60 hover:text-white px-3 py-2 rounded-full transition-colors"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 text-sm font-body text-white/60 hover:text-white px-3 py-2 rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
                   Back
                 </button>
-                <button
-                  type="button"
-                  onClick={goNext}
-                  disabled={!selected || isSubmitting}
-                  className="inline-flex items-center gap-2 text-sm font-body font-medium bg-white text-black px-6 py-3 rounded-full hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isSubmitting ? "Preparing…" : isLast ? "See my proposal" : "Continue"}
-                  <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
-                </button>
+                {isLast && (
+                  <button
+                    type="button"
+                    onClick={submitProposal}
+                    disabled={!selected || isSubmitting}
+                    className="inline-flex items-center gap-2 text-sm font-body font-medium bg-white text-black px-6 py-3 rounded-full hover:bg-white/90 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSubmitting ? "Preparing…" : "See your design"}
+                    <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                )}
               </div>
 
             </div>
