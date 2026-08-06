@@ -1,20 +1,20 @@
+// Frozen snapshot of the Streamlit/FastAPI-connected configurator, saved for
+// portfolio use before the show-specific redesign (matching the new reference
+// look) begins on the main Configurator page. Not linked in nav — reachable
+// directly at /configurator-portfolio. Kept deliberately unmodified from the
+// original; if you want to improve THIS version later, edit this file, not
+// pages/Configurator.tsx (that one is now the show build).
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2 } from "lucide-react";
 import BlurText from "@/components/BlurText";
-import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
-import dwellingFg from "@/assets/configurator-dwelling-fg.png";
-import sectionVol2 from "@/assets/configurator-section-vol2.png";
-import topViewImg from "@/assets/configurator-top-view.jpg";
+import dwelling from "@/assets/dwelling-hero.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 import { useMockAuth } from "@/context/MockAuth";
-import { SITES } from "@/data/sites";
 
-// No backend for this build — this page is being rebuilt for the show
-// (static/baked scenarios instead of a live Python backend). See
-// ConfiguratorPortfolio.tsx for the original, still-live-connected version.
+const API = "http://localhost:8000";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
@@ -37,30 +37,11 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
-export default function Configurator() {
+export default function ConfiguratorPortfolio() {
   const location = useLocation();
   const { selectedPlan } = useMockAuth();
   const [showNext, setShowNext] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
-  const [showSiteSelector, setShowSiteSelector] = useState(true);
-  const [siteSelectorView, setSiteSelectorView] = useState<"map" | "pin" | "route">("pin");
-  const [zoom, setZoom] = useState(1);
-  const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
-  const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
-  const [showSectionVol2, setShowSectionVol2] = useState(false);
-
-  // Hotspots for the 6 sections, positioned as % of the dwelling image's own
-  // bounding box (not the viewport) — placed along the roofline by eye
-  // against the actual asset. Purely visual for now, matching the reference's
-  // glowing markers; not wired to real per-section data yet.
-  const DWELLING_HOTSPOTS = [
-    { id: "s1", x: 14.5, y: 48 },
-    { id: "s2", x: 29.5, y: 46 },
-    { id: "s3", x: 42,   y: 44.5 },
-    { id: "s4", x: 57,   y: 44 },
-    { id: "s5", x: 72,   y: 46 },
-    { id: "s6", x: 86,   y: 48 },
-  ];
 
   // ── Read onboarding init data ─────────────────────────────────────────────────
   type InitState = {
@@ -86,27 +67,52 @@ export default function Configurator() {
       roof_style: "any", preferred_tags: [], corridor_side: "none", corridor_w: 2, seed: 42,
     },
   );
-  // Static placeholder in place of a live-rendered image — the fetch to a
-  // backend /render endpoint is gone; this will be replaced with real
-  // baked-scenario art as the show rebuild progresses.
-  const [sectionImage] = useState<string | null>(null);
+  const [sectionImage, setSectionImage] = useState<string | null>(
+    locationState?.image_b64 ?? null,
+  );
 
-  // No backend to check — "online" is cosmetic for now, matching the look
-  // this page is being rebuilt toward.
-  const apiOnline = true;
+  const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [activeSection, setActiveSection] = useState<string>("dwelling");
   const [viewMode, setViewMode] = useState<"2D" | "3D" | "plan">("3D");
 
+  useEffect(() => {
+    const check = () =>
+      fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) })
+        .then((r) => setApiOnline(r.ok))
+        .catch(() => setApiOnline(false));
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  // Dwelling spec now comes only from onboarding (no /dwelling-spec fallback fetch).
-  const [dwellingSpec] = useState<Record<string, unknown> | null>(
+  // Dwelling spec: seeded from onboarding (has correct W + roof_style), falls back to /dwelling-spec.
+  const [dwellingSpec, setDwellingSpec] = useState<Record<string, unknown> | null>(
     locationState?.dwelling_spec ?? null,
   );
 
-  // Placeholder for what was fetchRender() — no network call, just a no-op
-  // for now so existing call sites don't need to change yet.
-  const fetchRender = (_section = activeSection, _view = viewMode, _overrideSpec?: Record<string, unknown>) => {
-    /* intentionally empty — will be replaced with real baked-scenario logic */
+  useEffect(() => {
+    if (dwellingSpec) return; // already have it from onboarding
+    fetch(`${API}/dwelling-spec`)
+      .then((r) => r.json())
+      .then((d) => setDwellingSpec(d))
+      .catch(() => {});
+  }, []);
+
+  // Incremented on every new fetch — stale callbacks check against this and drop their result.
+  const fetchGenRef = useRef(0);
+
+  const fetchRender = (section = activeSection, view = viewMode, overrideSpec?: Record<string, unknown>) => {
+    const gen = ++fetchGenRef.current;
+    setSectionImage(null);
+    fetch(`${API}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spec: overrideSpec ?? spec, section, view }),
+    })
+      .then((r) => r.json())
+      .then((d) => { if (gen === fetchGenRef.current && d.image_b64) setSectionImage(d.image_b64); })
+      .catch(() => {});
   };
 
   // Hover is CSS-only — no API call, instant feedback via SVG polygon glow.
@@ -172,9 +178,6 @@ export default function Configurator() {
   const _occStr = _occMap[_answers.occupants ?? ""] ?? "";
   const _purStr = _purMap[_answers.purpose   ?? ""] ?? "";
   const _siteName = String(_site?.name ?? "");
-  const _siteRegion = String(_site?.location ?? "");
-  // Look up the matching real site thumbnail from the Voyages catalog by name.
-  const _siteThumb = SITES.find((s) => s.title === _siteName)?.image ?? null;
 
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
@@ -239,9 +242,6 @@ export default function Configurator() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // No backend call — placeholder reply so the chat UI stays functional
-  // while this page is rebuilt. Will be replaced with the baked-scenario
-  // keyword-matched responses discussed for the show.
   const send = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || isStreaming) return;
@@ -252,16 +252,46 @@ export default function Configurator() {
     setInput("");
     setIsStreaming(true);
 
-    await new Promise((r) => setTimeout(r, 400));
-    setMessages((prev) => {
-      const next = [...prev];
-      next[next.length - 1] = {
-        role: "assistant",
-        content: "Chat isn't wired up to a live backend in this build yet.",
-      };
-      return next;
-    });
-    setIsStreaming(false);
+    try {
+      const resp = await fetch(`${API}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_spec: spec,
+          message: text,
+          history: chatHistory.map((m) => ({ role: m.role, content: m.content })),
+        }),
+      });
+
+      if (!resp.ok) throw new Error("Assistant unavailable.");
+      setApiOnline(true);
+      const data = await resp.json();
+
+      if (data.spec) {
+        setSpec(data.spec);
+        // Re-render with the correct section + view (chat API always returns dining-2D
+        // which would be wrong in dwelling mode or 3D mode).
+        fetchRender(activeSection, viewMode, data.spec as Record<string, unknown>);
+      }
+
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = { role: "assistant", content: data.reply ?? "Done." };
+        return next;
+      });
+    } catch (e) {
+      setApiOnline(false);
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = {
+          role: "assistant",
+          content: e instanceof Error ? e.message : "Something went wrong.",
+        };
+        return next;
+      });
+    } finally {
+      setIsStreaming(false);
+    }
   };
 
   // Dining floor area in cm² — mirrors _dining_W logic in api.py
@@ -319,74 +349,7 @@ export default function Configurator() {
             </motion.div>
           </div>
 
-          <div
-            className={[
-              "mt-10 grid grid-cols-1 gap-5 items-start",
-              showSiteSelector ? "lg:grid-cols-[220px_1fr_360px]" : "lg:grid-cols-[1fr_360px]",
-            ].join(" ")}
-          >
-            {/* LEFT SIDEBAR — Site Selector (matches the reference; other
-                panels from the reference intentionally not built yet) */}
-            {showSiteSelector && (
-              <motion.aside
-                initial={blurInit}
-                animate={blurIn}
-                transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
-                className="liquid-glass rounded-[1rem] p-2.5"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                    Site Selector
-                  </span>
-                  <button
-                    onClick={() => setShowSiteSelector(false)}
-                    className="w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                    aria-label="Close site selector"
-                  >
-                    <X className="h-3 w-3" strokeWidth={1.75} />
-                  </button>
-                </div>
-
-                <div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 mb-2 w-fit">
-                  {([
-                    { id: "map" as const, Icon: Map },
-                    { id: "pin" as const, Icon: MapPin },
-                    { id: "route" as const, Icon: Navigation },
-                  ]).map(({ id, Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => setSiteSelectorView(id)}
-                      className={[
-                        "w-6 h-6 rounded-full inline-flex items-center justify-center transition-all",
-                        siteSelectorView === id
-                          ? "bg-white text-black"
-                          : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
-                      aria-label={id}
-                    >
-                      <Icon className="h-3 w-3" strokeWidth={1.75} />
-                    </button>
-                  ))}
-                </div>
-
-                <div className="rounded-[0.75rem] overflow-hidden border border-white/10 bg-white/[0.03]">
-                  {_siteThumb ? (
-                    <img src={_siteThumb} alt={_siteName} className="w-full h-16 object-cover" />
-                  ) : (
-                    <div className="w-full h-16 bg-white/5" />
-                  )}
-                  <div className="p-2">
-                    <p className="text-[11px] font-body text-white/90">
-                      Site: {_siteName || "—"}
-                    </p>
-                    {_siteRegion && (
-                      <p className="text-[9px] font-body text-white/50 mt-0.5">{_siteRegion}</p>
-                    )}
-                  </div>
-                </div>
-              </motion.aside>
-            )}
-
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
             {/* VIEWPORT */}
             <motion.div
               initial={blurInit}
@@ -446,96 +409,6 @@ export default function Configurator() {
                 style={{ height: "58vh" }}
               >
                 <AnimatePresence mode="wait">
-                  {activeSection === "dwelling" && viewMode === "plan" ? (
-                    /* Plan view — top-down render, crossfades in over the 3D scene */
-                    <motion.div
-                      key="plan-view"
-                      className="absolute inset-0"
-                      initial={{ opacity: 0, scale: 1.04 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.04 }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                    >
-                      <img
-                        src={topViewImg}
-                        alt="Dwelling plan view"
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    </motion.div>
-                  ) : (
-                    /* Zoomable scene — landscape + dwelling + hotspots scale together */
-                    <motion.div
-                      key="scene-3d"
-                      className="absolute inset-0"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1, scale: zoom }}
-                      exit={{ opacity: 0 }}
-                      transition={{
-                        opacity: { duration: 0.5, ease: "easeOut" },
-                        scale: { type: "spring", stiffness: 220, damping: 26 },
-                      }}
-                    >
-                      {/* Landscape backdrop, matching the reference — sits behind everything else in this viewport */}
-                      <img
-                        src={landscapeBg}
-                        alt=""
-                        aria-hidden
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/30" aria-hidden />
-
-                      {/* Dwelling structure, composited over the landscape — aspect-locked
-                          wrapper so the hotspot %-coordinates line up with the actual
-                          image regardless of how it's letterboxed inside the viewport */}
-                      <div className="absolute inset-0 flex items-center justify-center p-4">
-                        <div
-                          className="relative"
-                          style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", width: "100%" }}
-                        >
-                          <img
-                            src={dwellingFg}
-                            alt="Dwelling"
-                            className="w-full h-full object-contain pointer-events-none"
-                          />
-                          {/* Vol2 shares the exact same 2400x1792 canvas as the base dwelling
-                              render (just with the section 3 bay opened to a cutaway), so it's
-                              pixel-aligned and can sit directly on top with a plain fade. */}
-                          <img
-                            src={sectionVol2}
-                            alt="Section detail"
-                            className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
-                            style={{ opacity: showSectionVol2 ? 1 : 0 }}
-                          />
-                          {/* Same aura-glow-behind-a-white-core look as the Tribe page's
-                              node markers, shifted bluer. The button itself is sized to
-                              match the visible glow (not just the core dot) so hover
-                              actually triggers when the cursor is over the glow. */}
-                          {DWELLING_HOTSPOTS.map((h) => (
-                            <button
-                              key={h.id}
-                              onClick={h.id === "s3" ? () => setShowSectionVol2((v) => !v) : undefined}
-                              className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
-                              style={{ left: `${h.x}%`, top: `${h.y}%` }}
-                              aria-label={`Section ${h.id}`}
-                            >
-                              <span
-                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
-                                style={{
-                                  background:
-                                    "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
-                                }}
-                                aria-hidden
-                              />
-                              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence mode="wait">
                   {!engineReady ? (
                     <motion.div
                       key="loader"
@@ -543,7 +416,7 @@ export default function Configurator() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0, filter: "blur(12px)" }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-5 pointer-events-none"
+                      className="absolute inset-0 flex flex-col items-center justify-center gap-5"
                     >
                       <div className="absolute w-64 h-64 rounded-full bg-white/5 blur-3xl animate-pulse" />
                       <Loader2 className="h-10 w-10 text-white/80 animate-spin relative" strokeWidth={1.5} />
@@ -562,7 +435,7 @@ export default function Configurator() {
                       initial={{ opacity: 0, scale: 0.96, filter: "blur(12px)" }}
                       animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
-                      className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none"
+                      className="absolute inset-0 flex items-center justify-center p-4"
                     >
                       {sectionImage ? (
                         activeSection === "dwelling" && viewMode === "3D" ? (
@@ -627,26 +500,21 @@ export default function Configurator() {
                             />
                           </div>
                         )
-                      ) : null}
+                      ) : (
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-8 w-8 text-white/40 animate-spin" strokeWidth={1.5} />
+                          <p className="font-body text-white/30 text-xs uppercase tracking-widest">Solving…</p>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
 
 
                 <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
-                  {[
-                    { Icon: Box, onClick: undefined },
-                    { Icon: RotateCw, onClick: undefined },
-                    { Icon: ZoomIn, onClick: zoomIn },
-                    { Icon: ZoomOut, onClick: zoomOut },
-                  ].map(({ Icon, onClick }, i) => (
-                    <button
-                      key={i}
-                      onClick={onClick}
-                      disabled={!onClick}
-                      className="w-8 h-8 rounded-full inline-flex items-center justify-center text-white/80 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Icon className="h-4 w-4" strokeWidth={1.5} />
+                  {[Box, RotateCw, ZoomIn, ZoomOut].map((I, i) => (
+                    <button key={i} className="w-8 h-8 rounded-full inline-flex items-center justify-center text-white/80 hover:text-white">
+                      <I className="h-4 w-4" strokeWidth={1.5} />
                     </button>
                   ))}
                 </div>

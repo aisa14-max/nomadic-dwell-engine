@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "./pages/Landing.tsx";
 import Discover from "./pages/Discover.tsx";
 import Configurator from "./pages/Configurator.tsx";
+import ConfiguratorPortfolio from "./pages/ConfiguratorPortfolio.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Tribe from "./pages/Tribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
@@ -48,6 +49,8 @@ const RoutedApp = () => {
           <Route path="/" element={<Landing />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/configurator" element={<RequireOnboarding><Configurator /></RequireOnboarding>} />
+          {/* Frozen portfolio snapshot — not gated, not in nav, reachable directly by URL */}
+          <Route path="/configurator-portfolio" element={<ConfiguratorPortfolio />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tribe" element={<RequireAuth><Tribe /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
