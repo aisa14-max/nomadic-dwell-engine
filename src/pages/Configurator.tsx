@@ -9,6 +9,8 @@ import landscapeHighland from "@/assets/configurator-landscape-highland.png";
 import dwellingFg from "@/assets/configurator-dwelling-fg.png";
 import sectionVol2 from "@/assets/configurator-section-vol2.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
+import interior1Img from "@/assets/configurator-interior-1.jpg";
+import interior2Img from "@/assets/configurator-interior-2.jpg";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 import { useMockAuth } from "@/context/MockAuth";
@@ -50,6 +52,8 @@ export default function Configurator() {
   const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
   const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
   const [showSectionVol2, setShowSectionVol2] = useState(false);
+  const [showInterior, setShowInterior] = useState(false);
+  const [showInterior2, setShowInterior2] = useState(false);
 
   // Hotspots for the 6 sections, positioned as % of the dwelling image's own
   // bounding box (not the viewport) — placed along the roofline by eye
@@ -63,6 +67,69 @@ export default function Configurator() {
     { id: "s5", x: 72,   y: 46 },
     { id: "s6", x: 86,   y: 48 },
   ];
+
+  // Same 6 sections, re-measured against the top-view image — the dwelling
+  // sits at a near-identical horizontal crop in both renders, so x barely
+  // moves, but the body is vertically centered rather than following a
+  // roofline, so y is a single flat value instead of per-section.
+  const PLAN_HOTSPOTS = [
+    { id: "s1", x: 13.5, y: 49 },
+    { id: "s2", x: 28,   y: 49 },
+    { id: "s3", x: 42.5, y: 49 },
+    { id: "s4", x: 57.5, y: 49 },
+    { id: "s5", x: 72,   y: 49 },
+    { id: "s6", x: 86.5, y: 49 },
+  ];
+
+  // Shared so the 3D scene and the plan view render identical hotspots —
+  // same glow, same s3 pin-on-click + "Explore inside" behavior.
+  const renderHotspots = (hotspots: { id: string; x: number; y: number }[]) =>
+    hotspots.map((h) => (
+      <div
+        key={h.id}
+        className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
+        style={{ left: `${h.x}%`, top: `${h.y}%` }}
+      >
+        <button
+          onClick={h.id === "s3" ? () => setShowSectionVol2((v) => !v) : undefined}
+          className="absolute inset-0"
+          aria-label={`Section ${h.id}`}
+        >
+          <span
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
+            }}
+            aria-hidden
+          />
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
+        </button>
+
+        {h.id === "s3" && (
+          <div
+            className={[
+              "absolute left-1/2 bottom-full -translate-x-1/2 mb-3 transition-all duration-300 whitespace-nowrap",
+              showSectionVol2
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
+            ].join(" ")}
+          >
+            <div className="liquid-glass-strong rounded-xl px-3.5 py-2.5 flex flex-col items-center gap-2">
+              <span className="font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
+                Living Room
+              </span>
+              <button
+                onClick={() => setShowInterior(true)}
+                className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+              >
+                Explore inside
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    ));
 
   // ── Read onboarding init data ─────────────────────────────────────────────────
   type InitState = {
@@ -495,10 +562,10 @@ export default function Configurator() {
                 style={{ height: "58vh" }}
               >
                 <AnimatePresence mode="wait">
-                  {activeSection === "dwelling" && viewMode === "plan" ? (
-                    /* Plan view — top-down render, crossfades in over the 3D scene */
+                  {showInterior2 ? (
+                    /* Second interior angle — reached from the carpet-corner hotspot in interior 1 */
                     <motion.div
-                      key="plan-view"
+                      key="interior-view-2"
                       className="absolute inset-0"
                       initial={{ opacity: 0, scale: 1.04 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -506,10 +573,79 @@ export default function Configurator() {
                       transition={{ duration: 0.5, ease: "easeOut" }}
                     >
                       <img
+                        src={interior2Img}
+                        alt="Living room interior, alternate angle"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => setShowInterior2(false)}
+                        className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
+                        aria-label="Back to previous view"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  ) : showInterior ? (
+                    /* Interior takeover — crossfades in over everything else when
+                       "Explore inside" is clicked on the living room hotspot */
+                    <motion.div
+                      key="interior-view"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, scale: 1.04 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      transition={{ duration: 0.5, ease: "easeOut" }}
+                    >
+                      <img
+                        src={interior1Img}
+                        alt="Living room interior"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                      {/* Carpet-corner hotspot, in front of the shelf — same
+                          aura-glow marker language as the dwelling hotspots */}
+                      <button
+                        onClick={() => setShowInterior2(true)}
+                        className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
+                        style={{ left: "22%", top: "75%" }}
+                        aria-label="Explore alternate angle"
+                      >
+                        <span
+                          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
+                          style={{
+                            background:
+                              "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
+                          }}
+                          aria-hidden
+                        />
+                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
+                      </button>
+                      <button
+                        onClick={() => setShowInterior(false)}
+                        className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
+                        aria-label="Back to dwelling view"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                  ) : activeSection === "dwelling" && viewMode === "plan" ? (
+                    /* Plan view — top-down render, crossfades in over the 3D scene */
+                    <motion.div
+                      key="plan-view"
+                      className="absolute inset-0"
+                      initial={{ opacity: 0, scale: 1.04 }}
+                      animate={{ opacity: 1, scale: zoom }}
+                      exit={{ opacity: 0, scale: 1.04 }}
+                      transition={{
+                        opacity: { duration: 0.5, ease: "easeOut" },
+                        scale: { type: "spring", stiffness: 220, damping: 26 },
+                      }}
+                    >
+                      <img
                         src={topViewImg}
                         alt="Dwelling plan view"
                         className="absolute inset-0 w-full h-full object-cover"
                       />
+                      {renderHotspots(PLAN_HOTSPOTS)}
                     </motion.div>
                   ) : (
                     /* Zoomable scene — landscape + dwelling + hotspots scale together */
@@ -559,25 +695,7 @@ export default function Configurator() {
                               node markers, shifted bluer. The button itself is sized to
                               match the visible glow (not just the core dot) so hover
                               actually triggers when the cursor is over the glow. */}
-                          {DWELLING_HOTSPOTS.map((h) => (
-                            <button
-                              key={h.id}
-                              onClick={h.id === "s3" ? () => setShowSectionVol2((v) => !v) : undefined}
-                              className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
-                              style={{ left: `${h.x}%`, top: `${h.y}%` }}
-                              aria-label={`Section ${h.id}`}
-                            >
-                              <span
-                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
-                                style={{
-                                  background:
-                                    "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
-                                }}
-                                aria-hidden
-                              />
-                              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
-                            </button>
-                          ))}
+                          {renderHotspots(DWELLING_HOTSPOTS)}
                         </div>
                       </div>
                     </motion.div>
