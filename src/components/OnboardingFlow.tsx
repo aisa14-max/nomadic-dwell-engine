@@ -10,7 +10,6 @@ import {
   Minimize2, Square, Maximize2,
 } from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
-import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
 
 const API = "http://localhost:8000";
@@ -72,7 +71,7 @@ const steps: Step[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { onboardingOpen, closeOnboarding, pendingSite } = useMockAuth();
+  const { onboardingOpen, closeOnboarding, pendingSite, user, openLogin, selectedPlan, openPlanSelection } = useMockAuth();
   const navigate = useNavigate();
   const [stepIdx, setStepIdx]   = useState(0);
   const [answers, setAnswers]   = useState<Record<number, string>>({});
@@ -130,6 +129,20 @@ export default function OnboardingFlow() {
     else setStepIdx(i => i - 1);
   };
 
+  // After the questionnaire: sign-up (if not already signed in), then plan
+  // selection (if no plan chosen yet), then the configurator. A returning
+  // user who already has both just goes straight there.
+  const goToConfigurator = () => navigate("/configurator");
+  const ensurePlan = () => {
+    if (selectedPlan) goToConfigurator();
+    else openPlanSelection(goToConfigurator);
+  };
+  const revealResults = () => {
+    handleOpenChange(false);
+    if (user) ensurePlan();
+    else openLogin(ensurePlan);
+  };
+
   const goNext = async () => {
     if (!selected) return;
     if (isLast) {
@@ -155,16 +168,14 @@ export default function OnboardingFlow() {
           answers:       namedAnswers,
         }));
         localStorage.setItem("configuratorReady", "true");
-        handleOpenChange(false);
-        navigate("/configurator");
+        revealResults();
       } catch {
         localStorage.setItem("configuratorInit", JSON.stringify({
           spec: null, image_b64: null, reply: null, suggestions: null,
           site: sitePayload, answers: namedAnswers,
         }));
         localStorage.setItem("configuratorReady", "true");
-        handleOpenChange(false);
-        navigate("/configurator");
+        revealResults();
       } finally {
         setIsSubmitting(false);
       }
@@ -176,17 +187,16 @@ export default function OnboardingFlow() {
   return (
     <DialogPrimitive.Root open={onboardingOpen} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        {/* Darker overlay — now has to read as "still on the page behind it", not full-bleed */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
-          className="fixed inset-0 z-[60] w-screen h-screen overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none"
+          className="fixed inset-0 z-[60] overflow-y-auto flex items-center justify-center px-6 py-16 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none"
         >
-          <div className="fixed inset-0 z-0 bg-[#01030f]" aria-hidden />
-          <VoyageScene className="fixed inset-0 w-full h-full z-0 opacity-70 pointer-events-none" />
-          <div className="fixed inset-0 z-0 bg-[#020618]/70 pointer-events-none" aria-hidden />
-
-          <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-16">
-            <div className="liquid-glass border border-white/10 w-full max-w-[920px] rounded-[2rem] p-8 md:p-12 text-white">
+          {/* Single panel — frosted/translucent (liquid-glass-strong, same as the
+              rest of the app) instead of a solid backdrop, so Discover shows
+              through blurred rather than being fully hidden. */}
+          <div className="liquid-glass-strong border border-white/10 w-full max-w-[920px] rounded-[2rem] p-8 md:p-12 text-white">
 
               {/* Progress */}
               <div className="flex items-center justify-between mb-10">
@@ -279,7 +289,6 @@ export default function OnboardingFlow() {
               </div>
 
             </div>
-          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

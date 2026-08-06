@@ -6,6 +6,7 @@ import BlurText from "@/components/BlurText";
 import dwelling from "@/assets/dwelling-hero.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
+import { useMockAuth } from "@/context/MockAuth";
 
 const API = "http://localhost:8000";
 
@@ -32,6 +33,7 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 export default function Configurator() {
   const location = useLocation();
+  const { selectedPlan } = useMockAuth();
   const [showNext, setShowNext] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
 
@@ -514,6 +516,11 @@ export default function Configurator() {
                 <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
                   {_siteName && (
                     <span className="liquid-glass tag-glass">Site: {_siteName}</span>
+                  )}
+                  {selectedPlan && (
+                    <span className="liquid-glass tag-glass">
+                      Plan: {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
+                    </span>
                   )}
                 </div>
 

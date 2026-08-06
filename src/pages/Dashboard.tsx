@@ -1,11 +1,44 @@
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight,
   Zap, Cloud, Users, Settings, Activity as ActivityIcon, Plug, ShieldCheck,
 } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import BlurText from "@/components/BlurText";
+import { useMockAuth } from "@/context/MockAuth";
+import { TOTAL_PARTS } from "@/data/dwellingParts";
+
+// Mocked "portal" state — read directly from localStorage rather than the
+// live useReservation hook, since this page just needs to know whether a
+// design exists and how far along it is, not manage it.
+//
+// "delivered" and "reservationProgress" are deliberately independent: once
+// an order is confirmed, reservationProgress resets to a fresh configuration
+// (see useReservation.ts) so reopening the customizer doesn't replay the old
+// receipt — "delivered" is what survives that reset, permanently, to answer
+// "was anything ever actually delivered."
+function readEnginePortalState() {
+  let siteName: string | null = null;
+  try {
+    const raw = localStorage.getItem("configuratorInit");
+    if (raw) siteName = (JSON.parse(raw)?.site?.name as string) ?? null;
+  } catch { /* ignore */ }
+
+  const delivered = localStorage.getItem("engineDelivered") === "true";
+
+  let configuredCount = 0;
+  try {
+    const raw = localStorage.getItem("reservationProgress");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      configuredCount = Array.isArray(parsed.configured) ? parsed.configured.length : 0;
+    }
+  } catch { /* ignore */ }
+
+  return { siteName, delivered, configuredCount };
+}
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
@@ -16,11 +49,78 @@ const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { selectedPlan } = useMockAuth();
   const [tab, setTab] = useState(0);
   const [solar] = useState(78);
   const [battery] = useState(92);
   const [wind] = useState(14);
   const [alert, setAlert] = useState(true);
+  const portal = useMemo(readEnginePortalState, []);
+
+  // No design started yet — nothing to monitor or resume.
+  if (!portal.siteName) {
+    return (
+      <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
+        <FadingVideo src={HERO_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-40" />
+        <div className="fixed inset-0 z-0 bg-black/60" aria-hidden />
+        <div className="relative z-10 min-h-screen flex items-center justify-center px-8">
+          <div className="liquid-glass border border-white/10 rounded-[2rem] p-10 max-w-lg text-center">
+            <p className="text-sm font-body text-white/60 mb-3">// Engine</p>
+            <BlurText
+              text="No engine yet."
+              className="font-heading text-white text-4xl leading-none tracking-[-2px]"
+            />
+            <p className="font-body text-sm text-white/70 mt-4 mb-8">
+              You haven't started designing a dwelling yet. Pick a site on Voyages to begin.
+            </p>
+            <button
+              onClick={() => navigate("/discover")}
+              className="inline-flex items-center gap-2 text-sm font-body font-medium bg-white text-black px-6 py-3 rounded-full hover:bg-white/90 transition-colors"
+            >
+              Start designing <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Design exists but the order isn't confirmed yet — offer to resume rather
+  // than show fabricated "delivered" telemetry for something not built.
+  if (!portal.delivered) {
+    const pct = Math.round((portal.configuredCount / TOTAL_PARTS) * 100);
+    return (
+      <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
+        <FadingVideo src={HERO_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-40" />
+        <div className="fixed inset-0 z-0 bg-black/60" aria-hidden />
+        <div className="relative z-10 min-h-screen flex items-center justify-center px-8">
+          <div className="liquid-glass border border-white/10 rounded-[2rem] p-10 max-w-lg text-center">
+            <p className="text-sm font-body text-white/60 mb-3">// Engine</p>
+            <BlurText
+              text={`${portal.siteName} — in progress`}
+              className="font-heading text-white text-4xl leading-none tracking-[-2px]"
+            />
+            <p className="font-body text-sm text-white/70 mt-4">
+              {selectedPlan
+                ? `Plan: ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} · `
+                : ""}
+              {pct}% configured — your progress is saved.
+            </p>
+            <div className="w-full h-1.5 rounded-full bg-white/10 mt-4 mb-8 overflow-hidden">
+              <div className="h-full bg-white rounded-full" style={{ width: `${pct}%` }} />
+            </div>
+            <button
+              onClick={() => navigate("/configurator")}
+              className="inline-flex items-center gap-2 text-sm font-body font-medium bg-white text-black px-6 py-3 rounded-full hover:bg-white/90 transition-colors"
+            >
+              Continue configuring <ArrowRight className="h-4 w-4" strokeWidth={1.75} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -33,7 +133,7 @@ export default function Dashboard() {
           <div className="flex items-end justify-between flex-wrap gap-6">
             <div className="max-w-3xl">
               <BlurText
-                text="Skye Moor · Engine 04A"
+                text={`${portal.siteName} · Engine 04A`}
                 className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
               />
             </div>

@@ -17,7 +17,7 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
-  const { user, openLoginForSite, openOnboardingWithSite } = useMockAuth();
+  const { openOnboardingWithSite } = useMockAuth();
   const globeRef = useRef<HTMLDivElement | null>(null);
   const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
 
@@ -50,8 +50,8 @@ export default function Discover() {
       precipitation: site.rainfall,
       climate_zone: site.climateId,
     };
-    if (user) openOnboardingWithSite(payload);
-    else openLoginForSite(payload);
+    // Sign-up now happens after the questionnaire, not before — see OnboardingFlow.
+    openOnboardingWithSite(payload);
   };
 
   return (

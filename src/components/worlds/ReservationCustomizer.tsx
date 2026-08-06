@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
@@ -64,7 +65,14 @@ export default function ReservationCustomizer({ onClose }: Props) {
     return p ? p.hotspot : null;
   }, [flashAt]);
 
-  return (
+  // Rendered via portal straight to <body> — Configurator (and everything
+  // inside it) sits inside PageTransition's animated wrapper, and a
+  // `position: fixed` descendant of a transformed ancestor is positioned
+  // relative to that ancestor instead of the real viewport. The other
+  // full-screen modals (Login/Onboarding/PlanSelection) avoid this by
+  // living at the App root, outside PageTransition; this is the same fix
+  // without moving this component's state out of Configurator.
+  return createPortal(
     <div className="fixed inset-0 z-40 bg-black overflow-hidden" onClick={handleBackdrop}>
       {/* Close to return to base Configurator */}
       <button
@@ -185,6 +193,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
           />
         )}
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body,
   );
 }

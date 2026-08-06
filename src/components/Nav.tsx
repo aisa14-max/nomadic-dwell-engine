@@ -1,17 +1,38 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
 
-const items = [
+// "Worlds" (Configurator) and "Engine" only appear once signed in — logged
+// out, the only way into the configurator is Discover -> questionnaire ->
+// signup, not a direct nav link.
+const baseItems = [
   { to: "/", label: "Home" },
   { to: "/discover", label: "Voyages" },
+];
+const signedInItems = [
   { to: "/configurator", label: "Worlds" },
   { to: "/dashboard", label: "Engine" },
 ];
 
 export default function Nav() {
   const { pathname } = useLocation();
-  const { user, signOut, openLogin } = useMockAuth();
+  const navigate = useNavigate();
+  const { user, signOut, openLogin, onboardingOpen, loginOpen, planSelectionOpen } = useMockAuth();
+  const items = user ? [...baseItems, ...signedInItems] : baseItems;
+
+  const handleTribeClick = (e: React.MouseEvent) => {
+    if (!user) {
+      e.preventDefault();
+      openLogin(() => navigate("/tribe"));
+    }
+  };
+
+  // Hide while any full-panel modal is open — those overlays are semi
+  // transparent and don't reach the very top of the screen, so the nav's
+  // own tab pills were showing through, dimmed, above the modal's own
+  // step/option UI (looked like two stacked rows of tabs).
+  if (onboardingOpen || loginOpen || planSelectionOpen) return null;
+
   return (
     <nav className="fixed top-4 inset-x-0 z-50 px-8 lg:px-16">
       <div className="mx-auto max-w-[1400px] flex items-center justify-between">
@@ -39,8 +60,10 @@ export default function Nav() {
               </Link>
             );
           })}
+          {/* Always visible — clicking without an account opens sign-in first */}
           <Link
             to="/tribe"
+            onClick={handleTribeClick}
             className="ml-1 inline-flex items-center gap-1 bg-white text-black rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap font-body"
           >
             Join the Tribe <ArrowUpRight className="h-4 w-4" strokeWidth={2} />

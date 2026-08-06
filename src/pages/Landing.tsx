@@ -4,6 +4,7 @@ import { ArrowUpRight, Play, Timer, Globe2 } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
+import { useMockAuth } from "@/context/MockAuth";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
@@ -14,6 +15,7 @@ const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Landing() {
+  const { openOnboardingQuickStart } = useMockAuth();
   return (
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
@@ -75,9 +77,13 @@ export default function Landing() {
               >
                 Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300 group-hover:text-white" strokeWidth={2} />
               </Link>
-              <Link to="/configurator" className="text-sm font-body text-white inline-flex items-center gap-2">
-                View Liftoff <Play className="h-4 w-4 fill-white" strokeWidth={0} />
-              </Link>
+              <button
+                type="button"
+                onClick={openOnboardingQuickStart}
+                className="text-sm font-body text-white inline-flex items-center gap-2"
+              >
+                Quick Start <Play className="h-4 w-4 fill-white" strokeWidth={0} />
+              </button>
             </motion.div>
 
             {/* Stats */}

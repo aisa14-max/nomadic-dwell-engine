@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { PARTS, TOTAL_PARTS, PartId, computeTotals } from "@/data/dwellingParts";
 
 export type Stage = "configure" | "summary" | "payment" | "confirmed";
@@ -10,6 +10,56 @@ type State = {
   flashed: Set<PartId>;
   reservationRef: string;
 };
+
+// Mocked "save midway" — persisted so closing the customizer or refreshing
+// the page doesn't lose progress. Map/Set aren't JSON-serializable directly,
+// so they're stored as plain arrays and reconstructed on load.
+//
+// Deliberately separate from DELIVERED_KEY below: this key holds the
+// CURRENT/ACTIVE configuration only. Once an order is confirmed it's no
+// longer "in progress" — reopening the customizer after that should start a
+// fresh configuration, not resume the old completed one (see loadStoredState).
+const STORAGE_KEY = "reservationProgress";
+
+// Set once, permanently, the moment an order is actually confirmed — this is
+// what Dashboard reads to know "something was delivered," independent of
+// whatever reservationProgress holds afterward (which resets to fresh).
+const DELIVERED_KEY = "engineDelivered";
+
+function loadStoredState(): State | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      stage: Stage; reservationRef: string;
+      configured: [PartId, string][]; flashed: PartId[];
+    };
+    // A confirmed order is a finished transaction, not work to resume —
+    // reopening the customizer should start fresh, not replay the old
+    // "Congratulations" screen every time.
+    if (parsed.stage === "confirmed") return null;
+    return {
+      stage: parsed.stage,
+      activePart: null,
+      configured: new Map(parsed.configured),
+      flashed: new Set(parsed.flashed),
+      reservationRef: parsed.reservationRef,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state: State) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      stage: state.stage,
+      reservationRef: state.reservationRef,
+      configured: Array.from(state.configured.entries()),
+      flashed: Array.from(state.flashed),
+    }));
+  } catch { /* ignore */ }
+}
 
 type Action =
   | { type: "setActive"; part: PartId | null }
@@ -50,8 +100,12 @@ function reducer(state: State, action: Action): State {
 }
 
 export function useReservation() {
-  const [state, dispatch] = useReducer(reducer, initial);
+  const [state, dispatch] = useReducer(reducer, undefined, () => loadStoredState() ?? initial);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    saveState(state);
+  }, [state]);
 
   const totals = useMemo(() => computeTotals(state.configured), [state.configured]);
   const isComplete = state.configured.size === TOTAL_PARTS;
@@ -80,6 +134,9 @@ export function useReservation() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     dispatch({ type: "setStage", stage: "confirmed" });
+    try {
+      localStorage.setItem(DELIVERED_KEY, "true");
+    } catch { /* ignore */ }
     setTimeout(() => {
       submittingRef.current = false;
     }, 800);
