@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
 import { PARTS, PartId } from "@/data/dwellingParts";
 
-import Hotspots from "./Hotspots";
 import PartsStrip from "./PartsStrip";
 import ReserveCard from "./ReserveCard";
 import SummaryPanel from "./SummaryPanel";
