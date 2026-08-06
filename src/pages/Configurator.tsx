@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
+import landscapeNamib from "@/assets/configurator-landscape-namib.png";
+import landscapeHighland from "@/assets/configurator-landscape-highland.png";
 import dwellingFg from "@/assets/configurator-dwelling-fg.png";
 import sectionVol2 from "@/assets/configurator-section-vol2.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
@@ -171,10 +173,33 @@ export default function Configurator() {
   };
   const _occStr = _occMap[_answers.occupants ?? ""] ?? "";
   const _purStr = _purMap[_answers.purpose   ?? ""] ?? "";
-  const _siteName = String(_site?.name ?? "");
-  const _siteRegion = String(_site?.location ?? "");
-  // Look up the matching real site thumbnail from the Voyages catalog by name.
-  const _siteThumb = SITES.find((s) => s.title === _siteName)?.image ?? null;
+  const _onboardingSiteName = String(_site?.name ?? "");
+  const _onboardingSiteRegion = String(_site?.location ?? "");
+
+  // Site Selector — the onboarding pick plus two curated alternates the
+  // user can switch between right here (static/baked, no re-render call).
+  const _fallbackSite = SITES.find((s) => s.title === "Skye Moor")!;
+  const _primarySite = SITES.find((s) => s.title === _onboardingSiteName) ?? {
+    ..._fallbackSite,
+    title: _onboardingSiteName || _fallbackSite.title,
+    region: _onboardingSiteRegion || _fallbackSite.region,
+  };
+  const _extraSites = ["Namib Dune", "Highland Spire"]
+    .filter((t) => t !== _primarySite.title)
+    .map((t) => SITES.find((s) => s.title === t)!)
+    .slice(0, 2);
+  const SITE_OPTIONS = [_primarySite, ..._extraSites];
+  const [selectedSiteIdx, setSelectedSiteIdx] = useState(0);
+  const activeSite = SITE_OPTIONS[selectedSiteIdx] ?? SITE_OPTIONS[0];
+  const _siteName = activeSite.title;
+  const _siteRegion = activeSite.region;
+  const _siteThumb = activeSite.image;
+  // Namib Dune and Highland Spire get their own landscape backdrops in the
+  // viewport; every other site still falls back to the default scene.
+  const _landscapeBg =
+    activeSite.title === "Namib Dune" ? landscapeNamib
+    : activeSite.title === "Highland Spire" ? landscapeHighland
+    : landscapeBg;
 
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
@@ -384,6 +409,30 @@ export default function Configurator() {
                     )}
                   </div>
                 </div>
+
+                {SITE_OPTIONS.length > 1 && (
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    {SITE_OPTIONS.map((opt, i) => (
+                      <button
+                        key={opt.title}
+                        onClick={() => setSelectedSiteIdx(i)}
+                        aria-label={`Switch to ${opt.title}`}
+                        aria-pressed={i === selectedSiteIdx}
+                        className={[
+                          "rounded-[0.5rem] overflow-hidden border transition-colors",
+                          i === selectedSiteIdx
+                            ? "border-white/60"
+                            : "border-white/10 hover:border-white/30",
+                        ].join(" ")}
+                      >
+                        <img src={opt.image} alt={opt.title} className="w-full h-10 object-cover" />
+                        <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
+                          {opt.title}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </motion.aside>
             )}
 
@@ -477,7 +526,7 @@ export default function Configurator() {
                     >
                       {/* Landscape backdrop, matching the reference — sits behind everything else in this viewport */}
                       <img
-                        src={landscapeBg}
+                        src={_landscapeBg}
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
