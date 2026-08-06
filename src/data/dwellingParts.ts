@@ -28,16 +28,6 @@ export const PARTS: Part[] = [
     ],
   },
   {
-    id: "platform",
-    label: "Flooring",
-    hotspot: { x: 70, y: 65 },
-    options: [
-      { id: "light-ash", name: "Light Ash", hex: "#d4c4a0", price: 2100 },
-      { id: "european-oak", name: "European Oak", hex: "#a07848", price: 1980 },
-      { id: "smoked-walnut", name: "Smoked Walnut", hex: "#4a3020", price: 2240 },
-    ],
-  },
-  {
     id: "endwall",
     label: "Walls Panels",
     hotspot: { x: 24, y: 33 },
@@ -45,6 +35,16 @@ export const PARTS: Part[] = [
       { id: "white", name: "White Panels", hex: "#ececec", price: 980 },
       { id: "pink", name: "Pink Panels", hex: "#f4a7c3", price: 1180 },
       { id: "grey", name: "Grey Panels", hex: "#8a8a8e", price: 1100 },
+    ],
+  },
+  {
+    id: "platform",
+    label: "Flooring",
+    hotspot: { x: 70, y: 65 },
+    options: [
+      { id: "light-ash", name: "Light Ash", hex: "#d4c4a0", price: 2100 },
+      { id: "european-oak", name: "European Oak", hex: "#a07848", price: 1980 },
+      { id: "smoked-walnut", name: "Smoked Walnut", hex: "#4a3020", price: 2240 },
     ],
   },
   {

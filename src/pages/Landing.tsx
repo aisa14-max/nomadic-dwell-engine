@@ -138,19 +138,44 @@ export default function Landing() {
           </div>
 
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.25 }}
+            initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+            whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+            whileHover={{ y: -4 }}
+            viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="relative liquid-glass group rounded-[1.25rem] overflow-hidden border border-white/10 bg-white/5 min-h-[360px] shadow-[0_0_40px_rgba(0,0,0,0.3)]"
+            className="liquid-glass group rounded-[1.25rem] p-6 w-full max-w-screen-xl mx-auto min-h-[520px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40"
           >
-            <FadingVideo
-              src="/videos/production-to-assembly-lifecycle-1.mp4"
-              className="w-full h-full object-cover"
-              muted
-              loop
-              playsInline
-            />
+            <div className="relative overflow-hidden rounded-[1.25rem] h-[560px] bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+              <FadingVideo
+                src="/videos/production-to-assembly-lifecycle-1.mp4"
+                className="w-full h-full object-cover"
+                muted
+                loop
+                playsInline
+                playOnVisible
+              />
+              <div className="absolute left-4 top-4 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-white backdrop-blur-md">
+                Life Cycle
+              </div>
+            </div>
+
+            <div className="mt-6 flex-1 flex flex-col justify-between gap-6">
+              <div />
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Assembly",
+                  "Habitation",
+                  "Disassembly",
+                  "Reuse",
+                  "Return",
+                ].map((tag) => (
+                  <span key={tag} className="liquid-glass tag-glass text-xs font-semibold text-white/90">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>

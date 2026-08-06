@@ -4,11 +4,7 @@ import {
   Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight,
   Zap, Cloud, Users, Settings, Activity as ActivityIcon, Plug, ShieldCheck,
 } from "lucide-react";
-import FadingVideo from "@/components/FadingVideo";
 import BlurText from "@/components/BlurText";
-
-const HERO_VIDEO =
-  "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
 
 const tabs = ["Overview", "Energy", "Climate", "Activity"];
 
@@ -21,11 +17,38 @@ export default function Dashboard() {
   const [battery] = useState(92);
   const [wind] = useState(14);
   const [alert, setAlert] = useState(true);
+  const videoBgRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = videoBgRef.current;
+    if (!video) return;
+    let raf: number;
+    const onEnded = () => {
+      const step = () => {
+        video.currentTime = Math.max(0, video.currentTime - 0.033);
+        if (video.currentTime > 0) {
+          raf = requestAnimationFrame(step);
+        } else {
+          video.play();
+        }
+      };
+      raf = requestAnimationFrame(step);
+    };
+    video.addEventListener("ended", onEnded);
+    return () => { video.removeEventListener("ended", onEnded); cancelAnimationFrame(raf); };
+  }, []);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
-      <FadingVideo src={HERO_VIDEO} className="fixed inset-0 w-full h-full object-cover z-0 opacity-40" />
-      <div className="fixed inset-0 z-0 bg-black/60" aria-hidden />
+      <video
+        ref={videoBgRef}
+        src="/engine-bg.mp4"
+        autoPlay
+        muted
+        playsInline
+        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-40"
+      />
+      <div className="fixed inset-0 z-0 bg-[#070b1f]/70" aria-hidden />
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-16">
         <div className="mx-auto max-w-[1400px]">
@@ -208,7 +231,7 @@ function OverviewPanel({ solar, battery, wind, alert, dismissAlert }: {
 }
 
 /* ============== Energy ============== */
-function EnergyPanel({ solar, battery }: { solar: number; battery: number }) {
+function EnergyPanel({ battery }: { solar: number; battery: number }) {
   const today = 42.6, yesterday = 38.1;
   const delta = (((today - yesterday) / yesterday) * 100).toFixed(1);
   const sources = [

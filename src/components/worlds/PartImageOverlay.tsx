@@ -5,7 +5,9 @@ import darkFloor from "@/assets/panels-dark-floor.png";
 import pinkWalls from "@/assets/panels-pink-walls.png";
 import panelsMembrane from "@/assets/panels-membrane-v2.png";
 import solarPanels from "@/assets/panels-solar-v2.png";
-import seating from "@/assets/panels-seating-v2.png";
+import seating from "@/assets/panels-outside-furniture.png";
+import outdoorSitting from "@/assets/outdoor-sitting.png";
+import outdoorPlants from "@/assets/outdoor-plants.png";
 import defaultImg from "@/assets/parts/Default.png";
 import indoorSquare from "@/assets/panels-square.png";
 import indoorOrganic from "@/assets/panels-organic.png";
@@ -23,6 +25,10 @@ const OPTION_IMAGES: Partial<Record<PartId, Record<string, string>>> = {
   rib: {
     square: indoorSquare,
     organic: indoorOrganic,
+  },
+  door: {
+    sitting: outdoorSitting,
+    plants: outdoorPlants,
   },
 };
 
