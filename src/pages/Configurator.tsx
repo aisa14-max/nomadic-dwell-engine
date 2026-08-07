@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
 import landscapeNamib from "@/assets/configurator-landscape-namib.png";
@@ -41,6 +41,36 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+// Procedural material textures — layered CSS gradients simulating woven
+// canvas, brushed metal and wood-grain flooring. No photos, so no licensing
+// risk, while still reading as an actual material rather than a flat chip.
+const WEAVE = (base: string) =>
+  `repeating-linear-gradient(45deg, rgba(255,255,255,0.14) 0px, rgba(255,255,255,0.14) 1px, transparent 1px, transparent 4px),` +
+  `repeating-linear-gradient(-45deg, rgba(0,0,0,0.09) 0px, rgba(0,0,0,0.09) 1px, transparent 1px, transparent 4px),` +
+  `linear-gradient(135deg, ${base})`;
+const BRUSHED = (base: string) =>
+  `repeating-linear-gradient(100deg, rgba(255,255,255,0.28) 0px, rgba(255,255,255,0.28) 1px, rgba(0,0,0,0.07) 1px, rgba(0,0,0,0.07) 2px),` +
+  `linear-gradient(135deg, ${base})`;
+const PLANKS = (base: string) =>
+  `repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px, transparent 2px, transparent 34px),` +
+  `repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px),` +
+  `linear-gradient(135deg, ${base})`;
+
+const MATERIAL_OPTIONS = [
+  { label: "Canvas",   swatch: WEAVE("#d9cba3, #b9a67c") },
+  { label: "Canvas",   swatch: WEAVE("#ece0bd, #cbb98e") },
+  { label: "Metal",    swatch: BRUSHED("#c4c8cc, #8a8f95") },
+  { label: "Metal",    swatch: BRUSHED("#9aa0a6, #5c6166") },
+  { label: "Flooring", swatch: PLANKS("#8a6247, #5e4230") },
+  { label: "Flooring", swatch: PLANKS("#6b4a34, #40291b") },
+];
+
+const PACK_OPTIONS = [
+  { label: "Minimalist",   swatch: "linear-gradient(135deg, #eae7e1, #c9c6bf)" },
+  { label: "Cozy",         swatch: "linear-gradient(135deg, #d99a5b, #a8623a)" },
+  { label: "Tech-Focused", swatch: "linear-gradient(135deg, #3a4a5c, #1b2530)" },
+];
+
 export default function Configurator() {
   const location = useLocation();
   const { selectedPlan } = useMockAuth();
@@ -48,6 +78,15 @@ export default function Configurator() {
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(true);
   const [siteSelectorView, setSiteSelectorView] = useState<"map" | "pin" | "route">("pin");
+  const [showMaterialLibrary, setShowMaterialLibrary] = useState(true);
+  const [selectedMaterialIdx, setSelectedMaterialIdx] = useState(0);
+  const [showInteriorPacks, setShowInteriorPacks] = useState(true);
+  const [selectedPackIdx, setSelectedPackIdx] = useState(0);
+  const siteScrollRef = useRef<HTMLDivElement>(null);
+  const materialScrollRef = useRef<HTMLDivElement>(null);
+  const packScrollRef = useRef<HTMLDivElement>(null);
+  const scrollStrip = (ref: React.RefObject<HTMLDivElement>, dir: 1 | -1) =>
+    ref.current?.scrollBy({ left: dir * 84, behavior: "smooth" });
   const [zoom, setZoom] = useState(1);
   const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
   const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
@@ -251,9 +290,17 @@ export default function Configurator() {
     title: _onboardingSiteName || _fallbackSite.title,
     region: _onboardingSiteRegion || _fallbackSite.region,
   };
+  // Namib Dune uses the same custom landscape art as its viewport backdrop
+  // for the Site Selector thumbnail too, instead of the default catalog photo.
+  const _customThumbs: Record<string, string> = {
+    "Namib Dune": landscapeNamib,
+  };
   const _extraSites = ["Namib Dune", "Highland Spire"]
     .filter((t) => t !== _primarySite.title)
-    .map((t) => SITES.find((s) => s.title === t)!)
+    .map((t) => {
+      const s = SITES.find((s) => s.title === t)!;
+      return _customThumbs[t] ? { ...s, image: _customThumbs[t] } : s;
+    })
     .slice(0, 2);
   const SITE_OPTIONS = [_primarySite, ..._extraSites];
   const [selectedSiteIdx, setSelectedSiteIdx] = useState(0);
@@ -411,97 +458,277 @@ export default function Configurator() {
             </motion.div>
           </div>
 
-          <div
-            className={[
-              "mt-10 grid grid-cols-1 gap-5 items-start",
-              showSiteSelector ? "lg:grid-cols-[220px_1fr_360px]" : "lg:grid-cols-[1fr_360px]",
-            ].join(" ")}
-          >
-            {/* LEFT SIDEBAR — Site Selector (matches the reference; other
-                panels from the reference intentionally not built yet) */}
-            {showSiteSelector && (
+          <div className="mt-10 grid grid-cols-1 gap-5 items-start lg:grid-cols-[220px_1fr_360px]">
+            {/* LEFT SIDEBAR — Site Selector, Material Library, Interior Packs.
+                Each panel's title bar toggles its own content open/closed. */}
+            <div className="flex flex-col gap-3">
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
                 className="liquid-glass rounded-[1rem] p-2.5"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                <button
+                  onClick={() => setShowSiteSelector((v) => !v)}
+                  className="w-full flex items-center justify-between group"
+                  aria-expanded={showSiteSelector}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                    <Compass className="h-3.5 w-3.5" strokeWidth={1.75} />
                     Site Selector
                   </span>
-                  <button
-                    onClick={() => setShowSiteSelector(false)}
-                    className="w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                    aria-label="Close site selector"
-                  >
-                    <X className="h-3 w-3" strokeWidth={1.75} />
-                  </button>
-                </div>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""}`}
+                    strokeWidth={1.75}
+                  />
+                </button>
 
-                <div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 mb-2 w-fit">
-                  {([
-                    { id: "map" as const, Icon: Map },
-                    { id: "pin" as const, Icon: MapPin },
-                    { id: "route" as const, Icon: Navigation },
-                  ]).map(({ id, Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => setSiteSelectorView(id)}
-                      className={[
-                        "w-6 h-6 rounded-full inline-flex items-center justify-center transition-all",
-                        siteSelectorView === id
-                          ? "bg-white text-black"
-                          : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
-                      aria-label={id}
+                <AnimatePresence initial={false}>
+                  {showSiteSelector && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="overflow-hidden"
                     >
-                      <Icon className="h-3 w-3" strokeWidth={1.75} />
-                    </button>
-                  ))}
-                </div>
+                      <div className="pt-2">
+                        <div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 mb-2 w-fit">
+                          {([
+                            { id: "map" as const, Icon: Map },
+                            { id: "pin" as const, Icon: MapPin },
+                            { id: "route" as const, Icon: Navigation },
+                          ]).map(({ id, Icon }) => (
+                            <button
+                              key={id}
+                              onClick={() => setSiteSelectorView(id)}
+                              className={[
+                                "w-6 h-6 rounded-full inline-flex items-center justify-center transition-all",
+                                siteSelectorView === id
+                                  ? "bg-white text-black"
+                                  : "text-white/50 hover:text-white/80",
+                              ].join(" ")}
+                              aria-label={id}
+                            >
+                              <Icon className="h-3 w-3" strokeWidth={1.75} />
+                            </button>
+                          ))}
+                        </div>
 
-                <div className="rounded-[0.75rem] overflow-hidden border border-white/10 bg-white/[0.03]">
-                  {_siteThumb ? (
-                    <img src={_siteThumb} alt={_siteName} className="w-full h-16 object-cover" />
-                  ) : (
-                    <div className="w-full h-16 bg-white/5" />
+                        <div className="rounded-[0.75rem] overflow-hidden border border-white/10 bg-white/[0.03]">
+                          {_siteThumb ? (
+                            <img src={_siteThumb} alt={_siteName} className="w-full h-16 object-cover" />
+                          ) : (
+                            <div className="w-full h-16 bg-white/5" />
+                          )}
+                          <div className="p-2">
+                            <p className="text-[11px] font-body text-white/90">
+                              Site: {_siteName || "—"}
+                            </p>
+                            {_siteRegion && (
+                              <p className="text-[9px] font-body text-white/50 mt-0.5">{_siteRegion}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        {SITE_OPTIONS.length > 1 && (
+                          <div className="mt-2 flex items-center gap-1">
+                            <button
+                              onClick={() => scrollStrip(siteScrollRef, -1)}
+                              className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                              aria-label="Scroll left"
+                            >
+                              <ChevronLeft className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                            <div
+                              ref={siteScrollRef}
+                              className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+                            >
+                              {SITE_OPTIONS.map((opt, i) => (
+                                <button
+                                  key={opt.title}
+                                  onClick={() => setSelectedSiteIdx(i)}
+                                  aria-label={`Switch to ${opt.title}`}
+                                  aria-pressed={i === selectedSiteIdx}
+                                  className={[
+                                    "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
+                                    i === selectedSiteIdx
+                                      ? "border-white/60"
+                                      : "border-white/10 hover:border-white/30",
+                                  ].join(" ")}
+                                >
+                                  <img src={opt.image} alt={opt.title} className="w-full h-10 object-cover" />
+                                  <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
+                                    {opt.title}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                            <button
+                              onClick={() => scrollStrip(siteScrollRef, 1)}
+                              className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                              aria-label="Scroll right"
+                            >
+                              <ChevronRight className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
                   )}
-                  <div className="p-2">
-                    <p className="text-[11px] font-body text-white/90">
-                      Site: {_siteName || "—"}
-                    </p>
-                    {_siteRegion && (
-                      <p className="text-[9px] font-body text-white/50 mt-0.5">{_siteRegion}</p>
-                    )}
-                  </div>
-                </div>
-
-                {SITE_OPTIONS.length > 1 && (
-                  <div className="mt-2 grid grid-cols-3 gap-1.5">
-                    {SITE_OPTIONS.map((opt, i) => (
-                      <button
-                        key={opt.title}
-                        onClick={() => setSelectedSiteIdx(i)}
-                        aria-label={`Switch to ${opt.title}`}
-                        aria-pressed={i === selectedSiteIdx}
-                        className={[
-                          "rounded-[0.5rem] overflow-hidden border transition-colors",
-                          i === selectedSiteIdx
-                            ? "border-white/60"
-                            : "border-white/10 hover:border-white/30",
-                        ].join(" ")}
-                      >
-                        <img src={opt.image} alt={opt.title} className="w-full h-10 object-cover" />
-                        <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
-                          {opt.title}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                </AnimatePresence>
               </motion.aside>
-            )}
+
+              <motion.aside
+                initial={blurInit}
+                animate={blurIn}
+                transition={{ duration: 0.7, delay: 0.75, ease: "easeOut" }}
+                className="liquid-glass rounded-[1rem] p-2.5"
+              >
+                <button
+                  onClick={() => setShowMaterialLibrary((v) => !v)}
+                  className="w-full flex items-center justify-between group"
+                  aria-expanded={showMaterialLibrary}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                    <Palette className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Material Library
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showMaterialLibrary ? "rotate-180" : ""}`}
+                    strokeWidth={1.75}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {showMaterialLibrary && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-2 flex items-center gap-1">
+                        <button
+                          onClick={() => scrollStrip(materialScrollRef, -1)}
+                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                          aria-label="Scroll left"
+                        >
+                          <ChevronLeft className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                        <div
+                          ref={materialScrollRef}
+                          className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+                        >
+                          {MATERIAL_OPTIONS.map((opt, i) => (
+                            <button
+                              key={`${opt.label}-${i}`}
+                              onClick={() => setSelectedMaterialIdx(i)}
+                              aria-label={`Select ${opt.label}`}
+                              aria-pressed={i === selectedMaterialIdx}
+                              className={[
+                                "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
+                                i === selectedMaterialIdx
+                                  ? "border-white/60"
+                                  : "border-white/10 hover:border-white/30",
+                              ].join(" ")}
+                            >
+                              <div className="w-full h-10" style={{ background: opt.swatch }} />
+                              <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
+                                {opt.label}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => scrollStrip(materialScrollRef, 1)}
+                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                          aria-label="Scroll right"
+                        >
+                          <ChevronRight className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.aside>
+
+              <motion.aside
+                initial={blurInit}
+                animate={blurIn}
+                transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+                className="liquid-glass rounded-[1rem] p-2.5"
+              >
+                <button
+                  onClick={() => setShowInteriorPacks((v) => !v)}
+                  className="w-full flex items-center justify-between group"
+                  aria-expanded={showInteriorPacks}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                    <Sofa className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Interior Packs
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showInteriorPacks ? "rotate-180" : ""}`}
+                    strokeWidth={1.75}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {showInteriorPacks && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-2 flex items-center gap-1">
+                        <button
+                          onClick={() => scrollStrip(packScrollRef, -1)}
+                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                          aria-label="Scroll left"
+                        >
+                          <ChevronLeft className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                        <div
+                          ref={packScrollRef}
+                          className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
+                        >
+                          {PACK_OPTIONS.map((opt, i) => (
+                            <button
+                              key={opt.label}
+                              onClick={() => setSelectedPackIdx(i)}
+                              aria-label={`Select ${opt.label}`}
+                              aria-pressed={i === selectedPackIdx}
+                              className={[
+                                "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
+                                i === selectedPackIdx
+                                  ? "border-white/60"
+                                  : "border-white/10 hover:border-white/30",
+                              ].join(" ")}
+                            >
+                              <div className="w-full h-10" style={{ background: opt.swatch }} />
+                              <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
+                                {opt.label}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => scrollStrip(packScrollRef, 1)}
+                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                          aria-label="Scroll right"
+                        >
+                          <ChevronRight className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.aside>
+            </div>
 
             {/* VIEWPORT */}
             <motion.div
@@ -562,7 +789,7 @@ export default function Configurator() {
                 style={{ height: "58vh" }}
               >
                 <AnimatePresence mode="wait">
-                  {showInterior2 ? (
+                  {engineReady && (showInterior2 ? (
                     /* Second interior angle — reached from the carpet-corner hotspot in interior 1 */
                     <motion.div
                       key="interior-view-2"
@@ -699,7 +926,7 @@ export default function Configurator() {
                         </div>
                       </div>
                     </motion.div>
-                  )}
+                  ))}
                 </AnimatePresence>
 
                 <AnimatePresence mode="wait">
@@ -825,6 +1052,16 @@ export default function Configurator() {
                   {selectedPlan && (
                     <span className="liquid-glass tag-glass">
                       Plan: {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
+                    </span>
+                  )}
+                  {showMaterialLibrary && (
+                    <span className="liquid-glass tag-glass">
+                      Material: {MATERIAL_OPTIONS[selectedMaterialIdx].label}
+                    </span>
+                  )}
+                  {showInteriorPacks && (
+                    <span className="liquid-glass tag-glass">
+                      Pack: {PACK_OPTIONS[selectedPackIdx].label}
                     </span>
                   )}
                 </div>
