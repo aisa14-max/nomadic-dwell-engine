@@ -14,11 +14,23 @@ const signedInItems = [
   { to: "/dashboard", label: "Engine" },
 ];
 
+// Placeholder display name, derived from the mock email since MockUser has
+// no real name field yet — e.g. "afra.lavaei@gmail.com" -> "Afra Lavaei".
+function displayNameFromEmail(email: string): string {
+  return email
+    .split("@")[0]
+    .split(/[._-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function Nav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, signOut, openLogin, onboardingOpen, loginOpen, planSelectionOpen } = useMockAuth();
   const items = user ? [...baseItems, ...signedInItems] : baseItems;
+  const displayName = user ? displayNameFromEmail(user.email) : "";
 
   const handleTribeClick = (e: React.MouseEvent) => {
     if (!user) {
@@ -73,12 +85,23 @@ export default function Nav() {
         {/* Right: auth action */}
         <div className="flex items-center justify-end gap-2">
           {user ? (
-            <button
-              onClick={signOut}
-              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
-            >
-              Sign out
-            </button>
+            <>
+              {/* Placeholder profile tab — avatar circle + name, not wired to anything yet */}
+              <button
+                className="liquid-glass rounded-full pl-1.5 pr-4 py-1.5 inline-flex items-center gap-2 text-sm font-body font-medium text-white/90"
+              >
+                <span className="w-7 h-7 rounded-full bg-white/15 border border-white/20 inline-flex items-center justify-center text-[11px] font-medium uppercase shrink-0">
+                  {displayName.charAt(0)}
+                </span>
+                {displayName}
+              </button>
+              <button
+                onClick={signOut}
+                className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+              >
+                Sign out
+              </button>
+            </>
           ) : (
             <button
               onClick={() => openLogin()}
