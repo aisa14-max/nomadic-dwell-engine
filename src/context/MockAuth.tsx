@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+export type AvatarId = "pink" | "blue" | "purple" | "yellow";
+
 interface MockUser {
-  email: string;
+  name: string;
+  avatar: AvatarId;
 }
 
 export type SitePayload = Record<string, unknown>;
 
 interface MockAuthValue {
   user: MockUser | null;
-  signIn: (email: string) => void;
+  signIn: (name: string, avatar: AvatarId) => void;
   signOut: () => void;
   loginOpen: boolean;
   openLogin: (onSuccess?: () => void) => void;
@@ -69,8 +72,8 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [planSelectionOpen, setPlanSelectionOpen] = useState(false);
   const [planPendingSuccess, setPlanPendingSuccess] = useState<(() => void) | null>(null);
 
-  const signIn = useCallback((email: string) => {
-    const newUser = { email };
+  const signIn = useCallback((name: string, avatar: AvatarId) => {
+    const newUser = { name, avatar };
     setUser(newUser);
     localStorage.setItem("mockUser", JSON.stringify(newUser));
     // Does NOT open onboarding automatically anymore — sign-up now happens

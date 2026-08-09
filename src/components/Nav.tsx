@@ -1,6 +1,17 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
-import { useMockAuth } from "@/context/MockAuth";
+import { useMockAuth, type AvatarId } from "@/context/MockAuth";
+import avatarPink from "@/assets/avatars/avatar-pink.png";
+import avatarBlue from "@/assets/avatars/avatar-blue.png";
+import avatarPurple from "@/assets/avatars/avatar-purple.png";
+import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+
+const AVATAR_IMAGES: Record<AvatarId, string> = {
+  pink: avatarPink,
+  blue: avatarBlue,
+  purple: avatarPurple,
+  yellow: avatarYellow,
+};
 
 // "Worlds" (Configurator) and "Engine" only appear once signed in — logged
 // out, the only way into the configurator is Discover -> questionnaire ->
@@ -73,12 +84,25 @@ export default function Nav() {
         {/* Right: auth action */}
         <div className="flex items-center justify-end gap-2">
           {user ? (
-            <button
-              onClick={signOut}
-              className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
-            >
-              Sign out
-            </button>
+            <>
+              <div
+                className="liquid-glass w-9 h-9 rounded-full overflow-hidden shrink-0"
+                aria-label={`Signed in as ${user.name}`}
+                title={user.name}
+              >
+                <img
+                  src={AVATAR_IMAGES[user.avatar]}
+                  alt=""
+                  className="w-full h-full object-cover scale-100"
+                />
+              </div>
+              <button
+                onClick={signOut}
+                className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
+              >
+                Sign out
+              </button>
+            </>
           ) : (
             <button
               onClick={() => openLogin()}

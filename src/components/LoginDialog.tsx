@@ -1,15 +1,23 @@
 import { useState, type FormEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import BlurText from "@/components/BlurText";
-import VoyageScene from "@/components/VoyageScene";
-import { useMockAuth } from "@/context/MockAuth";
+import { useMockAuth, type AvatarId } from "@/context/MockAuth";
+import avatarPink from "@/assets/avatars/avatar-pink.png";
+import avatarBlue from "@/assets/avatars/avatar-blue.png";
+import avatarPurple from "@/assets/avatars/avatar-purple.png";
+import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+
+const AVATARS: { id: AvatarId; image: string; label: string; ring: string; glow: string }[] = [
+  { id: "pink",   image: avatarPink,   label: "Pink",   ring: "border-pink-300/70",   glow: "rgba(249,168,212,0.35)" },
+  { id: "blue",   image: avatarBlue,   label: "Blue",   ring: "border-sky-300/70",    glow: "rgba(125,211,252,0.35)" },
+  { id: "purple", image: avatarPurple, label: "Purple", ring: "border-violet-300/70", glow: "rgba(196,181,253,0.35)" },
+  { id: "yellow", image: avatarYellow, label: "Yellow", ring: "border-yellow-300/70", glow: "rgba(253,224,71,0.35)" },
+];
 
 export default function LoginDialog() {
   const { signIn, loginOpen, closeLogin, _pendingSuccess, _clearPendingSuccess } = useMockAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState<AvatarId | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleOpenChange = (open: boolean) => {
@@ -22,19 +30,23 @@ export default function LoginDialog() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed || !password) {
-      setError("Enter an email and password to continue.");
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Tell us what to call you.");
       return;
     }
-    if (trimmed.length > 255 || password.length > 100) {
-      setError("Inputs are too long.");
+    if (trimmed.length > 60) {
+      setError("Keep it under 60 characters.");
+      return;
+    }
+    if (!avatar) {
+      setError("Pick an avatar to continue.");
       return;
     }
     setError(null);
-    signIn(trimmed);
-    setEmail("");
-    setPassword("");
+    signIn(trimmed, avatar);
+    setName("");
+    setAvatar(null);
     closeLogin();
     const cb = _pendingSuccess;
     _clearPendingSuccess();
@@ -44,13 +56,12 @@ export default function LoginDialog() {
   return (
     <DialogPrimitive.Root open={loginOpen} onOpenChange={handleOpenChange}>
       <DialogPrimitive.Portal>
+        {/* Darker overlay — blurs whatever page is behind it, same as the
+            questionnaire, instead of a custom full-screen scene. */}
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
         <DialogPrimitive.Content
-          className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto bg-[#01030f] text-white data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none"
+          className="fixed inset-0 z-50 w-screen h-screen overflow-y-auto text-white data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 focus:outline-none"
         >
-          {/* Backdrop scene */}
-          <VoyageScene className="fixed inset-0 w-full h-full z-0 opacity-70 pointer-events-none" />
-          <div className="fixed inset-0 z-0 bg-[#020618]/85 pointer-events-none" aria-hidden />
 
           {/* Close */}
           <DialogPrimitive.Close
@@ -62,69 +73,76 @@ export default function LoginDialog() {
 
           {/* Centered card */}
           <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-16">
-            <div className="liquid-glass border border-white/10 rounded-[2rem] w-full max-w-[1100px] grid md:grid-cols-2 overflow-hidden">
-              {/* Left brand pane */}
-              <div className="hidden md:flex flex-col justify-between p-12 border-r border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent">
-                <p className="text-sm font-body text-white/70">// Access</p>
-                <div className="space-y-6">
-                  <BlurText
-                    text="Sign in to claim a parcel."
-                    className="font-heading text-white text-5xl lg:text-[3.5rem] leading-[0.95] tracking-[-2px]"
-                  />
-                  <p className="font-body text-white/70 text-base leading-relaxed max-w-sm">
-                    Voyages are open to browse. Configuring a site, claiming terrain, and tuning an engine
-                    needs an account.
-                  </p>
-                </div>
-                <ul className="space-y-2 font-body text-sm text-white/60">
-                  <li>— Live site telemetry</li>
-                  <li>— Pre-cleared parcels worldwide</li>
-                  <li>— Configurable engines</li>
-                </ul>
-              </div>
-
-              {/* Right form pane */}
+            <div className="liquid-glass-strong border border-white/10 rounded-[2rem] w-full max-w-[560px] overflow-hidden">
+              {/* Form pane */}
               <div className="p-8 sm:p-12 md:p-14 flex flex-col justify-center gap-6">
                 <div className="space-y-2">
                   <DialogPrimitive.Title className="font-heading text-3xl md:text-4xl tracking-[-1px] leading-tight">
-                    Sign in to configure
+                    Who's exploring?
                   </DialogPrimitive.Title>
                   <DialogPrimitive.Description className="font-body text-sm text-white/70">
-                    Enter your credentials to access the configurator and engine dashboard.
+                    Give yourself a name and pick an avatar to enter the configurator.
                   </DialogPrimitive.Description>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-body text-white/60 uppercase tracking-wider">Email</label>
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      placeholder="you@nomad.engine"
-                      value={email}
-                      maxLength={255}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="h-12 text-base bg-white/5 border-white/15 text-white placeholder:text-white/40 rounded-xl"
+                    <label className="text-xs font-body text-white/60 uppercase tracking-wider">
+                      Your name
+                    </label>
+                    <input
+                      type="text"
+                      autoComplete="nickname"
+                      placeholder="What should we call you?"
+                      value={name}
+                      maxLength={60}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full h-12 px-4 text-base bg-white/5 border border-white/15 text-white placeholder:text-white/40 rounded-xl focus:outline-none focus:border-white/40 transition-colors"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-body text-white/60 uppercase tracking-wider">Password</label>
-                    <Input
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="••••••••"
-                      value={password}
-                      maxLength={100}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-12 text-base bg-white/5 border-white/15 text-white placeholder:text-white/40 rounded-xl"
-                    />
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-body text-white/60 uppercase tracking-wider">
+                      Pick an avatar
+                    </label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {AVATARS.map(({ id, image, label, ring, glow }) => {
+                        const selected = avatar === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => setAvatar(id)}
+                            aria-label={`Choose ${label} avatar`}
+                            aria-pressed={selected}
+                            className={[
+                              "aspect-square rounded-full border flex items-center justify-center transition-all overflow-hidden",
+                              selected
+                                ? `${ring} bg-white/10 scale-105`
+                                : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]",
+                            ].join(" ")}
+                            style={selected ? { boxShadow: `0 0 24px ${glow}` } : undefined}
+                          >
+                            <img
+                              src={image}
+                              alt={label}
+                              className={[
+                                "w-full h-full object-cover scale-100 transition-opacity",
+                                selected ? "opacity-100" : "opacity-70",
+                              ].join(" ")}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
+
                   {error && <p className="text-xs font-body text-red-300">{error}</p>}
                   <button
                     type="submit"
                     className="w-full h-12 rounded-full bg-white text-black text-sm font-body font-medium hover:bg-white/90 transition-colors mt-2"
                   >
-                    Sign in
+                    Enter the Engine
                   </button>
                 </form>
 
@@ -134,7 +152,7 @@ export default function LoginDialog() {
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
                 <p className="font-body text-xs text-white/50 text-center">
-                  No account needed — any email + password unlocks the demo.
+                  No account needed — just tell us who you are.
                 </p>
               </div>
             </div>
