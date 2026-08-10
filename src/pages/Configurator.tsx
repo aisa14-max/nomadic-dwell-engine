@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
 import landscapeNamib from "@/assets/configurator-landscape-namib.png";
@@ -90,6 +90,24 @@ export default function Configurator() {
   const [zoom, setZoom] = useState(1);
   const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
   const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
+  // True browser Fullscreen API rather than a CSS overlay — a fixed-position
+  // overlay gets trapped inside PageTransition's transformed wrapper (same
+  // bug as the reservation modal), and this also actually fills the whole
+  // screen (hides browser chrome) instead of just the page content area.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      viewportRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === viewportRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
   const [showSectionVol2, setShowSectionVol2] = useState(false);
   const [showInterior, setShowInterior] = useState(false);
   const [showInterior2, setShowInterior2] = useState(false);
@@ -785,8 +803,13 @@ export default function Configurator() {
               </div>
 
               <div
-                className="relative rounded-[1.25rem] overflow-hidden liquid-glass"
-                style={{ height: "58vh" }}
+                ref={viewportRef}
+                className={
+                  isFullscreen
+                    ? "relative w-full h-full overflow-hidden liquid-glass rounded-none"
+                    : "relative rounded-[1.25rem] overflow-hidden liquid-glass"
+                }
+                style={isFullscreen ? undefined : { height: "58vh" }}
               >
                 <AnimatePresence mode="wait">
                   {engineReady && (showInterior2 ? (
@@ -799,11 +822,18 @@ export default function Configurator() {
                       exit={{ opacity: 0, scale: 1.04 }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
                     >
-                      <img
-                        src={interior2Img}
-                        alt="Living room interior, alternate angle"
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div
+                          className="relative"
+                          style={{ aspectRatio: "2752/1536", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
+                        >
+                          <img
+                            src={interior2Img}
+                            alt="Living room interior, alternate angle"
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                      </div>
                       <button
                         onClick={() => setShowInterior2(false)}
                         className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
@@ -823,29 +853,36 @@ export default function Configurator() {
                       exit={{ opacity: 0, scale: 1.04 }}
                       transition={{ duration: 0.5, ease: "easeOut" }}
                     >
-                      <img
-                        src={interior1Img}
-                        alt="Living room interior"
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      {/* Carpet-corner hotspot, in front of the shelf — same
-                          aura-glow marker language as the dwelling hotspots */}
-                      <button
-                        onClick={() => setShowInterior2(true)}
-                        className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
-                        style={{ left: "22%", top: "75%" }}
-                        aria-label="Explore alternate angle"
-                      >
-                        <span
-                          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
-                          style={{
-                            background:
-                              "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
-                          }}
-                          aria-hidden
-                        />
-                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
-                      </button>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div
+                          className="relative"
+                          style={{ aspectRatio: "2752/1536", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
+                        >
+                          <img
+                            src={interior1Img}
+                            alt="Living room interior"
+                            className="w-full h-full object-contain"
+                          />
+                          {/* Carpet-corner hotspot, in front of the shelf — same
+                              aura-glow marker language as the dwelling hotspots */}
+                          <button
+                            onClick={() => setShowInterior2(true)}
+                            className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
+                            style={{ left: "22%", top: "75%" }}
+                            aria-label="Explore alternate angle"
+                          >
+                            <span
+                              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
+                              style={{
+                                background:
+                                  "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
+                              }}
+                              aria-hidden
+                            />
+                            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
+                          </button>
+                        </div>
+                      </div>
                       <button
                         onClick={() => setShowInterior(false)}
                         className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
@@ -902,7 +939,7 @@ export default function Configurator() {
                       <div className="absolute inset-0 flex items-center justify-center p-4">
                         <div
                           className="relative"
-                          style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", width: "100%" }}
+                          style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                         >
                           <img
                             src={dwellingFg}
@@ -961,7 +998,7 @@ export default function Configurator() {
                       {sectionImage ? (
                         activeSection === "dwelling" && viewMode === "3D" ? (
                           /* Square container — matches square matplotlib figure, so SVG overlay aligns exactly */
-                          <div className="relative" style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}>
+                          <div className="relative" style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}>
                             {/* Hovered section name — top-left corner, Barlow font */}
                             <div
                               className="absolute top-3 left-3 z-10 pointer-events-none transition-opacity duration-200"
@@ -1033,6 +1070,7 @@ export default function Configurator() {
                     { Icon: RotateCw, onClick: undefined },
                     { Icon: ZoomIn, onClick: zoomIn },
                     { Icon: ZoomOut, onClick: zoomOut },
+                    { Icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen },
                   ].map(({ Icon, onClick }, i) => (
                     <button
                       key={i}
@@ -1068,12 +1106,12 @@ export default function Configurator() {
 
               </div>
 
-              {/* Performance strip */}
+              {/* Performance strip — icon pills with titles, filling the panel's width */}
               <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label="Assembly time" value={String(_assembly)} unit="hours" />
-                <Stat label="Energy consumption" value={_energy} unit="kWh/d" />
-                <Stat label="Total mass" value={_mass} unit="t" />
-                <Stat label="Total area" value={_areaM2} unit="m²" />
+                <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
+                <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
+                <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
+                <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
               </div>
             </motion.div>
 
@@ -1220,17 +1258,20 @@ export default function Configurator() {
 }
 
 
-function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
+function Stat({ icon: Icon, label, value, unit }: { icon: LucideIcon; label: string; value: string; unit: string }) {
   return (
     <motion.div
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="liquid-glass rounded-[1rem] p-4 cursor-default border border-white/10 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.25)] transition-[background,border,box-shadow] duration-300"
+      className="liquid-glass rounded-[1rem] w-full flex items-center gap-3 px-5 py-3 cursor-default"
     >
-      <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-heading text-white text-3xl tracking-[-1px] leading-none">{value}</span>
-        <span className="text-xs text-white/60 font-body">{unit}</span>
+      <Icon className="h-6 w-6 text-white/80 shrink-0" strokeWidth={1.5} />
+      <div className="flex flex-col leading-tight min-w-0">
+        <span className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-body truncate">{label}</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-white font-medium text-sm">{value}</span>
+          <span className="text-white/55 text-xs font-body">{unit}</span>
+        </div>
       </div>
     </motion.div>
   );
