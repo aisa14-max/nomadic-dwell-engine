@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "@/config/mapbox";
@@ -50,20 +50,36 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const focusMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  // Mapbox needs a WebGL context. When the browser can't provide one (hardware
+  // acceleration off, blocklisted GPU, driver trouble), its constructor throws.
+  // Uncaught, that throw happens inside an effect and React unmounts the whole
+  // tree — the entire page goes black. Degrade to a static panel instead.
+  const [glFailed, setGlFailed] = useState(false);
 
   // Init map once
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      projection: { name: "globe" },
-      center: [15, 30],
-      zoom: 1.4,
-      attributionControl: false,
-      logoPosition: "bottom-left",
-    });
+    let map: mapboxgl.Map;
+    try {
+      // No pre-flight capability check here: mapbox-gl v3 removed the old
+      // `supported()` helper, so probing for it reports "unsupported" on every
+      // browser. The constructor already throws "Failed to initialize WebGL"
+      // when there's no GL context, which is what we catch below.
+      map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        projection: { name: "globe" },
+        center: [15, 30],
+        zoom: 1.4,
+        attributionControl: false,
+        logoPosition: "bottom-left",
+      });
+    } catch (err) {
+      console.error("[RegionGlobe] falling back — map could not initialise:", err);
+      setGlFailed(true);
+      return;
+    }
     mapRef.current = map;
 
     map.on("style.load", () => {
@@ -337,6 +353,31 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
     else map.once("idle", place);
   }, [focusPoint, focusLabel, focusSite, onViewSite]);
 
+
+  if (glFailed) {
+    return (
+      <div
+        className={className}
+        role="note"
+        aria-label="Interactive globe unavailable"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}
+      >
+        <div style={{ maxWidth: "34rem", textAlign: "center" }}>
+          <p style={{ fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)" }}>
+            Globe unavailable
+          </p>
+          <p style={{ marginTop: "0.75rem", fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.7)" }}>
+            This browser couldn't start WebGL, so the interactive globe can't render.
+            Every site is still listed below — use the region filters to browse them.
+          </p>
+          <p style={{ marginTop: "0.75rem", fontSize: 12, lineHeight: 1.6, color: "rgba(255,255,255,0.4)" }}>
+            To restore it, enable <em>Use graphics acceleration when available</em> in your
+            browser settings, then reload.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return <div ref={containerRef} className={className} aria-label="Interactive globe" />;
 }

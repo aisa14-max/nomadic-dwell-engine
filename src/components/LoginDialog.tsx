@@ -2,16 +2,24 @@ import { useState, type FormEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
-import avatarPink from "@/assets/avatars/avatar-pink.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+import avatar1 from "@/assets/avatars/avatar-1.jpg";
+import avatar2 from "@/assets/avatars/avatar-2.jpg";
+import avatar3 from "@/assets/avatars/avatar-3.jpg";
+import avatar4 from "@/assets/avatars/avatar-4.jpg";
+import avatar5 from "@/assets/avatars/avatar-5.jpg";
+import avatar6 from "@/assets/avatars/avatar-6.jpg";
 
-const AVATARS: { id: AvatarId; image: string; label: string; ring: string; glow: string }[] = [
-  { id: "pink",   image: avatarPink,   label: "Pink",   ring: "border-pink-300/70",   glow: "rgba(249,168,212,0.35)" },
-  { id: "blue",   image: avatarBlue,   label: "Blue",   ring: "border-sky-300/70",    glow: "rgba(125,211,252,0.35)" },
-  { id: "purple", image: avatarPurple, label: "Purple", ring: "border-violet-300/70", glow: "rgba(196,181,253,0.35)" },
-  { id: "yellow", image: avatarYellow, label: "Yellow", ring: "border-yellow-300/70", glow: "rgba(253,224,71,0.35)" },
+// Numbered rather than colour-named — the set sits in one violet/magenta
+// family (two share a hue), so colour names would be ambiguous. Ring/glow
+// values are sampled from each portrait's own accent so the selected state
+// picks up that avatar's colour.
+const AVATARS: { id: AvatarId; image: string; label: string; glow: string }[] = [
+  { id: "a1", image: avatar1, label: "Avatar 1", glow: "rgba(149,117,169,0.45)" },
+  { id: "a2", image: avatar2, label: "Avatar 2", glow: "rgba(158,116,185,0.45)" },
+  { id: "a3", image: avatar3, label: "Avatar 3", glow: "rgba(153,60,136,0.45)" },
+  { id: "a4", image: avatar4, label: "Avatar 4", glow: "rgba(163,123,137,0.45)" },
+  { id: "a5", image: avatar5, label: "Avatar 5", glow: "rgba(203,152,139,0.45)" },
+  { id: "a6", image: avatar6, label: "Avatar 6", glow: "rgba(169,96,158,0.45)" },
 ];
 
 export default function LoginDialog() {
@@ -105,30 +113,38 @@ export default function LoginDialog() {
                     <label className="text-xs font-body text-white/60 uppercase tracking-wider">
                       Pick an avatar
                     </label>
-                    <div className="grid grid-cols-4 gap-3">
-                      {AVATARS.map(({ id, image, label, ring, glow }) => {
+                    <div className="grid grid-cols-3 gap-3">
+                      {AVATARS.map(({ id, image, label, glow }) => {
                         const selected = avatar === id;
                         return (
                           <button
                             key={id}
                             type="button"
                             onClick={() => setAvatar(id)}
-                            aria-label={`Choose ${label} avatar`}
+                            aria-label={`Choose ${label}`}
                             aria-pressed={selected}
                             className={[
-                              "aspect-square rounded-full border flex items-center justify-center transition-all overflow-hidden",
-                              selected
-                                ? `${ring} bg-white/10 scale-105`
-                                : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]",
+                              // No CSS border — each portrait already has its own
+                              // glowing ring baked in, and a second drawn circle on
+                              // top read as a double ring. Selection is expressed by
+                              // growing that ring and lighting it with the avatar's
+                              // own accent colour instead.
+                              "aspect-square rounded-full flex items-center justify-center overflow-hidden",
+                              "transition-all duration-300",
+                              selected ? "scale-110" : "hover:scale-105",
                             ].join(" ")}
-                            style={selected ? { boxShadow: `0 0 24px ${glow}` } : undefined}
+                            style={selected ? { boxShadow: `0 0 28px ${glow}` } : undefined}
                           >
                             <img
                               src={image}
                               alt={label}
+                              // The source art is pre-cropped to each portrait's own
+                              // glowing ring (they sat at 81–93% of frame, which left a
+                              // black margin the circular clip read as a second ring),
+                              // so the ring itself is now the outer edge at scale 1.
                               className={[
-                                "w-full h-full object-cover scale-100 transition-opacity",
-                                selected ? "opacity-100" : "opacity-70",
+                                "w-full h-full object-cover transition-opacity duration-300",
+                                selected ? "opacity-100" : "opacity-60 hover:opacity-85",
                               ].join(" ")}
                             />
                           </button>

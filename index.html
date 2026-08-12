@@ -25,6 +25,41 @@
 
   <body>
     <div id="root"></div>
+    <!-- TEMPORARY DIAGNOSTIC — remove once the black-screen issue is resolved.
+         Surfaces client-side errors on the page itself so a blank screen shows
+         what actually failed instead of hiding it. -->
+    <script>
+      (function () {
+        function show(kind, msg) {
+          var el = document.getElementById("__err__");
+          if (!el) {
+            el = document.createElement("pre");
+            el.id = "__err__";
+            el.style.cssText =
+              "position:fixed;inset:0;z-index:2147483647;margin:0;padding:24px;" +
+              "background:#140000;color:#ff9c9c;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;" +
+              "white-space:pre-wrap;overflow:auto;";
+            document.body.appendChild(el);
+          }
+          el.textContent += "[" + kind + "] " + msg + "\n\n";
+        }
+        window.addEventListener("error", function (e) {
+          show("error", (e.message || "?") + "\n  at " + (e.filename || "?") + ":" + (e.lineno || "?") +
+            (e.error && e.error.stack ? "\n" + e.error.stack : ""));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e.reason;
+          show("promise", (r && (r.stack || r.message)) || String(r));
+        });
+        // If React never paints, say so rather than showing a blank page.
+        setTimeout(function () {
+          var root = document.getElementById("root");
+          if (root && root.children.length === 0) {
+            show("mount", "React did not render within 12s (#root is empty).");
+          }
+        }, 12000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
-import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2 } from "lucide-react";
 import { REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
@@ -17,7 +18,11 @@ const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 export default function Discover() {
   const [selectedClimate, setSelectedClimate] = useState<ClimateId | "all">("all");
   const [selectedRegion, setSelectedRegion] = useState<RegionId | "all">("all");
-  const { openOnboardingWithSite } = useMockAuth();
+  const { openOnboardingWithSite, user, openLogin } = useMockAuth();
+  const navigate = useNavigate();
+  // Set when this is the final step before the configurator, so the wait is
+  // visible rather than the page appearing to freeze.
+  const [loadingSite, setLoadingSite] = useState<string | null>(null);
   const globeRef = useRef<HTMLDivElement | null>(null);
   const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
 
@@ -50,12 +55,63 @@ export default function Discover() {
       precipitation: site.rainfall,
       climate_zone: site.climateId,
     };
+
+    // Quick-start path: the questionnaire is already answered and we were sent
+    // here purely to collect the missing site. Don't ask the questions again —
+    // attach the site to the saved brief and go straight to the configurator.
+    if (sessionStorage.getItem("awaitingSite") === "true") {
+      sessionStorage.removeItem("awaitingSite");
+      try {
+        const raw = localStorage.getItem("configuratorInit");
+        const init = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+        localStorage.setItem("configuratorInit", JSON.stringify({ ...init, site: payload }));
+      } catch { /* ignore — configurator falls back to defaults */ }
+
+      const proceed = () => {
+        setLoadingSite(site.title);
+        // Brief hold so the loading state is actually seen before the route swap.
+        window.setTimeout(() => navigate("/configurator"), 1400);
+      };
+      // The brief is only now complete, so this is the first and only point
+      // we ask who they are — and not at all if they're already signed in.
+      if (user) proceed();
+      else openLogin(proceed);
+      return;
+    }
+
     // Sign-up now happens after the questionnaire, not before — see OnboardingFlow.
     openOnboardingWithSite(payload);
   };
 
   return (
     <div className="relative min-h-screen w-full bg-[#02030a] text-white overflow-hidden">
+      {/* Final-step loading state — the brief is complete and the dwelling is
+          being assembled, so hold the user here rather than dropping them into
+          an empty configurator. */}
+      <AnimatePresence>
+        {loadingSite && (
+          <motion.div
+            key="site-loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="fixed inset-0 z-[70] flex flex-col items-center justify-center gap-5 bg-[#02030a]/92 backdrop-blur-sm"
+          >
+            <div className="absolute w-72 h-72 rounded-full bg-white/5 blur-3xl animate-pulse" aria-hidden />
+            <Loader2 className="relative h-10 w-10 text-white/80 animate-spin" strokeWidth={1.5} />
+            <div className="relative text-center">
+              <p className="font-body text-white/85 text-sm tracking-wide">
+                Configuring your engine for {loadingSite}…
+              </p>
+              <p className="font-body text-white/40 text-[11px] uppercase tracking-[0.18em] mt-2">
+                Matching your brief to the terrain
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Animated stars-at-night background */}
       <NightSkyScene className="fixed inset-0 w-full h-full z-0" />
       {/* Subtle vignette for legibility */}

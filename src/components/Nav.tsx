@@ -1,16 +1,20 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
-import avatarPink from "@/assets/avatars/avatar-pink.png";
-import avatarBlue from "@/assets/avatars/avatar-blue.png";
-import avatarPurple from "@/assets/avatars/avatar-purple.png";
-import avatarYellow from "@/assets/avatars/avatar-yellow.png";
+import avatar1 from "@/assets/avatars/avatar-1.jpg";
+import avatar2 from "@/assets/avatars/avatar-2.jpg";
+import avatar3 from "@/assets/avatars/avatar-3.jpg";
+import avatar4 from "@/assets/avatars/avatar-4.jpg";
+import avatar5 from "@/assets/avatars/avatar-5.jpg";
+import avatar6 from "@/assets/avatars/avatar-6.jpg";
 
 const AVATAR_IMAGES: Record<AvatarId, string> = {
-  pink: avatarPink,
-  blue: avatarBlue,
-  purple: avatarPurple,
-  yellow: avatarYellow,
+  a1: avatar1,
+  a2: avatar2,
+  a3: avatar3,
+  a4: avatar4,
+  a5: avatar5,
+  a6: avatar6,
 };
 
 // "Worlds" (Configurator) and "Engine" only appear once signed in — logged
@@ -22,7 +26,8 @@ const baseItems = [
 ];
 const signedInItems = [
   { to: "/configurator", label: "Worlds" },
-  { to: "/dashboard", label: "Engine" },
+  // Engine is now one tab inside Profile, so the nav names the destination.
+  { to: "/profile", label: "Profile" },
 ];
 
 export default function Nav() {
@@ -85,17 +90,18 @@ export default function Nav() {
         <div className="flex items-center justify-end gap-2">
           {user ? (
             <>
-              <div
-                className="liquid-glass w-9 h-9 rounded-full overflow-hidden shrink-0"
-                aria-label={`Signed in as ${user.name}`}
-                title={user.name}
+              <Link
+                to="/profile"
+                className="liquid-glass w-9 h-9 rounded-full overflow-hidden shrink-0 block"
+                aria-label={`${user.name} — open profile`}
+                title={`${user.name} — profile`}
               >
                 <img
                   src={AVATAR_IMAGES[user.avatar]}
                   alt=""
                   className="w-full h-full object-cover scale-100"
                 />
-              </div>
+              </Link>
               <button
                 onClick={signOut}
                 className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
@@ -105,7 +111,9 @@ export default function Nav() {
             </>
           ) : (
             <button
-              onClick={() => openLogin()}
+              // Signing in directly (rather than as the last step of a brief)
+              // has no design in flight to return to, so land on the profile.
+              onClick={() => openLogin(() => navigate("/profile"))}
               className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90"
             >
               Sign in

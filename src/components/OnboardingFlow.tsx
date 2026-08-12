@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   ArrowLeft, ArrowRight,
@@ -7,12 +8,17 @@ import {
   CalendarDays, CalendarRange, Leaf, Infinity as InfinityIcon,
   Laptop, Flower2, PartyPopper, Microscope,
   Zap, Lock, Sofa, Wifi,
-  Minimize2, Square, Maximize2,
+  Minimize2, Square, Maximize2, Loader2,
 } from "lucide-react";
 import { useMockAuth } from "@/context/MockAuth";
 import BlurText from "@/components/BlurText";
 
 const API = "http://localhost:8000";
+
+/** Longest the questionnaire will wait on the backend before proceeding with
+    defaults. Generous enough for a normal LLM reply, short enough that a dead
+    backend doesn't strand the user on the last question. */
+const SUBMIT_TIMEOUT_MS = 12000;
 
 const _DEFAULT_SITE = {
   name: "Skye Moor", location: "Highlands, UK",
@@ -71,7 +77,7 @@ const steps: Step[] = [
 ];
 
 export default function OnboardingFlow() {
-  const { onboardingOpen, closeOnboarding, pendingSite, user, openLogin, selectedPlan, openPlanSelection } = useMockAuth();
+  const { onboardingOpen, closeOnboarding, pendingSite, user, openLogin } = useMockAuth();
   const navigate = useNavigate();
   const [stepIdx, setStepIdx]   = useState(0);
   const [answers, setAnswers]   = useState<Record<number, string>>({});
@@ -90,6 +96,18 @@ export default function OnboardingFlow() {
   // 2. sessionStorage fallback (survives React re-renders and page navigations within the tab)
   // 3. last localStorage session (repeat visitor signed in from Nav without clicking a site)
   // 4. hardcoded default
+  // Did the user actually pick a site, or are they on the "quick start" path
+  // (questionnaire straight from the Landing page)? A real pick comes from the
+  // context or this tab's sessionStorage; the localStorage/default fallbacks
+  // below are guesses, not choices, so they don't count as "chosen".
+  const siteWasChosen = (() => {
+    if (pendingSite?.name) return true;
+    try {
+      const raw = sessionStorage.getItem("pendingSite");
+      return !!(raw && (JSON.parse(raw) as { name?: string })?.name);
+    } catch { return false; }
+  })();
+
   const sitePayload = (() => {
     const src = pendingSite ?? (() => {
       try {
@@ -129,18 +147,29 @@ export default function OnboardingFlow() {
     else setStepIdx(i => i - 1);
   };
 
-  // After the questionnaire: sign-up (if not already signed in), then plan
-  // selection (if no plan chosen yet), then the configurator. A returning
-  // user who already has both just goes straight there.
+  // Both halves of the brief are required before a dwelling can be configured:
+  // the answers AND a site. Whichever the user started with, they're sent to
+  // collect the other one before the configurator.
+  //   Voyages first  -> site chosen -> questionnaire -> configurator
+  //   Quick start    -> questionnaire -> Voyages (pick a site) -> configurator
+  // Plan/subscription selection happens later, inside the reservation
+  // customizer (after parts customization, before checkout).
   const goToConfigurator = () => navigate("/configurator");
-  const ensurePlan = () => {
-    if (selectedPlan) goToConfigurator();
-    else openPlanSelection(goToConfigurator);
+  const goPickSite = () => {
+    // Discover reads this and skips re-opening the questionnaire, sending the
+    // user straight into the configurator once they choose.
+    sessionStorage.setItem("awaitingSite", "true");
+    navigate("/discover");
   };
   const revealResults = () => {
     handleOpenChange(false);
-    if (user) ensurePlan();
-    else openLogin(ensurePlan);
+    // Sign-in is asked for once, at the end, and only when the brief is
+    // complete — so a user is never interrupted mid-way to make an account.
+    // If the site is still missing, go collect it first; Discover handles the
+    // sign-in prompt at that point instead.
+    if (!siteWasChosen) { goPickSite(); return; }
+    if (user) goToConfigurator();
+    else openLogin(goToConfigurator);
   };
 
   // Selecting an option advances immediately on the first 4 questions — no
@@ -163,10 +192,17 @@ export default function OnboardingFlow() {
       Object.entries(answers).map(([i, v]) => [keys[Number(i)], v]),
     );
     try {
+      // /onboarding does an LLM round-trip, so it can be slow — and if the
+      // Python backend is down or can't reach the model it never answers at
+      // all. Without a deadline the questionnaire spins forever on the last
+      // question. On timeout we fall through to the catch, which stores the
+      // brief with null spec fields; the configurator already handles that by
+      // falling back to defaults.
       const resp = await fetch(`${API}/onboarding`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ site: sitePayload, answers: namedAnswers }),
+        signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
       });
       const data = resp.ok ? await resp.json() : null;
       localStorage.setItem("configuratorInit", JSON.stringify({
@@ -204,7 +240,35 @@ export default function OnboardingFlow() {
           {/* Single panel — frosted/translucent (liquid-glass-strong, same as the
               rest of the app) instead of a solid backdrop, so Discover shows
               through blurred rather than being fully hidden. */}
-          <div className="liquid-glass-strong border border-white/10 w-full max-w-[920px] rounded-[2rem] p-8 md:p-12 text-white">
+          <div className="relative liquid-glass-strong border border-white/10 w-full max-w-[920px] rounded-[2rem] p-8 md:p-12 text-white">
+            {/* Final step — the brief is being turned into a dwelling. Covers the
+                panel so the wait reads as progress instead of a frozen dialog. */}
+            <AnimatePresence>
+              {isSubmitting && (
+                <motion.div
+                  key="submitting"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="absolute inset-0 z-20 rounded-[2rem] flex flex-col items-center justify-center gap-5 bg-black/55 backdrop-blur-md"
+                >
+                  <div className="absolute w-64 h-64 rounded-full bg-white/5 blur-3xl animate-pulse" aria-hidden />
+                  <Loader2 className="relative h-10 w-10 text-white/80 animate-spin" strokeWidth={1.5} />
+                  <div className="relative text-center">
+                    <p className="font-body text-white/85 text-sm tracking-wide">
+                      {siteWasChosen
+                        ? `Configuring your engine for ${sitePayload.name}…`
+                        : "Reading your brief…"}
+                    </p>
+                    <p className="font-body text-white/40 text-[11px] uppercase tracking-[0.18em] mt-2">
+                      {siteWasChosen ? "Matching your brief to the terrain" : "Next: choose your terrain"}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
 
               {/* Progress */}
               <div className="flex items-center justify-between mb-10">

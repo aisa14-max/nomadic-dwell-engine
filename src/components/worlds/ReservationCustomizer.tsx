@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
+import { useMockAuth } from "@/context/MockAuth";
 import { PARTS, PartId } from "@/data/dwellingParts";
 
 import PartsStrip from "./PartsStrip";
@@ -21,6 +22,15 @@ type Props = { onClose: () => void };
 export default function ReservationCustomizer({ onClose }: Props) {
   const r = useReservation();
   const navigate = useNavigate();
+  const { selectedPlan, openPlanSelection } = useMockAuth();
+
+  // Subscription/plan-tier step lives here — after the order summary,
+  // before payment. A returning user who already picked a plan skips
+  // straight to payment.
+  const proceedToPayment = () => {
+    if (selectedPlan) r.setStage("payment");
+    else openPlanSelection(() => r.setStage("payment"));
+  };
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
   const [shownPart, setShownPart] = useState<PartId | null>("rib");
   const [shownOption, setShownOption] = useState<string | undefined>("square");
@@ -166,7 +176,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
               totals={r.totals}
               compact={r.stage === "payment"}
               onClose={() => r.setStage("configure")}
-              onConfirm={() => r.setStage("payment")}
+              onConfirm={proceedToPayment}
             />
           </div>
         )}

@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
-export type AvatarId = "pink" | "blue" | "purple" | "yellow";
+export type AvatarId = "a1" | "a2" | "a3" | "a4" | "a5" | "a6";
+
+export const AVATAR_IDS: AvatarId[] = ["a1", "a2", "a3", "a4", "a5", "a6"];
 
 interface MockUser {
   name: string;
@@ -48,7 +50,15 @@ const MockAuthContext = createContext<MockAuthValue | undefined>(undefined);
 function loadStoredUser(): MockUser | null {
   try {
     const raw = localStorage.getItem("mockUser");
-    return raw ? (JSON.parse(raw) as MockUser) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as MockUser;
+    // Sessions saved before the avatar set changed hold ids that no longer
+    // exist ("pink", "blue", ...). Fall back rather than handing the nav an
+    // id with no image behind it.
+    if (!AVATAR_IDS.includes(parsed.avatar)) {
+      return { ...parsed, avatar: AVATAR_IDS[0] };
+    }
+    return parsed;
   } catch {
     return null;
   }

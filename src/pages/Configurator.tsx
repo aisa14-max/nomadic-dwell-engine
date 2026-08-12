@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, type LucideIcon } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
-import landscapeNamib from "@/assets/configurator-landscape-namib.png";
-import landscapeHighland from "@/assets/configurator-landscape-highland.png";
+import landscapeNamib from "@/assets/configurator-landscape-namib.jpg";
+import landscapeHighland from "@/assets/configurator-landscape-highland.jpg";
 import dwellingFg from "@/assets/configurator-dwelling-fg.png";
 import sectionVol2 from "@/assets/configurator-section-vol2.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
@@ -76,6 +76,7 @@ export default function Configurator() {
   const { selectedPlan } = useMockAuth();
   const [showNext, setShowNext] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
+  const [showBrief, setShowBrief] = useState(true);
   const [showSiteSelector, setShowSiteSelector] = useState(true);
   const [siteSelectorView, setSiteSelectorView] = useState<"map" | "pin" | "route">("pin");
   const [showMaterialLibrary, setShowMaterialLibrary] = useState(true);
@@ -297,6 +298,28 @@ export default function Configurator() {
   };
   const _occStr = _occMap[_answers.occupants ?? ""] ?? "";
   const _purStr = _purMap[_answers.purpose   ?? ""] ?? "";
+
+  // Sidebar brief summary. Reads the answers generically rather than mapping
+  // every option id, so it keeps working if the questionnaire's options change.
+  // Icons echo the questionnaire's own iconography so a row reads the same way
+  // the question did.
+  const _BRIEF_LABELS: Record<string, { label: string; Icon: LucideIcon }> = {
+    occupants: { label: "People",   Icon: Users },
+    duration:  { label: "Stay",     Icon: CalendarRange },
+    purpose:   { label: "Use",      Icon: Laptop },
+    priority:  { label: "Priority", Icon: Zap },
+    scale:     { label: "Scale",    Icon: Square },
+  };
+  const _prettyAnswer = (v: string) =>
+    v
+      // "1_3_months" would otherwise read as "1 3 Months" (i.e. thirteen) —
+      // keep numeric ranges joined by a dash.
+      .replace(/^(\d+)_(\d+)_/, "$1–$2 ")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  const _briefRows = Object.entries(_BRIEF_LABELS)
+    .filter(([key]) => _answers[key])
+    .map(([key, { label, Icon }]) => ({ label, Icon, value: _prettyAnswer(_answers[key]) }));
   const _onboardingSiteName = String(_site?.name ?? "");
   const _onboardingSiteRegion = String(_site?.location ?? "");
 
@@ -477,9 +500,67 @@ export default function Configurator() {
           </div>
 
           <div className="mt-10 grid grid-cols-1 gap-5 items-start lg:grid-cols-[220px_1fr_360px]">
-            {/* LEFT SIDEBAR — Site Selector, Material Library, Interior Packs.
-                Each panel's title bar toggles its own content open/closed. */}
+            {/* LEFT SIDEBAR — Your Brief, Site Selector, Material Library,
+                Interior Packs. Each panel's title bar toggles its own content. */}
             <div className="flex flex-col gap-3">
+              {/* Summary of the onboarding answers — otherwise the choices that
+                  drove this design are invisible once you're in the configurator. */}
+              <motion.aside
+                initial={blurInit}
+                animate={blurIn}
+                transition={{ duration: 0.7, delay: 0.65, ease: "easeOut" }}
+                className="liquid-glass rounded-[1rem] p-2.5"
+              >
+                <button
+                  onClick={() => setShowBrief((v) => !v)}
+                  className="w-full flex items-center justify-between group"
+                  aria-expanded={showBrief}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                    <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
+                    Your Brief
+                  </span>
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showBrief ? "rotate-180" : ""}`}
+                    strokeWidth={1.75}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {showBrief && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-2">
+                        {_briefRows.length ? (
+                          <dl className="space-y-1.5">
+                            {_briefRows.map(({ label, Icon, value }) => (
+                              <div key={label} className="flex items-center justify-between gap-2">
+                                <dt className="inline-flex items-center gap-1.5 text-[9px] font-body uppercase tracking-[0.1em] text-white/40 shrink-0">
+                                  <Icon className="h-3 w-3 text-white/45 shrink-0" strokeWidth={1.75} />
+                                  {label}
+                                </dt>
+                                <dd className="text-[10px] font-body text-white/85 text-right truncate">
+                                  {value}
+                                </dd>
+                              </div>
+                            ))}
+                          </dl>
+                        ) : (
+                          <p className="text-[10px] font-body text-white/40 leading-relaxed">
+                            No questionnaire answers on file — this design is using defaults.
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.aside>
+
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}

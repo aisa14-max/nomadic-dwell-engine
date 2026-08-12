@@ -85,9 +85,12 @@ export default function Dashboard() {
         autoPlay
         muted
         playsInline
-        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-40"
+        className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-70"
       />
-      <div className="fixed inset-0 z-0 bg-[#070b1f]/70" aria-hidden />
+      {/* Neutral black, matching Profile (which now hosts this page as a tab)
+          and the rest of the app — a navy tint here made the Engine tab look
+          like a different site when switching tabs. */}
+      <div className="fixed inset-0 z-0 bg-black/70" aria-hidden />
     </>
   );
 

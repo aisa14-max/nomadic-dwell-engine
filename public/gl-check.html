@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>WebGL check</title>
+<style>
+ body{background:#0b0b0f;color:#eee;font:14px/1.6 ui-monospace,Consolas,monospace;padding:28px;margin:0}
+ h1{font-size:15px;letter-spacing:.16em;text-transform:uppercase;color:#8ab4ff;margin:0 0 18px}
+ table{border-collapse:collapse;width:100%;max-width:820px}
+ td{padding:7px 10px;border-bottom:1px solid #23232c;vertical-align:top}
+ td:first-child{color:#8f8fa3;width:210px;white-space:nowrap}
+ .ok{color:#6ee7a8;font-weight:700}.bad{color:#ff8080;font-weight:700}
+ .verdict{margin-top:22px;padding:16px;border-radius:10px;font-size:14px}
+ .v-ok{background:#0d2a1b;color:#8ff0bd}.v-bad{background:#2a0d0d;color:#ffb0b0}
+</style></head>
+<body>
+<h1>WebGL capability check</h1>
+<table id="t"></table>
+<div id="verdict" class="verdict"></div>
+<script>
+function probe(kind){
+  try{
+    var c=document.createElement("canvas");
+    var gl=c.getContext(kind);
+    if(!gl) return {ok:false,err:"getContext('"+kind+"') returned null"};
+    var d=gl.getExtension("WEBGL_debug_renderer_info");
+    return {ok:true,
+      vendor: d?gl.getParameter(d.UNMASKED_VENDOR_WEBGL):gl.getParameter(gl.VENDOR),
+      renderer: d?gl.getParameter(d.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER),
+      version: gl.getParameter(gl.VERSION),
+      maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE)};
+  }catch(e){ return {ok:false,err:e && e.message ? e.message : String(e)}; }
+}
+var w1=probe("webgl"), w2=probe("webgl2");
+var rows=[
+ ["User agent", navigator.userAgent],
+ ["WebGL 1", w1.ok?"<span class='ok'>AVAILABLE</span>":"<span class='bad'>NOT AVAILABLE</span> — "+(w1.err||"")],
+ ["WebGL 2 (mapbox needs this)", w2.ok?"<span class='ok'>AVAILABLE</span>":"<span class='bad'>NOT AVAILABLE</span> — "+(w2.err||"")],
+];
+if(w2.ok){ rows.push(["GL vendor",w2.vendor],["GL renderer",w2.renderer],["GL version",w2.version],["Max texture size",w2.maxTex]); }
+else if(w1.ok){ rows.push(["GL1 vendor",w1.vendor],["GL1 renderer",w1.renderer],["GL1 version",w1.version]); }
+document.getElementById("t").innerHTML =
+  rows.map(function(r){return "<tr><td>"+r[0]+"</td><td>"+r[1]+"</td></tr>";}).join("");
+var v=document.getElementById("verdict");
+if(w2.ok){ v.className="verdict v-ok"; v.textContent="WebGL2 works here — the globe SHOULD render in this browser."; }
+else { v.className="verdict v-bad";
+  v.textContent="No WebGL2 in this browser. mapbox-gl v3 only requests a webgl2 context (no WebGL1 fallback), so the globe cannot render here — this is a browser capability limit, not app code."
+  + (w1.ok ? " Note: WebGL1 IS available, so this browser is partially accelerated." : ""); }
+</script>
+</body>
+</html>

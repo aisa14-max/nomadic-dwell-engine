@@ -8,6 +8,7 @@ import Discover from "./pages/Discover.tsx";
 import Configurator from "./pages/Configurator.tsx";
 import ConfiguratorPortfolio from "./pages/ConfiguratorPortfolio.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Profile from "./pages/Profile.tsx";
 import Tribe from "./pages/Tribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
@@ -19,15 +20,16 @@ import { MockAuthProvider, useMockAuth } from "./context/MockAuth";
 
 const queryClient = new QueryClient();
 
-/** Blocks /configurator unless the user has signed in, completed onboarding,
-    AND picked a plan — the full sequence (Discover -> questionnaire ->
-    sign-up -> plan) normally guarantees all three before ever navigating
-    here, this just stops a direct URL/bookmark from skipping ahead. */
+/** Blocks /configurator unless the user has signed in and completed
+    onboarding — the sequence (Discover -> questionnaire -> sign-up) normally
+    guarantees both before ever navigating here, this just stops a direct
+    URL/bookmark from skipping ahead. Plan/subscription selection happens
+    later, inside the reservation customizer, so it's not gated here. */
 function RequireOnboarding({ children }: { children: React.ReactNode }) {
-  const { user, selectedPlan } = useMockAuth();
+  const { user } = useMockAuth();
   const ready = localStorage.getItem("configuratorReady") === "true"
              || sessionStorage.getItem("configuratorReady") === "true";
-  if (!user || !ready || !selectedPlan) return <Navigate to="/discover" replace />;
+  if (!user || !ready) return <Navigate to="/discover" replace />;
   return <>{children}</>;
 }
 
@@ -52,6 +54,8 @@ const RoutedApp = () => {
           {/* Frozen portfolio snapshot — not gated, not in nav, reachable directly by URL */}
           <Route path="/configurator-portfolio" element={<ConfiguratorPortfolio />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          {/* Profile wraps the Engine dashboard as one of its tabs — signed-in only */}
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/tribe" element={<RequireAuth><Tribe /></RequireAuth>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
