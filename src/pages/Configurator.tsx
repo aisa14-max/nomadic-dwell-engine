@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, type LucideIcon } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
 import landscapeNamib from "@/assets/configurator-landscape-namib.jpg";
@@ -12,7 +12,13 @@ import topViewImg from "@/assets/configurator-top-view.jpg";
 import interior1Img from "@/assets/configurator-interior-1.jpg";
 import interior2Img from "@/assets/configurator-interior-2.jpg";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
-import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
+import AddOnsPanel from "@/components/worlds/AddOnsPanel";
+import OrderPanel from "@/components/worlds/OrderPanel";
+import PaymentPanel from "@/components/worlds/PaymentPanel";
+import EngineOnTheWayOverlay from "@/components/worlds/EngineOnTheWayOverlay";
+import { useReservation } from "@/hooks/useReservation";
+import { PARTS, PartId, DEPOSIT_RATE } from "@/data/dwellingParts";
+import { applyPlanDiscount } from "@/data/plans";
 import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 
@@ -73,8 +79,53 @@ const PACK_OPTIONS = [
 
 export default function Configurator() {
   const location = useLocation();
-  const { selectedPlan } = useMockAuth();
+  const navigate = useNavigate();
+  const { selectedPlan, confirmPlan } = useMockAuth();
+  // Customisation is a second stage of THIS page rather than a separate
+  // screen: the dwelling viewport stays put while the side columns change.
+  //   design    -> Brief/Site/Material/Packs | viewport | Chat
+  //   customise -> Add-ons                   | viewport | Price & Order
+  //   payment   -> (collapsed)               | viewport | Payment
+  //   plan      -> subscription packages
+  //   confirmed -> engine on the way
   const [showNext, setShowNext] = useState(false);
+  const r = useReservation();
+  // The reservation hook's own stages map onto the page's:
+  //   configure -> customise (add-ons)
+  //   summary   -> plans     (subscription tiers, shown above the order)
+  //   payment   -> payment   (order slides left, card details slide in)
+  const stage: "design" | "customise" | "plans" | "payment" | "confirmed" =
+    !showNext ? "design"
+    : r.stage === "summary" ? "plans"
+    : r.stage === "payment" ? "payment"
+    : r.stage === "confirmed" ? "confirmed"
+    : "customise";
+
+  const enterCustomise = () => { setShowNext(true); r.setStage("configure"); };
+  const backToDesign = () => { setShowNext(false); r.setActive(null); };
+  // Payment must charge the same number the order summary shows, so both read
+  // the discount from one helper rather than each doing their own arithmetic.
+  const pricedTotals = applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE);
+  const handlePartToggle = (p: PartId) => r.setActive(r.activePart === p ? null : p);
+  // Add-ons are a gated sequence, so choosing one opens the next step that
+  // still needs an answer rather than leaving the user to hunt for it.
+  const handleOptionSelect = (optionId: string) => {
+    const current = r.activePart;
+    if (!current) return;
+    r.selectOption(current, optionId);
+    const idx = PARTS.findIndex((p) => p.id === current);
+    const next = PARTS.slice(idx + 1).find((p) => !r.configured.has(p.id));
+    r.setActive(next ? next.id : null);
+  };
+
+  // Grid widens the right column as the flow progresses, and drops the left
+  // one at payment — that's what produces the "viewport slides left" move,
+  // without transforms that would overflow the container.
+  const gridCols =
+    stage === "payment" ? "lg:grid-cols-[0px_1fr_820px]"
+    : stage === "plans" ? "lg:grid-cols-[0px_1fr_400px]"
+    : stage === "customise" ? "lg:grid-cols-[260px_1fr_380px]"
+    : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showBrief, setShowBrief] = useState(true);
   const [showSiteSelector, setShowSiteSelector] = useState(true);
@@ -110,6 +161,20 @@ export default function Configurator() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
   const [showSectionVol2, setShowSectionVol2] = useState(false);
+  // Where a scene zoom is anchored. Set from a hotspot's own coordinates so the
+  // view pushes in on that section rather than the middle of the dwelling.
+  const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
+  const HOTSPOT_ZOOM = 1.75;
+
+  /** Clicking a section marker reveals its cutaway and pushes the view in on it. */
+  const focusHotspot = (h: { id: string; x: number; y: number }) => {
+    setShowSectionVol2((open) => {
+      const next = !open;
+      setZoomOrigin(next ? { x: h.x, y: h.y } : null);
+      setZoom(next ? HOTSPOT_ZOOM : 1);
+      return next;
+    });
+  };
   const [showInterior, setShowInterior] = useState(false);
   const [showInterior2, setShowInterior2] = useState(false);
 
@@ -149,7 +214,7 @@ export default function Configurator() {
         style={{ left: `${h.x}%`, top: `${h.y}%` }}
       >
         <button
-          onClick={h.id === "s3" ? () => setShowSectionVol2((v) => !v) : undefined}
+          onClick={h.id === "s3" ? () => focusHotspot(h) : undefined}
           className="absolute inset-0"
           aria-label={`Section ${h.id}`}
         >
@@ -490,19 +555,62 @@ export default function Configurator() {
               transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
               className="flex gap-3"
             >
-              <button
-                onClick={() => setShowNext(true)}
-                className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"
-              >
-                Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} />
-              </button>
+              {stage === "design" ? (
+                <button
+                  onClick={enterCustomise}
+                  className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"
+                >
+                  Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} />
+                </button>
+              ) : stage !== "confirmed" ? (
+                <button
+                  onClick={
+                    stage === "customise" ? backToDesign
+                    : stage === "plans" ? () => r.setStage("configure")
+                    : () => r.setStage("summary")
+                  }
+                  className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white/85 inline-flex items-center gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+                  {stage === "customise" ? "Back to design"
+                    : stage === "plans" ? "Back to add-ons"
+                    : "Back to plans"}
+                </button>
+              ) : null}
             </motion.div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 gap-5 items-start lg:grid-cols-[220px_1fr_360px]">
-            {/* LEFT SIDEBAR — Your Brief, Site Selector, Material Library,
-                Interior Packs. Each panel's title bar toggles its own content. */}
-            <div className="flex flex-col gap-3">
+          <div
+            className={`mt-10 grid grid-cols-1 gap-5 items-start ${gridCols}`}
+            style={{ transition: "grid-template-columns 600ms cubic-bezier(0.6,0.2,0.2,1)" }}
+          >
+            {/* LEFT COLUMN — design panels in stage 1, add-ons in stage 2,
+                collapsed entirely at payment. */}
+            <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
+              {stage === "customise" && (
+                <motion.aside
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.45, ease: "easeOut" }}
+                  className="liquid-glass rounded-[1rem] p-2.5"
+                >
+                  <div className="flex items-center gap-1.5 px-1 pb-2">
+                    <Layers className="h-3.5 w-3.5 text-white/60" strokeWidth={1.75} />
+                    <span className="text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                      Add-ons
+                    </span>
+                  </div>
+                  <AddOnsPanel
+                    activePart={r.activePart}
+                    configured={r.configured}
+                    onTogglePart={handlePartToggle}
+                    onSelectOption={handleOptionSelect}
+                  />
+                </motion.aside>
+              )}
+
+              {/* Design-stage panels — kept mounted only in stage 1 */}
+              <div className={stage === "design" ? "flex flex-col gap-3" : "hidden"}>
               {/* Summary of the onboarding answers — otherwise the choices that
                   drove this design are invisible once you're in the configurator. */}
               <motion.aside
@@ -827,6 +935,7 @@ export default function Configurator() {
                   )}
                 </AnimatePresence>
               </motion.aside>
+              </div>
             </div>
 
             {/* VIEWPORT */}
@@ -1000,6 +1109,15 @@ export default function Configurator() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1, scale: zoom }}
                       exit={{ opacity: 0 }}
+                      // Anchor the scale on the focused hotspot so the zoom
+                      // pushes in on that section; falls back to centre for the
+                      // manual zoom buttons.
+                      style={{
+                        transformOrigin: zoomOrigin
+                          ? `${zoomOrigin.x}% ${zoomOrigin.y}%`
+                          : "50% 50%",
+                        transition: "transform-origin 600ms cubic-bezier(0.6,0.2,0.2,1)",
+                      }}
                       transition={{
                         opacity: { duration: 0.5, ease: "easeOut" },
                         scale: { type: "spring", stiffness: 220, damping: 26 },
@@ -1164,7 +1282,9 @@ export default function Configurator() {
                   ))}
                 </div>
 
-                <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
+                {/* Context tags belong to the design stage — once customising,
+                    the order panel carries that information instead. */}
+                <div className={`absolute bottom-4 left-4 flex-wrap gap-2 ${stage === "design" ? "flex" : "hidden"}`}>
                   {_siteName && (
                     <span className="liquid-glass tag-glass">Site: {_siteName}</span>
                   )}
@@ -1187,21 +1307,73 @@ export default function Configurator() {
 
               </div>
 
-              {/* Performance strip — icon pills with titles, filling the panel's width */}
-              <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
-                <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
-                <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
-                <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
-              </div>
+              {/* Performance strip — design stage only; from customisation on,
+                  the right-hand panel is the thing to read. */}
+              {stage === "design" && (
+                <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
+                  <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
+                  <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
+                  <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
+                </div>
+              )}
             </motion.div>
+
+            {/* RIGHT COLUMN — chat while designing, then price/order, then
+                payment. Same slot throughout so the layout never jumps. */}
+            {(stage === "customise" || stage === "plans" || stage === "payment") && (
+              <motion.div
+                key="order-col"
+                initial={{ opacity: 0, x: 16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="flex gap-4 min-w-0"
+              >
+                {/* Order panel persists across all three — at payment it just
+                    narrows and slides left as the card panel appears beside it. */}
+                <div className={stage === "payment" ? "w-[340px] shrink-0" : "flex-1 min-w-0"}>
+                  <OrderPanel
+                    configured={r.configured}
+                    totals={r.totals}
+                    showPlans={stage === "plans"}
+                    compact={stage === "payment"}
+                    selectedPlan={selectedPlan}
+                    onSelectPlan={confirmPlan}
+                    onBack={
+                      stage === "customise" ? backToDesign
+                      : stage === "plans" ? () => r.setStage("configure")
+                      : () => r.setStage("summary")
+                    }
+                    onContinue={() =>
+                      r.setStage(stage === "customise" ? "summary" : "payment")
+                    }
+                    hideActions={stage === "payment"}
+                  />
+                </div>
+
+                <AnimatePresence>
+                  {stage === "payment" && (
+                    <motion.div
+                      key="pay"
+                      initial={{ opacity: 0, x: 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 40 }}
+                      transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
+                      className="flex-1 min-w-0 h-[calc(58vh+10rem)]"
+                    >
+                      <PaymentPanel totals={pricedTotals} onSubmit={r.submitPayment} inline />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
 
             {/* AI ASSIST — CHAT */}
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-6 flex flex-col h-[calc(58vh+10rem)]"
+              className={`liquid-glass rounded-[1.25rem] p-6 flex-col h-[calc(58vh+10rem)] ${stage === "design" ? "flex" : "hidden"}`}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -1332,7 +1504,14 @@ export default function Configurator() {
 
       {/* Reservation customizer — opens on Continue configuration */}
       <AnimatePresence>
-        {showNext && <ReservationCustomizer onClose={() => setShowNext(false)} />}
+        {stage === "confirmed" && (
+          <EngineOnTheWayOverlay
+            reservationRef={r.reservationRef}
+            colors={r.colors}
+            total={r.totals.total}
+            onContinue={() => navigate("/profile")}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

@@ -8,6 +8,10 @@ type Totals = { subtotal: number; tax: number; total: number; dueToday: number }
 type Props = {
   totals: Totals;
   onSubmit: () => void;
+  /** Render inside a layout column instead of as a fixed full-height overlay.
+      The staged configurator puts this in a grid cell; the full-screen
+      customizer (portfolio page) still uses the fixed positioning. */
+  inline?: boolean;
 };
 
 const EASE = [0.6, 0.2, 0.2, 1] as const;
@@ -15,7 +19,7 @@ const EASE = [0.6, 0.2, 0.2, 1] as const;
 const formatCard = (digits: string) =>
   digits.replace(/(.{4})/g, "$1 ").trim();
 
-export default function PaymentPanel({ totals, onSubmit }: Props) {
+export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
   const [name, setName] = useState("");
   const [card, setCard] = useState("");
   const [exp, setExp] = useState("");
@@ -37,11 +41,16 @@ export default function PaymentPanel({ totals, onSubmit }: Props) {
 
   return (
     <motion.aside
-      initial={{ x: 560, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 560, opacity: 0 }}
-      transition={{ duration: 0.65, ease: EASE }}
-      className="fixed top-4 bottom-4 right-4 z-40 w-[460px] bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden flex flex-col"
+      initial={inline ? { opacity: 0 } : { x: 560, opacity: 0 }}
+      animate={inline ? { opacity: 1 } : { x: 0, opacity: 1 }}
+      exit={inline ? { opacity: 0 } : { x: 560, opacity: 0 }}
+      transition={{ duration: inline ? 0.4 : 0.65, ease: EASE }}
+      className={[
+        "bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 overflow-hidden flex flex-col",
+        inline
+          ? "w-full h-full rounded-[1.25rem]"
+          : "fixed top-4 bottom-4 right-4 z-40 w-[460px] rounded-2xl",
+      ].join(" ")}
     >
       <div className="px-6 py-5 border-b border-white/10">
         <p className="text-[10px] uppercase tracking-[0.2em] text-white/60 font-body">Secure checkout</p>

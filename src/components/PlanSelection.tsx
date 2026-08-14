@@ -5,40 +5,9 @@ import { useMockAuth } from "@/context/MockAuth";
 import VoyageScene from "@/components/VoyageScene";
 import BlurText from "@/components/BlurText";
 
-type Plan = {
-  id: string;
-  name: string;
-  price: string;
-  tagline: string;
-  features: string[];
-  highlight?: boolean;
-};
-
-// Placeholder tiers — pricing/features not final, for demo purposes.
-const PLANS: Plan[] = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: "$49/mo",
-    tagline: "One core module, solo deployment",
-    features: ["Single dwelling module", "Standard build queue", "Community support"],
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    price: "$89/mo",
-    tagline: "The full dwelling, ready to move in",
-    features: ["Full multi-zone dwelling", "Priority build queue", "Live chat support", "1 free reconfiguration"],
-    highlight: true,
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: "$149/mo",
-    tagline: "Full customization, priority everything",
-    features: ["Everything in Standard", "Unlimited reconfigurations", "Dedicated engine specialist", "Expedited delivery"],
-  },
-];
+// Tiers live in one place so the configurator's inline picker and this modal
+// can't drift apart.
+import { PLANS } from "@/data/plans";
 
 export default function PlanSelection() {
   const { planSelectionOpen, closePlanSelection, confirmPlan, _planPendingSuccess, _clearPlanPendingSuccess } = useMockAuth();

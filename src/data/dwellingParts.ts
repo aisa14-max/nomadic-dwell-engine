@@ -80,6 +80,14 @@ export const PARTS: Part[] = [
 ];
 
 export const TOTAL_PARTS = PARTS.length;
+
+/**
+ * Stored in `configured` when the user passes on an add-on. It counts as a
+ * decision (so the next step unlocks) but matches no option, so `findOption`
+ * returns undefined and it contributes £0 to the totals.
+ */
+export const SKIPPED = "__skipped__";
+export const isSkipped = (optionId: string | undefined) => optionId === SKIPPED;
 export const TAX_RATE = 0.06;
 export const DEPOSIT_RATE = 0.1;
 
