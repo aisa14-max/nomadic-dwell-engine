@@ -55,7 +55,7 @@ export default function PlanSelection() {
                   </div>
                 </DialogPrimitive.Title>
 
-                <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {PLANS.map((plan) => {
                     const isSelected = selected === plan.id;
                     return (

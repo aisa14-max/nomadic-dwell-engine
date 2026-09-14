@@ -24,13 +24,10 @@ interface MockAuthValue {
   pendingSite: SitePayload | null;
   /** Open onboarding with a chosen site — sign-up happens after, not before */
   openOnboardingWithSite: (site: SitePayload) => void;
-  /** Landing page "quick start" — opens onboarding with no site chosen yet;
-      OnboardingFlow falls back to the last-used or default site. */
-  openOnboardingQuickStart: () => void;
   /** internal: consumed by the global LoginDialog */
   _pendingSuccess: (() => void) | null;
   _clearPendingSuccess: () => void;
-  /** Plan tier chosen at sign-up, e.g. "starter" | "standard" | "premium" */
+  /** Plan tier chosen at sign-up, e.g. "standard" | "premium" */
   selectedPlan: string | null;
   planSelectionOpen: boolean;
   /** Opens the plan picker; onSuccess runs after a plan is confirmed */
@@ -126,10 +123,6 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     setOnboardingOpen(true);
   }, []);
 
-  const openOnboardingQuickStart = useCallback(() => {
-    setOnboardingOpen(true);
-  }, []);
-
   const _clearPendingSuccess = useCallback(() => setPendingSuccess(null), []);
 
   const openPlanSelection = useCallback((onSuccess?: () => void) => {
@@ -148,14 +141,14 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       user, signIn, signOut,
       loginOpen, openLogin, closeLogin,
       onboardingOpen, closeOnboarding,
-      pendingSite, openOnboardingWithSite, openOnboardingQuickStart,
+      pendingSite, openOnboardingWithSite,
       _pendingSuccess: pendingSuccess, _clearPendingSuccess,
       selectedPlan, planSelectionOpen, openPlanSelection, closePlanSelection, confirmPlan,
       _planPendingSuccess: planPendingSuccess, _clearPlanPendingSuccess,
     }),
     [user, signIn, signOut, loginOpen, openLogin, closeLogin,
      onboardingOpen, closeOnboarding, pendingSite, openOnboardingWithSite,
-     openOnboardingQuickStart, pendingSuccess, _clearPendingSuccess,
+     pendingSuccess, _clearPendingSuccess,
      selectedPlan, planSelectionOpen, openPlanSelection, closePlanSelection, confirmPlan,
      planPendingSuccess, _clearPlanPendingSuccess],
   );

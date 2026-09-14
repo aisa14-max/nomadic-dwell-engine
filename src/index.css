@@ -341,7 +341,7 @@
 .float-input:not(:placeholder-shown) ~ .float-label {
   top: 0;
   font-size: 11px;
-  color: rgba(232,180,100,.95);
+  color: rgba(255,255,255,.85);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -350,7 +350,7 @@
   left: 0; bottom: 0;
   height: 1px;
   width: 100%;
-  background: linear-gradient(90deg, #e8b464, #f5d28a);
+  background: #fff;
   transform: scaleX(0);
   transform-origin: left;
   transition: transform .45s cubic-bezier(.6,.2,.2,1);
@@ -389,7 +389,16 @@
   50%      { stroke: #fbbf24; filter: drop-shadow(0 0 8px rgba(245,158,11,0.85)); }
 }
 .ring-amber-pulse { animation: ring-amber-pulse 1.6s ease-in-out infinite; }
+
+/* Demo hint — glows on whichever step in a sequence is the next one to do. */
+@keyframes panel-glow-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,255,255,0.25); }
+  50%      { box-shadow: 0 0 26px rgba(255,255,255,0.7), 0 0 8px rgba(255,255,255,0.45); }
+}
+.panel-glow-pulse { animation: panel-glow-pulse 1.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .grid-drift { animation: none; }
   .ring-amber-pulse { animation: none; }
+  .panel-glow-pulse { animation: none; box-shadow: 0 0 14px rgba(255,255,255,0.45); }
 }

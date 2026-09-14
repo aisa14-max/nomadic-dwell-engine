@@ -148,10 +148,8 @@ export default function OnboardingFlow() {
   };
 
   // Both halves of the brief are required before a dwelling can be configured:
-  // the answers AND a site. Whichever the user started with, they're sent to
-  // collect the other one before the configurator.
-  //   Voyages first  -> site chosen -> questionnaire -> configurator
-  //   Quick start    -> questionnaire -> Voyages (pick a site) -> configurator
+  // the answers AND a site. Entry is always Voyages first (site chosen), then
+  // the questionnaire, then the configurator.
   // Plan/subscription selection happens later, inside the reservation
   // customizer (after parts customization, before checkout).
   const goToConfigurator = () => navigate("/configurator");

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Lock, ArrowRight } from "lucide-react";
-import { gbp } from "@/data/dwellingParts";
+import { gbp, DWELLING_VALUE } from "@/data/dwellingParts";
 
 type Totals = { subtotal: number; tax: number; total: number; dueToday: number };
 
@@ -46,7 +46,7 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
       exit={inline ? { opacity: 0 } : { x: 560, opacity: 0 }}
       transition={{ duration: inline ? 0.4 : 0.65, ease: EASE }}
       className={[
-        "bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 overflow-hidden flex flex-col",
+        "liquid-glass-strong overflow-hidden flex flex-col",
         inline
           ? "w-full h-full rounded-[1.25rem]"
           : "fixed top-4 bottom-4 right-4 z-40 w-[460px] rounded-2xl",
@@ -60,7 +60,7 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
       <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5 space-y-1">
         {/* Card preview */}
         <div className="liquid-glass rounded-2xl p-5 mb-5 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-700/20 via-transparent to-white/5 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none" />
           <div className="relative">
             <p className="text-[10px] uppercase tracking-[0.2em] text-white/60 font-body">Card preview</p>
             <p className="font-heading text-white text-xl mt-2 tracking-[2px]">
@@ -110,20 +110,20 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
             tabIndex={6}
             onClick={() => setSave((s) => !s)}
             className={`relative w-12 h-7 rounded-full transition-all ${
-              save ? "bg-gradient-to-r from-amber-500 to-amber-300" : "bg-white/15"
+              save ? "bg-white" : "bg-white/15"
             }`}
             aria-pressed={save}
           >
             <span
-              className={`absolute top-1 w-5 h-5 rounded-full bg-white transition-all ${
-                save ? "left-6" : "left-1"
+              className={`absolute top-1 w-5 h-5 rounded-full transition-all ${
+                save ? "left-6 bg-black" : "left-1 bg-white"
               }`}
             />
           </button>
         </div>
 
         <div className="pt-5 space-y-1.5">
-          <Row label="Total" value={gbp(totals.total)} muted />
+          <Row label="Total" value={gbp(totals.total + DWELLING_VALUE)} muted />
           <Row label="Due today (10%)" value={gbp(totals.dueToday)} bold />
         </div>
 

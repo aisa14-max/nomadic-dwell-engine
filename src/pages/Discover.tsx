@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2 } from "lucide-react";
-import { REGION_LABEL } from "@/data/regions";
+import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2, ChevronDown } from "lucide-react";
+import { REGIONS, REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
 import RegionGlobe from "@/components/RegionGlobe";
@@ -25,6 +25,7 @@ export default function Discover() {
   const [loadingSite, setLoadingSite] = useState<string | null>(null);
   const globeRef = useRef<HTMLDivElement | null>(null);
   const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
+  const [globeInteracted, setGlobeInteracted] = useState(false);
 
   const handleShowOnMap = (s: typeof SITES[number]) => {
     setFocusedSite(s);
@@ -124,133 +125,9 @@ export default function Discover() {
         }}
       />
 
-      {/* Continent locations + climate filters panel */}
-      <AnimatePresence>
-        {selectedRegion !== "all" && (
-          <motion.aside
-            key="region-sidebar"
-            initial={{ x: -360, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -360, opacity: 0 }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
-            className="fixed left-4 top-24 bottom-4 w-[360px] z-30 liquid-glass rounded-2xl flex flex-col overflow-hidden"
-          >
-            <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body">Locations</p>
-                <h2 className="font-heading text-white text-2xl leading-none mt-1 truncate">
-                  {REGION_LABEL[selectedRegion as Exclude<typeof selectedRegion, "all">]}
-                </h2>
-                <p className="text-xs text-white/60 font-body mt-1">{visibleSites.length} sites</p>
-              </div>
-              <button
-                onClick={() => { setSelectedRegion("all"); setFocusedSite(null); setSelectedClimate("all"); }}
-                className="liquid-glass w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
-                aria-label="Close panel"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Climate filters */}
-            <div className="px-4 py-3 border-b border-white/10">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body mb-2">Climate</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[{ id: "all" as const, label: "All" }, ...CLIMATES].map((c) => {
-                  const isActive = selectedClimate === c.id;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedClimate(c.id)}
-                      className={`px-3 py-1 rounded-full text-[11px] font-body font-medium transition-colors ${
-                        isActive ? "bg-white text-black" : "liquid-glass text-white/90"
-                      }`}
-                    >
-                      {c.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {visibleSites.length === 0 ? (
-                <p className="text-white/60 text-sm font-body p-3">No locations match these filters.</p>
-              ) : (
-                visibleSites.map((s) => {
-                  const active = focusedSite?.title === s.title;
-                  const chip = (label: string, Icon: typeof Thermometer, value: string, tone: "low" | "mid" | "high" = "mid") => {
-                    const toneCls =
-                      tone === "high"
-                        ? "bg-white/15 text-white"
-                        : tone === "low"
-                        ? "bg-white/5 text-white/60"
-                        : "bg-white/10 text-white/85";
-                    return (
-                      <span key={label} title={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${toneCls}`}>
-                        <Icon className="h-3 w-3 opacity-70" strokeWidth={2} />
-                        {value}
-                      </span>
-                    );
-                  };
-                  const levelTone = (l: "Low" | "Medium" | "High") =>
-                    (l === "High" ? "high" : l === "Low" ? "low" : "mid") as "low" | "mid" | "high";
-                  const netTone = (n: "Slow" | "Medium" | "Fast") =>
-                    (n === "Fast" ? "high" : n === "Slow" ? "low" : "mid") as "low" | "mid" | "high";
-                  return (
-                    <div
-                      key={s.title}
-                      className={`rounded-xl p-2 transition-colors ${
-                        active ? "bg-white/15" : "hover:bg-white/8"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <button
-                          onClick={() => handleShowOnMap(s)}
-                          className="flex items-start gap-3 min-w-0 flex-1 text-left"
-                        >
-                          <img
-                            src={s.image}
-                            alt=""
-                            loading="lazy"
-                            className="w-20 h-20 rounded-lg object-cover border border-white/10 shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
-                            <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
-                              <MapPin className="h-3 w-3 shrink-0" /> {s.region}
-                            </p>
-                            <div className="mt-1.5 flex flex-wrap gap-1">
-                              {chip("Temperature", Thermometer, s.temperature)}
-                              {chip("Rainfall", CloudRain, s.rainfall)}
-                              {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
-                              {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
-                              {chip("Safety", Shield, s.safety, levelTone(s.safety))}
-                            </div>
-                          </div>
-                        </button>
-                        {active && (
-                          <button
-                            onClick={() => handleConfigure()}
-                            className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
-                          >
-                            Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
       <div className="relative z-10 pt-32 pb-20">
         <div className="mx-auto max-w-[1400px] px-8 md:px-16 lg:px-20">
           {/* Header */}
-          <p className="text-sm font-body text-white/80 mb-4 text-center">// Voyages</p>
           <div className="max-w-3xl mx-auto text-center">
             <BlurText
               text="Find terrain that matches your engine."
@@ -265,10 +142,39 @@ export default function Discover() {
           >
             Browse pre-cleared parcels worldwide. Tap a continent to reveal its sites.
           </motion.p>
+
+          {/* Text-pill fallback for picking a continent — the globe is a WebGL
+              canvas with no native keyboard/screen-reader path, so this is the
+              only way in for anyone not dragging a 3D globe with a mouse. */}
+          <motion.div
+            initial={blurInit}
+            animate={blurIn}
+            transition={{ duration: 0.7, delay: 0.65, ease: "easeOut" }}
+            className="mt-6 flex flex-wrap items-center justify-center gap-1.5"
+            role="group"
+            aria-label="Filter by continent"
+          >
+            {[{ id: "all" as const, label: "All" }, ...REGIONS].map((r) => {
+              const isActive = selectedRegion === r.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setSelectedRegion(r.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-[11px] font-body font-medium transition-colors ${
+                    isActive ? "bg-white text-black" : "liquid-glass text-white/90"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </motion.div>
         </div>
 
         {/* Globe (wider, immersive) */}
-        <div className="mx-auto max-w-[1800px] px-4 md:px-8 mt-10">
+        <div className="relative mx-auto max-w-[1800px] px-4 md:px-8 mt-10">
           <motion.div
             ref={globeRef}
             initial={blurInit}
@@ -283,13 +189,218 @@ export default function Discover() {
               focusLabel={focusedSite?.title}
               focusSite={focusedSite}
               onViewSite={() => handleConfigure()}
+              onFirstInteract={() => setGlobeInteracted(true)}
+              sites={selectedRegion === "all" ? [] : visibleSites}
+              onSiteClick={handleShowOnMap}
+              onClose={() => setFocusedSite(null)}
               className="w-full h-[460px] md:h-[620px] lg:h-[680px]"
             />
             {/* Floating status/filter chip */}
             <div className="absolute top-3 right-3 z-20">
               <RegionChip region={selectedRegion} onClear={() => setSelectedRegion("all")} />
             </div>
+
+            {/* Comet hint — just a soft glowing light with a short fading
+                trail, sweeping left-to-right across the globe on a loop. No
+                path, no arrowhead — the light itself is the whole hint. */}
+            <AnimatePresence>
+              {selectedRegion === "all" && !globeInteracted && (
+                <motion.div
+                  key="drag-hint"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
+                >
+                  <svg viewBox="0 0 100 100" className="w-[70%] max-w-[480px] aspect-square">
+                    <defs>
+                      <radialGradient id="discover-orbit-hint-glow">
+                        <stop offset="0%" stopColor="#fff" stopOpacity="0.95" />
+                        <stop offset="100%" stopColor="#fff" stopOpacity="0" />
+                      </radialGradient>
+                    </defs>
+                    {/* Soft glowing head with a short trail of fading,
+                        shrinking echoes close behind it — reads as one smooth
+                        streak of light rather than separate dots. */}
+                    {[
+                      { r: 0.9, o: 0.08, delay: 0.2 },
+                      { r: 1.15, o: 0.16, delay: 0.15 },
+                      { r: 1.4, o: 0.28, delay: 0.1 },
+                      { r: 1.7, o: 0.45, delay: 0.05 },
+                      { r: 2.6, o: 0.85, delay: 0, glow: true },
+                    ].map((dot, i) => (
+                      <motion.circle
+                        key={i}
+                        r={dot.r}
+                        fill={dot.glow ? "url(#discover-orbit-hint-glow)" : "#fff"}
+                        fillOpacity={dot.glow ? 1 : dot.o}
+                        initial={{ cx: 88, cy: 59, opacity: 0 }}
+                        animate={{ cx: [88, 50, 12, 12], cy: [59, 68, 59, 59], opacity: [0, dot.o, dot.o, 0] }}
+                        transition={{
+                          duration: 2,
+                          times: [0, 0.5, 0.85, 1],
+                          repeat: Infinity,
+                          repeatDelay: 1.3,
+                          delay: dot.delay,
+                          ease: "easeInOut",
+                        }}
+                      />
+                    ))}
+                  </svg>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Prompt to pick a continent — pairs with the idle pulse on the
+                globe's continent shapes; both disappear on first interaction. */}
+            <AnimatePresence>
+              {selectedRegion === "all" && (
+                <motion.div
+                  key="continent-callout"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="absolute top-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 pointer-events-none"
+                >
+                  <span className="liquid-glass rounded-full px-5 py-2 text-sm font-body text-white/90">
+                    Select a continent to begin
+                  </span>
+                  <motion.div
+                    animate={{ y: [0, 6, 0] }}
+                    transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <ChevronDown className="h-5 w-5 text-white/70" strokeWidth={2} />
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
+
+          {/* Locations panel — docked to the globe box itself (same height,
+              scrolls with it) rather than floating over the full viewport. */}
+          <AnimatePresence>
+            {selectedRegion !== "all" && (
+              <motion.aside
+                key="region-sidebar"
+                initial={{ x: -360, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: -360, opacity: 0 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="absolute left-4 md:left-8 top-4 bottom-4 w-[360px] z-30 liquid-glass rounded-2xl flex flex-col overflow-hidden"
+              >
+                <div className="flex items-start justify-between gap-3 p-4 border-b border-white/10">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body">Locations</p>
+                    <h2 className="font-heading text-white text-2xl leading-none mt-1 truncate">
+                      {REGION_LABEL[selectedRegion as Exclude<typeof selectedRegion, "all">]}
+                    </h2>
+                    <p className="text-xs text-white/60 font-body mt-1">{visibleSites.length} sites</p>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedRegion("all"); setFocusedSite(null); setSelectedClimate("all"); }}
+                    className="liquid-glass w-8 h-8 rounded-full flex items-center justify-center text-white shrink-0"
+                    aria-label="Close panel"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Climate filters */}
+                <div className="px-4 py-3 border-b border-white/10">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-white/60 font-body mb-2">Climate</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[{ id: "all" as const, label: "All" }, ...CLIMATES].map((c) => {
+                      const isActive = selectedClimate === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedClimate(c.id)}
+                          className={`px-3 py-1 rounded-full text-[11px] font-body font-medium transition-colors ${
+                            isActive ? "bg-white text-black" : "liquid-glass text-white/90"
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {visibleSites.length === 0 ? (
+                    <p className="text-white/60 text-sm font-body p-3">No locations match these filters.</p>
+                  ) : (
+                    visibleSites.map((s) => {
+                      const active = focusedSite?.title === s.title;
+                      const chip = (label: string, Icon: typeof Thermometer, value: string, tone: "low" | "mid" | "high" = "mid") => {
+                        const toneCls =
+                          tone === "high"
+                            ? "bg-white/15 text-white"
+                            : tone === "low"
+                            ? "bg-white/5 text-white/60"
+                            : "bg-white/10 text-white/85";
+                        return (
+                          <span key={label} title={label} className={`text-[10px] font-body px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${toneCls}`}>
+                            <Icon className="h-3 w-3 opacity-70" strokeWidth={2} />
+                            {value}
+                          </span>
+                        );
+                      };
+                      const levelTone = (l: "Low" | "Medium" | "High") =>
+                        (l === "High" ? "high" : l === "Low" ? "low" : "mid") as "low" | "mid" | "high";
+                      const netTone = (n: "Slow" | "Medium" | "Fast") =>
+                        (n === "Fast" ? "high" : n === "Slow" ? "low" : "mid") as "low" | "mid" | "high";
+                      return (
+                        <div
+                          key={s.title}
+                          className={`rounded-xl p-2 transition-colors ${
+                            active ? "bg-white/15" : "hover:bg-white/8"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <button
+                              onClick={() => handleShowOnMap(s)}
+                              className="flex items-start gap-3 min-w-0 flex-1 text-left"
+                            >
+                              <img
+                                src={s.image}
+                                alt=""
+                                loading="lazy"
+                                className="w-20 h-20 rounded-lg object-cover border border-white/10 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                                <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
+                                  <MapPin className="h-3 w-3 shrink-0" /> {s.region}
+                                </p>
+                                <div className="mt-1.5 flex flex-wrap gap-1">
+                                  {chip("Temperature", Thermometer, s.temperature)}
+                                  {chip("Rainfall", CloudRain, s.rainfall)}
+                                  {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
+                                  {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
+                                  {chip("Safety", Shield, s.safety, levelTone(s.safety))}
+                                </div>
+                              </div>
+                            </button>
+                            {active && (
+                              <button
+                                onClick={() => handleConfigure()}
+                                className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"
+                              >
+                                Configure <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </motion.aside>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

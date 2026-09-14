@@ -18,14 +18,6 @@ export type Plan = {
  */
 export const PLANS: Plan[] = [
   {
-    id: "starter",
-    name: "Starter",
-    price: "$49/mo",
-    discount: 0.05,
-    tagline: "One core module, solo deployment",
-    features: ["Single dwelling module", "Standard build queue", "Community support"],
-  },
-  {
     id: "standard",
     name: "Standard",
     price: "$89/mo",
@@ -34,7 +26,6 @@ export const PLANS: Plan[] = [
     features: [
       "Full multi-zone dwelling",
       "Priority build queue",
-      "Live chat support",
       "1 free reconfiguration",
     ],
     highlight: true,
@@ -49,7 +40,6 @@ export const PLANS: Plan[] = [
       "Everything in Standard",
       "Unlimited reconfigurations",
       "Dedicated engine specialist",
-      "Expedited delivery",
     ],
   },
 ];

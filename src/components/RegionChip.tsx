@@ -8,13 +8,7 @@ interface RegionChipProps {
 }
 
 export default function RegionChip({ region, onClear }: RegionChipProps) {
-  if (region === "all") {
-    return (
-      <span className="liquid-glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-body text-white/80">
-        Showing all regions · click the globe to filter
-      </span>
-    );
-  }
+  if (region === "all") return null;
   return (
     <span className="liquid-glass inline-flex items-center gap-2 rounded-full pl-4 pr-1.5 py-1.5 text-xs font-body text-white">
       Region: <strong className="font-medium">{REGION_LABEL[region]}</strong>

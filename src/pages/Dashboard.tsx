@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sun, BatteryFull, Wind, Droplets, Thermometer, AlertCircle, X, Home, Leaf, ArrowRight,
-  Zap, Cloud, Users, Settings, Activity as ActivityIcon, Plug, ShieldCheck,
+  Zap, Cloud, Users, Settings, Activity as ActivityIcon, Plug, ShieldCheck, ChevronDown,
 } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import { useMockAuth } from "@/context/MockAuth";
@@ -39,15 +39,12 @@ function readEnginePortalState() {
   return { siteName, delivered, configuredCount };
 }
 
-const tabs = ["Overview", "Energy", "Climate", "Activity"];
-
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { selectedPlan } = useMockAuth();
-  const [tab, setTab] = useState(0);
   const [solar] = useState(78);
   const [battery] = useState(92);
   const [wind] = useState(14);
@@ -87,9 +84,8 @@ export default function Dashboard() {
         playsInline
         className="fixed inset-0 w-full h-full z-0 object-cover pointer-events-none opacity-70"
       />
-      {/* Neutral black, matching Profile (which now hosts this page as a tab)
-          and the rest of the app — a navy tint here made the Engine tab look
-          like a different site when switching tabs. */}
+      {/* Neutral black, matching the rest of the app — a navy tint here made
+          this page look like a different site from the nav around it. */}
       <div className="fixed inset-0 z-0 bg-black/70" aria-hidden />
     </>
   );
@@ -184,304 +180,209 @@ export default function Dashboard() {
             </motion.div>
           </div>
 
-          {/* Tabs */}
-          <motion.div
-            initial={blurInit}
-            animate={blurIn}
-            transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
-            className="mt-10 liquid-glass rounded-full inline-flex gap-0 p-1.5 relative"
-          >
-            {tabs.map((t, i) => (
-              <button
-                key={t}
-                onClick={() => setTab(i)}
-                className={`relative px-5 py-2 rounded-full text-sm font-body font-medium transition-colors z-10 ${
-                  tab === i ? "text-black" : "text-white/70 hover:text-white"
-                }`}
+          {/* Alert */}
+          <AnimatePresence>
+            {alert && (
+              <motion.div
+                initial={{ y: -16, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -16, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="liquid-glass mt-8 rounded-[1rem] p-4 flex items-center gap-3 group transition-colors hover:border-amber-400/40"
               >
-                {tab === i && (
-                  <motion.span
-                    layoutId="tab-pill"
-                    className="absolute inset-0 rounded-full bg-white -z-10"
-                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
-                  />
-                )}
-                {t}
-              </button>
-            ))}
-          </motion.div>
-
-          {/* Panels */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={tab}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0, 0, 0.2, 1] }}
-            >
-              {tab === 0 && (
-                <OverviewPanel
-                  solar={solar} battery={battery} wind={wind}
-                  alert={alert} dismissAlert={() => setAlert(false)}
-                />
-              )}
-              {tab === 1 && <EnergyPanel solar={solar} battery={battery} />}
-              {tab === 2 && <ClimatePanel />}
-              {tab === 3 && <ActivityPanel />}
-            </motion.div>
+                <AlertCircle className="h-5 w-5 text-white group-hover:text-amber-300 transition-colors" strokeWidth={1.5} />
+                <p className="flex-1 text-sm font-body text-white/90">
+                  Wind speed exceeds optimal turbine range. Consider feathering blades.
+                </p>
+                <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white transition-transform active:scale-95 hover:bg-white/10">Resolve</button>
+                <button onClick={() => setAlert(false)} className="text-white/70 hover:text-white transition-transform active:scale-90">
+                  <X className="h-4 w-4" />
+                </button>
+              </motion.div>
+            )}
           </AnimatePresence>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-/* ============== Overview ============== */
-function OverviewPanel({ solar, battery, wind, alert, dismissAlert }: {
-  solar: number; battery: number; wind: number; alert: boolean; dismissAlert: () => void;
-}) {
-  return (
-    <>
-      <AnimatePresence>
-        {alert && (
-          <motion.div
-            initial={{ y: -16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -16, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="liquid-glass mt-6 rounded-[1rem] p-4 flex items-center gap-3 group transition-colors hover:border-amber-400/40"
-          >
-            <AlertCircle className="h-5 w-5 text-white group-hover:text-amber-300 transition-colors" strokeWidth={1.5} />
-            <p className="flex-1 text-sm font-body text-white/90">
-              Wind speed exceeds optimal turbine range. Consider feathering blades.
-            </p>
-            <button className="liquid-glass rounded-full px-3 py-1.5 text-xs font-body text-white transition-transform active:scale-95 hover:bg-white/10">Resolve</button>
-            <button onClick={dismissAlert} className="text-white/70 hover:text-white transition-transform active:scale-90">
-              <X className="h-4 w-4" />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard icon={Sun} label="Solar generation" value={solar} unit="%" />
-        <PowerRunwayCard value={battery} />
-        <StatCard icon={Wind} label="Wind speed" value={wind} unit="km/h" />
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="liquid-glass lg:col-span-2 rounded-[1.25rem] p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Internal climate</h3>
-            <span className="liquid-glass tag-glass">Stable</span>
+          {/* Stat row */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatCard icon={Sun} label="Solar generation" value={solar} unit="%" />
+            <PowerRunwayCard value={battery} />
+            <StatCard icon={Wind} label="Wind speed" value={wind} unit="km/h" />
           </div>
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+
+          {/* Climate */}
+          <SectionHeading title="Climate" tag="Stable" />
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { i: Thermometer, l: "Temp", v: "19.4", u: "°C" },
               { i: Droplets, l: "Humidity", v: "48", u: "%" },
               { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
               { i: Home, l: "Occupied", v: "2", u: "guests" },
             ].map((s) => (
-              <motion.div key={s.l} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} className="cursor-default group">
-                <div className="liquid-glass icon-box-glass mb-3 transition-all group-hover:bg-white/10" style={{ width: 36, height: 36 }}>
+              <motion.div
+                key={s.l}
+                whileHover={{ y: -3 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="liquid-glass rounded-[1.25rem] p-6 group cursor-default"
+              >
+                <div className="liquid-glass icon-box-glass group-hover:bg-white/10 transition-all" style={{ width: 36, height: 36 }}>
                   <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
                 </div>
-                <p className="font-heading text-white text-2xl tracking-[-1px] leading-none">
+                <p className="text-xs mt-4 text-white/60 font-body">{s.l}</p>
+                <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
                   {s.v} <span className="text-xs text-white/60 font-body">{s.u}</span>
                 </p>
-                <p className="text-xs mt-1 text-white/60 font-body">{s.l}</p>
               </motion.div>
             ))}
           </div>
 
-          <div className="mt-8">
-            <p className="text-xs mb-3 text-white/60 font-body">24h energy balance · hover to scrub</p>
-            <Sparkline />
-          </div>
-        </div>
-
-        <div className="liquid-glass rounded-[1.25rem] p-6">
-          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Engine assistant</h3>
-          <p className="mt-3 text-sm font-body font-light text-white/80 leading-snug">
-            Forecast suggests 6 hours of high wind tonight. I've scheduled
-            battery topping at 22:00 and locked the solar array for storm mode.
-          </p>
-          <div className="mt-5 space-y-2">
-            <motion.button
-              whileTap={{ scale: 0.97 }} whileHover={{ y: -1 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white w-full hover:bg-white/10 transition-colors active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
-            >
-              Review schedule
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.97 }} whileHover={{ y: -1, boxShadow: "0 0 24px rgba(255,255,255,0.35)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium w-full inline-flex items-center justify-center gap-1.5 group"
-            >
-              Initiate relocation
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
-            </motion.button>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-white/10">
-            <p className="text-[11px] uppercase tracking-[0.16em] mb-3 text-white/60 font-body">Modules online</p>
-            {["Sleep", "Galley", "Solar", "Water", "Sensors"].map((m) => (
-              <div key={m} className="flex items-center justify-between py-2 text-sm font-body text-white/70 group cursor-default transition-colors hover:text-white">
-                <span>{m}</span>
-                <span className="liquid-glass tag-glass text-[10px] transition-all group-hover:text-emerald-300 group-hover:border-emerald-400/40">OK</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ============== Energy ============== */
-function EnergyPanel({ battery }: { solar: number; battery: number }) {
-  const today = 42.6, yesterday = 38.1;
-  const delta = (((today - yesterday) / yesterday) * 100).toFixed(1);
-  const sources = [
-    { l: "Solar", v: 62, c: "bg-white" },
-    { l: "Wind", v: 23, c: "bg-white/60" },
-    { l: "Reserve", v: 15, c: "bg-white/30" },
-  ];
-  return (
-    <div className="mt-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="liquid-glass rounded-[1.25rem] p-6">
-          <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
-            <Sun className="h-4 w-4 text-white" strokeWidth={1.5} />
-          </div>
-          <p className="text-xs mt-4 text-white/60 font-body">Solar generation today</p>
-          <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
-            {today.toFixed(1)} <span className="text-sm text-white/60 font-body">kWh</span>
-          </p>
-          <p className="mt-2 text-xs text-emerald-300 font-body">▲ {delta}% vs. yesterday</p>
-        </div>
-        <PowerRunwayCard value={battery} />
-        <div className="liquid-glass rounded-[1.25rem] p-6">
-          <div className="liquid-glass icon-box-glass" style={{ width: 36, height: 36 }}>
-            <Plug className="h-4 w-4 text-white" strokeWidth={1.5} />
-          </div>
-          <p className="text-xs mt-4 text-white/60 font-body">Net export to grid</p>
-          <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
-            8.4 <span className="text-sm text-white/60 font-body">kWh</span>
-          </p>
-          <p className="mt-2 text-xs text-white/60 font-body">last 24h</p>
-        </div>
-      </div>
-
-      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Generation vs. draw</h3>
-          <span className="liquid-glass tag-glass">24h</span>
-        </div>
-        <div className="mt-6 flex gap-4 text-xs font-body text-white/60">
-          <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white" />Generation</span>
-          <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white/50" />Draw</span>
-        </div>
-        <div className="mt-3">
-          <DualSparkline />
-        </div>
-      </div>
-
-      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
-        <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Source breakdown</h3>
-        <p className="text-xs mt-1 text-white/60 font-body">share of last hour</p>
-        <div className="mt-6 space-y-4">
-          {sources.map((s) => (
-            <div key={s.l}>
-              <div className="flex items-center justify-between text-sm font-body text-white/80">
-                <span>{s.l}</span>
-                <span className="font-heading text-white text-lg">{s.v}<span className="text-xs text-white/60 ml-0.5">%</span></span>
-              </div>
-              <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }} animate={{ width: `${s.v}%` }}
-                  transition={{ duration: 0.9, ease: [0, 0, 0.2, 1] }}
-                  className={`h-full ${s.c}`}
-                />
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="liquid-glass rounded-[1.25rem] p-6">
+              <h3 className="font-heading text-white text-2xl tracking-[-1px] leading-none">Interior temperature · 12h</h3>
+              <p className="text-xs mt-3 text-white/60 font-body">hover to scrub</p>
+              <div className="mt-3">
+                <Sparkline />
               </div>
             </div>
-          ))}
+            <div className="liquid-glass rounded-[1.25rem] p-6">
+              <h3 className="font-heading text-white text-2xl tracking-[-1px] leading-none">Exterior vs. interior</h3>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                {[
+                  { l: "Temperature", out: "8.1°C", in: "19.4°C" },
+                  { l: "Humidity", out: "72%", in: "48%" },
+                  { l: "Wind", out: "23 km/h", in: "—" },
+                  { l: "Light", out: "12 lux", in: "240 lux" },
+                ].map((c) => (
+                  <div key={c.l} className="liquid-glass rounded-[1rem] p-3.5">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-white/50 font-body">{c.l}</p>
+                    <div className="mt-2 flex items-baseline justify-between">
+                      <div>
+                        <p className="text-[10px] text-white/40 font-body">out</p>
+                        <p className="font-heading text-white text-lg">{c.out}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-white/40 font-body">in</p>
+                        <p className="font-heading text-white text-lg">{c.in}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Energy */}
+          <SectionHeading
+            title="Energy"
+            tag="24h"
+            trailing={
+              <div className="flex items-center gap-4 text-xs font-body text-white/60">
+                <span>Today <span className="text-white font-medium">42.6 kWh</span> <span className="text-emerald-300">▲11.8%</span></span>
+                <span className="inline-flex items-center gap-1">
+                  <Plug className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Net export <span className="text-white font-medium">8.4 kWh</span>
+                </span>
+              </div>
+            }
+          />
+          <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+            <div className="flex items-center gap-4 text-xs font-body text-white/60">
+              <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white" />Generation</span>
+              <span className="inline-flex items-center gap-2"><span className="w-3 h-[2px] bg-white/50" />Draw</span>
+            </div>
+            <div className="mt-3">
+              <DualSparkline />
+            </div>
+          </div>
+          <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+            <h3 className="font-heading text-white text-2xl tracking-[-1px] leading-none">Source breakdown</h3>
+            <p className="text-xs mt-1 text-white/60 font-body">share of last hour</p>
+            <div className="mt-5 space-y-4">
+              {[
+                { l: "Solar", v: 62, c: "bg-white" },
+                { l: "Wind", v: 23, c: "bg-white/60" },
+                { l: "Reserve", v: 15, c: "bg-white/30" },
+              ].map((s) => (
+                <div key={s.l}>
+                  <div className="flex items-center justify-between text-sm font-body text-white/80">
+                    <span>{s.l}</span>
+                    <span className="font-heading text-white text-lg">{s.v}<span className="text-xs text-white/60 ml-0.5">%</span></span>
+                  </div>
+                  <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }} animate={{ width: `${s.v}%` }}
+                      transition={{ duration: 0.9, ease: [0, 0, 0.2, 1] }}
+                      className={`h-full ${s.c}`}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Assistant + modules — combined into one compact card */}
+          <SectionHeading title="Assistant" />
+          <div className="mt-4 liquid-glass rounded-[1.25rem] p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-sm font-body font-light text-white/80 leading-snug">
+                Forecast suggests 6 hours of high wind tonight. I've scheduled
+                battery topping at 22:00 and locked the solar array for storm mode.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.97 }} whileHover={{ y: -1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white hover:bg-white/10 transition-colors active:shadow-[inset_0_2px_6px_rgba(0,0,0,0.4)]"
+                >
+                  Review schedule
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.97 }} whileHover={{ y: -1, boxShadow: "0 0 24px rgba(255,255,255,0.35)" }}
+                  transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                  className="bg-white text-black rounded-full px-4 py-2 text-sm font-body font-medium inline-flex items-center gap-1.5 group"
+                >
+                  Initiate relocation
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
+                </motion.button>
+              </div>
+            </div>
+            <div className="md:border-l md:border-white/10 md:pl-6">
+              <p className="text-[11px] uppercase tracking-[0.16em] mb-3 text-white/60 font-body">Modules online</p>
+              <div className="flex flex-wrap gap-2">
+                {["Sleep", "Galley", "Solar", "Water", "Sensors"].map((m) => (
+                  <span
+                    key={m}
+                    className="liquid-glass tag-glass inline-flex items-center gap-1.5 hover:text-emerald-300 hover:border-emerald-400/40 transition-colors cursor-default"
+                  >
+                    {m} <span className="text-emerald-300/90 text-[10px]">OK</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity — collapsed to a handful, expandable */}
+          <SectionHeading title="Recent activity" />
+          <ActivitySection />
         </div>
       </div>
     </div>
   );
 }
 
-/* ============== Climate ============== */
-function ClimatePanel() {
-  const tiles = [
-    { i: Thermometer, l: "Temperature", v: "19.4", u: "°C" },
-    { i: Droplets, l: "Humidity", v: "48", u: "%" },
-    { i: Leaf, l: "Air quality", v: "AQI 12", u: "" },
-    { i: Home, l: "Occupied", v: "2", u: "guests" },
-  ];
-  const compare = [
-    { l: "Temperature", out: "8.1°C", in: "19.4°C" },
-    { l: "Humidity", out: "72%", in: "48%" },
-    { l: "Wind", out: "23 km/h", in: "—" },
-    { l: "Light", out: "12 lux", in: "240 lux" },
-  ];
+/* ============== Section heading ============== */
+function SectionHeading({ title, tag, trailing }: { title: string; tag?: string; trailing?: React.ReactNode }) {
   return (
-    <div className="mt-6">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {tiles.map((s) => (
-          <motion.div key={s.l} whileHover={{ y: -3 }} transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="liquid-glass rounded-[1.25rem] p-6 group cursor-default"
-          >
-            <div className="liquid-glass icon-box-glass group-hover:bg-white/10 transition-all" style={{ width: 36, height: 36 }}>
-              <s.i className="h-4 w-4 text-white" strokeWidth={1.5} />
-            </div>
-            <p className="text-xs mt-4 text-white/60 font-body">{s.l}</p>
-            <p className="mt-2 font-heading text-white text-4xl tracking-[-1px] leading-none">
-              {s.v} <span className="text-xs text-white/60 font-body">{s.u}</span>
-            </p>
-          </motion.div>
-        ))}
+    <div className="mt-12 flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center gap-3">
+        <h2 className="font-heading text-white text-3xl tracking-[-1px] leading-none">{title}</h2>
+        {tag && <span className="liquid-glass tag-glass">{tag}</span>}
       </div>
-
-      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Interior temperature · 12h</h3>
-          <span className="liquid-glass tag-glass">Stable</span>
-        </div>
-        <p className="text-xs mt-3 text-white/60 font-body">hover to scrub</p>
-        <div className="mt-3">
-          <Sparkline />
-        </div>
-      </div>
-
-      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
-        <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Exterior vs. interior</h3>
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-          {compare.map((c) => (
-            <div key={c.l} className="liquid-glass rounded-[1rem] p-4">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-white/50 font-body">{c.l}</p>
-              <div className="mt-3 flex items-baseline justify-between">
-                <div>
-                  <p className="text-[10px] text-white/40 font-body">out</p>
-                  <p className="font-heading text-white text-xl">{c.out}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 font-body">in</p>
-                  <p className="font-heading text-white text-xl">{c.in}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {trailing}
     </div>
   );
 }
 
-/* ============== Activity ============== */
+/* ============== Activity (collapsed) ============== */
 const activityFilters = ["All", "System", "Climate", "Guests"];
 const events: { t: string; cat: string; i: any; title: string; body: string }[] = [
   { t: "22:14", cat: "System", i: BatteryFull, title: "Battery topping started", body: "Charging from 86% to 100% — est. 38 min." },
@@ -492,67 +393,77 @@ const events: { t: string; cat: string; i: any; title: string; body: string }[] 
   { t: "16:21", cat: "System", i: Zap, title: "Wind turbine peak", body: "Output hit 1.8kW at 31 km/h gust." },
   { t: "14:05", cat: "System", i: Settings, title: "Firmware sync", body: "Sensor module updated to v4.12.0." },
 ];
+const COLLAPSED_COUNT = 4;
 
-function ActivityPanel() {
+function ActivitySection() {
   const [filter, setFilter] = useState("All");
-  const list = filter === "All" ? events : events.filter((e) => e.cat === filter);
+  const [expanded, setExpanded] = useState(false);
+  const filtered = filter === "All" ? events : events.filter((e) => e.cat === filter);
+  const list = expanded ? filtered : filtered.slice(0, COLLAPSED_COUNT);
+
   return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2 flex-wrap">
-        {activityFilters.map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-xs font-body font-medium transition-colors ${
-              filter === f ? "bg-white text-black" : "liquid-glass text-white/70 hover:text-white"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+    <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {activityFilters.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-body font-medium transition-colors ${
+                filter === f ? "bg-white text-black" : "liquid-glass text-white/70 hover:text-white"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        <span className="liquid-glass tag-glass inline-flex items-center gap-1.5">
+          <ActivityIcon className="h-3 w-3" strokeWidth={1.75} />
+          {filtered.length} events
+        </span>
       </div>
 
-      <div className="mt-4 liquid-glass rounded-[1.25rem] p-6">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading text-white text-3xl tracking-[-1px] leading-none">Event log</h3>
-          <span className="liquid-glass tag-glass inline-flex items-center gap-1.5">
-            <ActivityIcon className="h-3 w-3" strokeWidth={1.75} />
-            {list.length} events
-          </span>
-        </div>
-
-        <div className="mt-6 relative">
-          <div className="absolute left-[22px] top-2 bottom-2 w-px bg-white/10" aria-hidden />
-          <AnimatePresence mode="popLayout">
-            {list.map((e, idx) => (
-              <motion.div
-                key={`${filter}-${e.t}-${e.title}`}
-                layout
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -8 }}
-                transition={{ duration: 0.22, delay: idx * 0.03, ease: [0, 0, 0.2, 1] }}
-                className="relative flex gap-4 py-3 group"
-              >
-                <div className="relative z-10 liquid-glass icon-box-glass shrink-0 group-hover:bg-white/10 transition-colors" style={{ width: 44, height: 44 }}>
-                  <e.i className="h-4 w-4 text-white" strokeWidth={1.5} />
+      <div className="mt-5 relative">
+        <div className="absolute left-[22px] top-2 bottom-2 w-px bg-white/10" aria-hidden />
+        <AnimatePresence mode="popLayout">
+          {list.map((e, idx) => (
+            <motion.div
+              key={`${filter}-${e.t}-${e.title}`}
+              layout
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.22, delay: idx * 0.03, ease: [0, 0, 0.2, 1] }}
+              className="relative flex gap-4 py-3 group"
+            >
+              <div className="relative z-10 liquid-glass icon-box-glass shrink-0 group-hover:bg-white/10 transition-colors" style={{ width: 44, height: 44 }}>
+                <e.i className="h-4 w-4 text-white" strokeWidth={1.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-3">
+                  <p className="font-heading text-white text-lg tracking-[-0.5px] leading-none">{e.title}</p>
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-body">{e.cat}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-3">
-                    <p className="font-heading text-white text-lg tracking-[-0.5px] leading-none">{e.title}</p>
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-white/40 font-body">{e.cat}</span>
-                  </div>
-                  <p className="mt-1.5 text-sm font-body text-white/70 leading-snug">{e.body}</p>
-                </div>
-                <span className="text-xs font-body text-white/50 tabular-nums shrink-0">{e.t}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          {list.length === 0 && (
-            <p className="text-sm text-white/50 font-body py-6 text-center">No events in this category.</p>
-          )}
-        </div>
+                <p className="mt-1.5 text-sm font-body text-white/70 leading-snug">{e.body}</p>
+              </div>
+              <span className="text-xs font-body text-white/50 tabular-nums shrink-0">{e.t}</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {filtered.length === 0 && (
+          <p className="text-sm text-white/50 font-body py-6 text-center">No events in this category.</p>
+        )}
       </div>
+
+      {filtered.length > COLLAPSED_COUNT && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-body text-white/60 hover:text-white transition-colors"
+        >
+          {expanded ? "Show fewer" : `View all ${filtered.length} events`}
+          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} strokeWidth={2} />
+        </button>
+      )}
     </div>
   );
 }
@@ -756,7 +667,7 @@ function Sparkline() {
   );
 }
 
-/* ============== Dual sparkline (Energy tab) ============== */
+/* ============== Dual sparkline (Energy) ============== */
 function DualSparkline() {
   const w = 800, h = 160;
   const N = 28;

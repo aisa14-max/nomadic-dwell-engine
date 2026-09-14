@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { PARTS, TOTAL_PARTS, PartId, findOption, gbp, DEPOSIT_RATE, isSkipped } from "@/data/dwellingParts";
+import { PARTS, TOTAL_PARTS, PartId, findOption, gbp, DEPOSIT_RATE, DWELLING_VALUE, isSkipped } from "@/data/dwellingParts";
 import { PLANS, findPlan, MAX_DISCOUNT, applyPlanDiscount } from "@/data/plans";
 
 type Totals = { subtotal: number; tax: number; total: number; dueToday: number };
@@ -46,7 +46,7 @@ export default function OrderPanel({
   const discountedTotal = priced.total;
 
   return (
-    <div className="liquid-glass rounded-[1.25rem] p-5 flex flex-col h-[calc(58vh+10rem)]">
+    <div className="liquid-glass rounded-[1.25rem] p-5 flex flex-col h-full">
       <div className="shrink-0 pb-3 border-b border-white/10">
         <p className="text-[10px] uppercase tracking-[0.2em] text-white/55 font-body">
           Your reservation
@@ -54,6 +54,18 @@ export default function OrderPanel({
         <h3 className="font-heading text-2xl text-white mt-0.5 tracking-[-0.5px]">
           {showPlans ? "Choose your plan" : "Price & Order"}
         </h3>
+      </div>
+
+      {/* The dwelling itself is rented via the subscription below, not
+          bought outright — its value sits here for context, separate from
+          the one-off add-on total it isn't part of. */}
+      <div className="shrink-0 mt-3 flex items-center justify-between gap-3 rounded-[0.75rem] bg-white/[0.04] px-3 py-2.5">
+        <span className="text-[10px] font-body text-white/50 leading-snug">
+          Dwelling value
+          <br />
+          <span className="text-white/35">Rented via subscription, not purchased</span>
+        </span>
+        <span className="text-sm font-body font-medium text-white shrink-0">{gbp(DWELLING_VALUE)}</span>
       </div>
 
       <div className="mt-3 flex-1 min-h-0 overflow-y-auto pr-1">
@@ -68,7 +80,7 @@ export default function OrderPanel({
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="overflow-hidden"
             >
-              <div className="flex flex-col gap-1.5 pb-4 mb-3 border-b border-white/10">
+              <div className="grid grid-cols-2 gap-1.5 pb-4 mb-3 border-b border-white/10">
                 {PLANS.map((p) => {
                   const active = selectedPlan === p.id;
                   const saving = Math.round(totals.subtotal * p.discount);
@@ -78,22 +90,22 @@ export default function OrderPanel({
                       onClick={() => onSelectPlan(p.id)}
                       aria-pressed={active}
                       className={[
-                        "w-full text-left rounded-[0.75rem] px-3 py-2.5 transition-all border",
+                        "relative w-full text-left rounded-[0.75rem] px-3 py-2.5 transition-all border",
                         active
                           ? "bg-white/15 border-white/50"
                           : "bg-white/[0.03] border-white/10 hover:bg-white/[0.07] hover:border-white/25",
                       ].join(" ")}
                     >
+                      {p.highlight && !active && (
+                        <span className="absolute top-2 right-2 text-[7px] font-body uppercase tracking-[0.08em] text-white/50 border border-white/20 rounded-full px-1.5 py-0.5">
+                          Popular
+                        </span>
+                      )}
                       <div className="flex items-center justify-between gap-2">
                         <span className="inline-flex items-center gap-1.5 min-w-0">
                           <span className="text-xs font-body font-medium text-white truncate">
                             {p.name}
                           </span>
-                          {p.highlight && !active && (
-                            <span className="text-[8px] font-body uppercase tracking-[0.1em] text-white/50 border border-white/20 rounded-full px-1.5 py-0.5 shrink-0">
-                              Popular
-                            </span>
-                          )}
                           {active && <Check className="h-3 w-3 text-white shrink-0" strokeWidth={2.5} />}
                         </span>
                         <span className="text-[11px] font-body text-white/80 shrink-0">{p.price}</span>
@@ -125,7 +137,7 @@ export default function OrderPanel({
         {count === 0 ? (
           <p className="text-[11px] font-body text-white/40 leading-relaxed">
             No add-ons selected — your engine ships in its standard configuration.
-            You can add them later from your profile.
+            You can add them later from your Engine page.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -177,7 +189,7 @@ export default function OrderPanel({
           <Row label={`${plan.name} plan discount`} value={`−${gbp(discount)}`} accent />
         )}
         <Row label="Tax" value={gbp(totals.tax)} />
-        <Row label="Total" value={gbp(discountedTotal)} strong />
+        <Row label="Total" value={gbp(discountedTotal + DWELLING_VALUE)} strong />
         {plan && (
           <Row label={`Subscription (${plan.name})`} value={`${plan.price}`} muted />
         )}

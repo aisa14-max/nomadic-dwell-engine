@@ -1,15 +1,27 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Minus, Sofa, PanelsTopLeft, Layers, Droplet, Globe, Trees, type LucideIcon } from "lucide-react";
+import { Check, Minus, Palette, PanelsTopLeft, Layers, Waves, Globe, Armchair, UtensilsCrossed, Flame, Trees, Droplets, Table2, type LucideIcon } from "lucide-react";
 import { PARTS, PartId, findOption, gbp, SKIPPED, isSkipped } from "@/data/dwellingParts";
 
 /** One icon per part, in PARTS order. */
 const PART_ICONS: Record<PartId, LucideIcon> = {
-  rib: Sofa,             // Indoor Furniture
-  endwall: PanelsTopLeft, // Walls Panels
-  platform: Layers,      // Flooring
-  membrane: Droplet,     // Membrane
+  rib: Palette,           // Rib Colour
+  endwall: PanelsTopLeft, // no longer in PARTS (Walls Panels removed), key kept to satisfy Record<PartId, ...>
+  platform: Layers,      // no longer in PARTS (Flooring removed), key kept to satisfy Record<PartId, ...>
+  membrane: Waves,       // Membrane Pattern
   skylight: Globe,       // Off Grid Elements
-  door: Trees,           // Outdoor Furniture
+  door: Armchair,        // Outdoor Furniture
+};
+
+// Outdoor Furniture options read as an actual catalogue rather than
+// material swatches — each piece is different furniture, not a colour
+// choice, so it gets its own icon instead of a colour chip.
+const DOOR_OPTION_ICONS: Record<string, LucideIcon> = {
+  "lounge-chair": Armchair,
+  "picnic-bench": UtensilsCrossed,
+  "fire-pit-seating": Flame,
+  "hammock": Trees,
+  "deck-table": Table2,
+  "pool": Droplets,
 };
 
 type Props = {
@@ -131,6 +143,7 @@ export default function AddOnsPanel({
                     <div className="pt-2 flex flex-col gap-1">
                       {p.options.map((o) => {
                         const selected = optId === o.id;
+                        const OptionIcon = p.id === "door" ? DOOR_OPTION_ICONS[o.id] : null;
                         return (
                           <button
                             key={o.id}
@@ -141,10 +154,16 @@ export default function AddOnsPanel({
                               selected ? "bg-white/15" : "bg-white/[0.03] hover:bg-white/[0.08]",
                             ].join(" ")}
                           >
-                            <span
-                              className="w-4 h-4 rounded-[0.3rem] shrink-0 border border-white/25"
-                              style={{ background: o.hex }}
-                            />
+                            {OptionIcon ? (
+                              <span className="w-4 h-4 rounded-[0.3rem] shrink-0 inline-flex items-center justify-center text-white/70">
+                                <OptionIcon className="h-3 w-3" strokeWidth={1.75} />
+                              </span>
+                            ) : (
+                              <span
+                                className="w-4 h-4 rounded-[0.3rem] shrink-0 border border-white/25"
+                                style={{ background: o.hex }}
+                              />
+                            )}
                             <span className="min-w-0 flex-1">
                               <span className="block text-[10px] font-body text-white/85 truncate">
                                 {o.name}

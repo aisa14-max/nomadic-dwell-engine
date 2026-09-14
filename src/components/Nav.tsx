@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
+import nomadicLogo from "@/assets/nomadic-logo.png";
 import avatar1 from "@/assets/avatars/avatar-1.jpg";
 import avatar2 from "@/assets/avatars/avatar-2.jpg";
 import avatar3 from "@/assets/avatars/avatar-3.jpg";
@@ -26,8 +27,7 @@ const baseItems = [
 ];
 const signedInItems = [
   { to: "/configurator", label: "Worlds" },
-  // Engine is now one tab inside Profile, so the nav names the destination.
-  { to: "/profile", label: "Profile" },
+  { to: "/engine", label: "Engine" },
 ];
 
 export default function Nav() {
@@ -55,10 +55,12 @@ export default function Nav() {
         {/* Logo */}
         <Link
           to="/"
-          className="liquid-glass w-12 h-12 rounded-full flex items-center justify-center text-white"
+          className="flex items-center gap-3 text-white"
           aria-label="Nomadic Engine"
         >
-          <span className="font-heading text-2xl leading-none -mt-0.5">n</span>
+          <span className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+            <img src={nomadicLogo} alt="" className="w-full h-full object-cover" />
+          </span>
         </Link>
 
         {/* Center pill */}
@@ -80,9 +82,15 @@ export default function Nav() {
           <Link
             to="/tribe"
             onClick={handleTribeClick}
-            className="ml-1 inline-flex items-center gap-1 bg-white text-black rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap font-body"
+            className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium whitespace-nowrap font-body rounded-full text-white/70 hover:text-white transition-colors"
           >
             Join the Tribe <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+          </Link>
+          <Link
+            to="/under-the-hood"
+            className="ml-1 inline-flex items-center bg-white text-black hover:bg-white/90 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap font-body transition-colors"
+          >
+            Under the Hood
           </Link>
         </div>
 

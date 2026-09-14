@@ -81,19 +81,19 @@ export default function LoginDialog() {
 
           {/* Centered card */}
           <div className="relative z-10 min-h-screen flex items-center justify-center px-6 py-16">
-            <div className="liquid-glass-strong border border-white/10 rounded-[2rem] w-full max-w-[560px] overflow-hidden">
+            <div className="liquid-glass-strong border border-white/10 rounded-[2rem] w-full max-w-[380px] overflow-hidden">
               {/* Form pane */}
-              <div className="p-8 sm:p-12 md:p-14 flex flex-col justify-center gap-6">
-                <div className="space-y-2">
-                  <DialogPrimitive.Title className="font-heading text-3xl md:text-4xl tracking-[-1px] leading-tight">
+              <div className="p-5 sm:p-6 md:p-8 flex flex-col justify-center gap-3">
+                <div className="space-y-1">
+                  <DialogPrimitive.Title className="font-heading text-xl md:text-2xl tracking-[-1px] leading-tight">
                     Who's exploring?
                   </DialogPrimitive.Title>
-                  <DialogPrimitive.Description className="font-body text-sm text-white/70">
+                  <DialogPrimitive.Description className="font-body text-xs text-white/70">
                     Give yourself a name and pick an avatar to enter the configurator.
                   </DialogPrimitive.Description>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-body text-white/60 uppercase tracking-wider">
                       Your name
@@ -105,7 +105,7 @@ export default function LoginDialog() {
                       value={name}
                       maxLength={60}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full h-12 px-4 text-base bg-white/5 border border-white/15 text-white placeholder:text-white/40 rounded-xl focus:outline-none focus:border-white/40 transition-colors"
+                      className="w-full h-10 px-3 text-sm bg-white/5 border border-white/15 text-white placeholder:text-white/40 rounded-xl focus:outline-none focus:border-white/40 transition-colors"
                     />
                   </div>
 
@@ -113,7 +113,7 @@ export default function LoginDialog() {
                     <label className="text-xs font-body text-white/60 uppercase tracking-wider">
                       Pick an avatar
                     </label>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       {AVATARS.map(({ id, image, label, glow }) => {
                         const selected = avatar === id;
                         return (
@@ -138,12 +138,12 @@ export default function LoginDialog() {
                             <img
                               src={image}
                               alt={label}
-                              // The source art is pre-cropped to each portrait's own
-                              // glowing ring (they sat at 81–93% of frame, which left a
-                              // black margin the circular clip read as a second ring),
-                              // so the ring itself is now the outer edge at scale 1.
+                              // Scaled up past the button's circular clip so the
+                              // portrait's own glowing ring (baked into the source
+                              // art, just inside its frame edge) gets cropped away
+                              // entirely — leaves just the face, no visible ring.
                               className={[
-                                "w-full h-full object-cover transition-opacity duration-300",
+                                "w-full h-full object-cover scale-[1.15] transition-opacity duration-300",
                                 selected ? "opacity-100" : "opacity-60 hover:opacity-85",
                               ].join(" ")}
                             />
@@ -156,20 +156,11 @@ export default function LoginDialog() {
                   {error && <p className="text-xs font-body text-red-300">{error}</p>}
                   <button
                     type="submit"
-                    className="w-full h-12 rounded-full bg-white text-black text-sm font-body font-medium hover:bg-white/90 transition-colors mt-2"
+                    className="w-full h-10 rounded-full bg-white text-black text-sm font-body font-medium hover:bg-white/90 transition-colors mt-1"
                   >
                     Enter the Engine
                   </button>
                 </form>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-white/10" />
-                  <span className="text-[10px] font-body text-white/40 uppercase tracking-[0.2em]">Mocked auth</span>
-                  <div className="flex-1 h-px bg-white/10" />
-                </div>
-                <p className="font-body text-xs text-white/50 text-center">
-                  No account needed — just tell us who you are.
-                </p>
               </div>
             </div>
           </div>

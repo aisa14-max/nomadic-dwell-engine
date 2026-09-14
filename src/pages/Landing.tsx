@@ -1,10 +1,11 @@
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Play, Timer, Globe2 } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Timer, Globe2 } from "lucide-react";
 import FadingVideo from "@/components/FadingVideo";
 import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
-import { useMockAuth } from "@/context/MockAuth";
+import PageReveal from "@/components/PageReveal";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
@@ -14,8 +15,34 @@ const CAP_VIDEO =
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
+function loadRevealed() {
+  try {
+    return sessionStorage.getItem("homeRevealed") === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function Landing() {
-  const { openOnboardingQuickStart } = useMockAuth();
+  const [revealed, setRevealed] = useState(loadRevealed);
+  const capabilitiesRef = useRef<HTMLElement | null>(null);
+  const lifecycleRef = useRef<HTMLElement | null>(null);
+
+  if (!revealed) {
+    return (
+      <PageReveal
+        onComplete={() => {
+          try {
+            sessionStorage.setItem("homeRevealed", "1");
+          } catch {
+            /* private browsing / storage disabled */
+          }
+          setRevealed(true);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="bg-black text-white">
       {/* ============ HERO ============ */}
@@ -32,15 +59,15 @@ export default function Landing() {
 
         <div className="relative z-10 h-full flex flex-col">
           <div className="flex-1 flex flex-col items-center justify-center pt-24 px-4 text-center">
-            {/* Badge */}
+            {/* Badge — plain label, not styled as a clickable button/pill */}
             <motion.div
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 0.4, ease: "easeOut" }}
-              className="liquid-glass rounded-full inline-flex items-center gap-2 pl-1 pr-3 py-1"
+              className="inline-flex items-center gap-2"
             >
-              <span className="bg-white text-black rounded-full px-3 py-1 text-xs font-semibold font-body">New</span>
-              <span className="text-sm text-white/90 font-body">First Engine Deployment Lands Q3 2026</span>
+              <span className="text-amber-300 text-xs font-semibold uppercase tracking-wide font-body">New</span>
+              <span className="text-sm text-white/90 font-body">Engines Now Deploying</span>
             </motion.div>
 
             {/* Headline */}
@@ -73,17 +100,10 @@ export default function Landing() {
             >
               <Link
                 to="/discover"
-                className="liquid-glass-strong group rounded-full px-5 py-2.5 text-sm font-medium text-white font-body inline-flex items-center gap-2 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)] hover:text-amber-200"
+                className="group rounded-full px-5 py-2.5 text-sm font-semibold text-black bg-white font-body inline-flex items-center gap-2 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-amber-200 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]"
               >
-                Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300 group-hover:text-amber-300" strokeWidth={2} />
+                Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300" strokeWidth={2} />
               </Link>
-              <button
-                type="button"
-                onClick={openOnboardingQuickStart}
-                className="text-sm font-body text-white inline-flex items-center gap-2"
-              >
-                Quick Start <Play className="h-4 w-4 fill-white" strokeWidth={0} />
-              </button>
             </motion.div>
 
             {/* Stats */}
@@ -111,12 +131,12 @@ export default function Landing() {
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.7, delay: 1.4, ease: "easeOut" }}
-            className="flex flex-col items-center gap-4 pb-8 px-4 mt-8"
+            className="flex flex-col items-center gap-4 pb-20 px-4 mt-4"
           >
             <div className="liquid-glass rounded-full px-3.5 py-1 text-xs font-medium text-white font-body">
               Collaborating with off-grid pioneers globally
             </div>
-            <div className="flex flex-wrap justify-center gap-12 md:gap-16 font-heading text-white text-2xl md:text-3xl tracking-tight">
+            <div className="flex flex-wrap justify-center gap-12 md:gap-16 font-heading text-white text-2xl md:text-3xl tracking-tight mt-3">
               <span>Aeon</span>
               <span>Vela</span>
               <span>Apex</span>
@@ -125,13 +145,90 @@ export default function Landing() {
             </div>
           </motion.div>
         </div>
+
+        {/* Scroll cue — clicking it smooth-scrolls down to Capabilities ("Habitat evolved") */}
+        <motion.button
+          type="button"
+          onClick={() => capabilitiesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          aria-label="Scroll to Habitat evolved"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, y: [0, 6, 0] }}
+          transition={{
+            opacity: { duration: 0.7, delay: 1.7, ease: "easeOut" },
+            y: { duration: 1.8, delay: 1.7, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/30 shadow-[0_2px_12px_rgba(0,0,0,0.35)] flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors"
+        >
+          <ChevronDown className="h-4 w-4 text-white" strokeWidth={2.25} />
+        </motion.button>
+      </section>
+
+      {/* ============ CAPABILITIES ============ */}
+      <section ref={capabilitiesRef} className="relative w-full overflow-hidden bg-black">
+        <StarfieldScene className="absolute inset-0 w-full h-full z-0" />
+        {/* top fade from hero */}
+        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-[#070b1f] to-transparent z-10 pointer-events-none" />
+        {/* bottom fade into lifecycle */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-[#03040d] to-transparent z-10 pointer-events-none" />
+
+        <div className="relative z-20 px-8 md:px-16 lg:px-20 pt-24 pb-20 flex flex-col">
+          <div className="text-center">
+            <h2 className="font-heading text-white text-5xl md:text-6xl leading-tight tracking-[-2px]">
+              Habitat evolved
+            </h2>
+            <p className="mt-4 text-base md:text-lg text-white/70 max-w-3xl mx-auto font-body leading-relaxed">
+              A dwelling is no longer a fixed object — it's a living, adaptive system that responds
+              to the changing needs of its occupants, and to its climate and environment.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
+            <CapCard
+              index={0}
+              title="Adaptive by Design"
+              body="Every habitat is a living system, not a static structure, shifting with the preferences of the people who live in it, and the climate and terrain around them."
+              tags={["Occupant-Responsive", "Climate-Aware", "Living System", "Continuous Feedback"]}
+              iconPath="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8A5.87 5.87 0 0 1 6 12c0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"
+            />
+            <CapCard
+              index={1}
+              title="Computational Engine"
+              body="Define your needs, preferences and conditions through a web interface, and the engine translates them into a personalised, buildable dwelling, adapted to where it will be assembled."
+              tags={["User-Defined Inputs", "Generative Design", "Digital Fabrication", "Site-Adapted"]}
+              iconPath="M15 9H9v6h6V9zm-2 4h-2v-2h2v2zm8-2V9h-2V7c0-1.1-.9-2-2-2h-2V3h-2v2h-2V3H9v2H7c-1.1 0-2 .9-2 2v2H3v2h2v2H3v2h2v2c0 1.1.9 2 2 2h2v2h2v-2h2v2h2v-2h2c1.1 0 2-.9 2-2v-2h2v-2h-2v-2h2zm-4 6H7V7h10v10z"
+            />
+            <CapCard
+              index={2}
+              title="Continuous by Nature"
+              body="The dwelling reports on itself continuously: solar, power, wind, system status, the same way you'd monitor an engine, not check on a house. What it's built from stays in the loop, reused and reconfigured rather than built once and discarded."
+              tags={["Live Telemetry", "Real-Time Alerts", "Closed-Loop", "Reconfigurable"]}
+              iconPath="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"
+            />
+          </div>
+        </div>
+
+        {/* Scroll cue — clicking it smooth-scrolls down to the Life Cycle section */}
+        <motion.button
+          type="button"
+          onClick={() => lifecycleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          aria-label="Scroll to From Order to Return: The Life Cycle"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1, y: [0, 6, 0] }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{
+            opacity: { duration: 0.7, ease: "easeOut" },
+            y: { duration: 1.8, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/30 shadow-[0_2px_12px_rgba(0,0,0,0.35)] flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors"
+        >
+          <ChevronDown className="h-4 w-4 text-white" strokeWidth={2.25} />
+        </motion.button>
       </section>
 
       {/* ============ LIFECYCLE ============ */}
-      <section className="relative w-full overflow-hidden bg-transparent">
-        <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-30" aria-hidden="true" />
-        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#070b1f] to-transparent z-10 pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#031b2b] to-transparent z-10 pointer-events-none" />
+      <section ref={lifecycleRef} className="relative w-full overflow-hidden bg-transparent">
+        <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-50" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#03040d]/60 to-transparent z-10 pointer-events-none" />
 
         <div className="relative z-20 px-8 md:px-16 lg:px-20 py-20 mx-auto max-w-6xl">
           <div className="mb-10 text-center">
@@ -165,9 +262,7 @@ export default function Landing() {
               </div>
             </div>
 
-            <div className="mt-6 flex-1 flex flex-col justify-between gap-6">
-              <div />
-
+            <div className="mt-3 flex-1 flex flex-col justify-start">
               <div className="flex flex-wrap gap-2">
                 {[
                   "Assembly",
@@ -186,43 +281,32 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ============ CAPABILITIES ============ */}
+      {/* ============ CLOSING CTA ============ */}
       <section className="relative w-full overflow-hidden bg-black">
-        <StarfieldScene className="absolute inset-0 w-full h-full z-0" />
-        {/* top fade from hero */}
-        <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-b from-[#031b2b] to-transparent z-10 pointer-events-none" />
-
-        <div className="relative z-20 px-8 md:px-16 lg:px-20 pt-24 pb-20 flex flex-col">
-          <div>
-            <h2 className="font-heading text-white text-6xl md:text-7xl lg:text-[6rem] leading-[0.9] tracking-[-3px]">
-              Habitat
-              <br />
-              evolved
+        <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-50 -scale-y-100" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#03040d] to-transparent z-10 pointer-events-none" />
+        <div className="relative z-20 px-8 md:px-16 lg:px-20 py-28 flex flex-col items-center text-center">
+          <motion.div
+            initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
+            whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          >
+            <h2 className="font-heading text-white text-5xl md:text-6xl leading-tight tracking-[-2px]">
+              Ready to deploy your Engine?
             </h2>
-          </div>
+            <p className="mt-4 text-base md:text-lg text-white/70 max-w-xl mx-auto font-body leading-relaxed">
+              Find land, configure your habitat, and operate it remotely — start the voyage today.
+            </p>
+            <Link
+              to="/discover"
+              className="group rounded-full px-5 py-2.5 text-sm font-semibold text-black bg-white font-body inline-flex items-center gap-2 mt-8 transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-amber-200 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]"
+            >
+              Start Your Voyage <ArrowUpRight className="h-5 w-5 transition-colors duration-300" strokeWidth={2} />
+            </Link>
+          </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16">
-            <CapCard
-              title="Site Intelligence"
-              body="The engine analyses your terrain to compose an indistinguishable natural fit — from Icelandic moss to misty pine forest."
-              tags={["Solar Yield", "Wind Mapping", "Water Sources", "Climate Sync"]}
-              iconPath="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v14q0 .825-.587 1.413T19 21H5Zm1-4h12l-3.75-5-3 4L9 13l-3 4Z"
-            />
-            <CapCard
-              title="Modular Assembly"
-              body="Compose your habitat in minutes. A unified architectural language for every terrain — without months of bespoke engineering."
-              tags={["Scale Fast", "Visual Cohesion", "Rapid Deploy", "Move Anywhere"]}
-              iconPath="M4 6.47 5.76 10H20v8H4V6.47M22 4h-4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.89-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4Z"
-            />
-            <CapCard
-              title="Live Operation"
-              body="Automatic energy and climate balancing. Achieve full off-grid autonomy with realtime telemetry and predictive forecasting."
-              tags={["Energy Routing", "Storm Mode", "Studio Quiet", "Sunlight Sync"]}
-              iconPath="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1Zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7Z"
-            />
-          </div>
-
-          <footer className="mt-16 pt-8 border-t border-white/10 text-white/60 text-sm font-body">
+          <footer className="mt-24 pt-8 border-t border-white/10 text-white/60 text-sm font-body w-full">
             <div className="flex flex-wrap justify-between gap-4">
               <span>© 2026 Nomadic Engine</span>
               <span>Designed for terrain. Built for return.</span>
@@ -249,21 +333,23 @@ function CapCard({
   body,
   tags,
   iconPath,
+  index = 0,
 }: {
   title: string;
   body: string;
   tags: string[];
   iconPath: string;
+  index?: number;
 }) {
   return (
     <motion.div
       initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}
       whileInView={{ filter: "blur(0px)", opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.7, ease: "easeOut" }}
+      transition={{ duration: 0.7, ease: "easeOut", delay: index * 0.15 }}
       className="liquid-glass group rounded-[1.25rem] p-6 min-h-[360px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40 hover:shadow-[0_0_40px_rgba(251,191,36,0.35)]"
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 min-h-[92px]">
         <div className="liquid-glass icon-box-glass">
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-white transition-colors duration-300 group-hover:text-amber-300">
             <path d={iconPath} />
@@ -277,8 +363,7 @@ function CapCard({
           ))}
         </div>
       </div>
-      <div className="flex-1" />
-      <div className="mt-6">
+      <div className="mt-16">
         <h3 className="font-heading text-white text-3xl md:text-4xl tracking-[-1px] leading-none transition-colors duration-300 group-hover:text-amber-200">{title}</h3>
         <p className="mt-3 text-sm text-white/90 font-body font-light leading-snug max-w-[32ch] transition-colors duration-300 group-hover:text-white/90">{body}</p>
       </div>

@@ -10,6 +10,7 @@ import ConfiguratorPortfolio from "./pages/ConfiguratorPortfolio.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Profile from "./pages/Profile.tsx";
 import Tribe from "./pages/Tribe.tsx";
+import UnderTheHood from "./pages/UnderTheHood.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import PageTransition from "./components/PageTransition.tsx";
@@ -54,9 +55,12 @@ const RoutedApp = () => {
           {/* Frozen portfolio snapshot — not gated, not in nav, reachable directly by URL */}
           <Route path="/configurator-portfolio" element={<ConfiguratorPortfolio />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          {/* Profile wraps the Engine dashboard as one of its tabs — signed-in only */}
+          {/* Live status dashboard — signed-in only */}
+          <Route path="/engine" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          {/* Overview / My Designs / Orders — reached via the nav avatar */}
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/tribe" element={<RequireAuth><Tribe /></RequireAuth>} />
+          <Route path="/under-the-hood" element={<UnderTheHood />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>

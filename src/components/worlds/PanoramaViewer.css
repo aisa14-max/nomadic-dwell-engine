@@ -1,0 +1,56 @@
+/* Restyles Photo Sphere Viewer's default flat navbar into a floating,
+   frosted iOS-style control pill — matching this app's liquid-glass
+   language instead of the library's plain dark bar. Selectors are scoped
+   under .psv-container to out-specificity the library's own base rules
+   regardless of stylesheet import order. */
+
+.psv-container .psv-navbar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px !important;
+  transform: translateX(-50%);
+  width: auto;
+  height: auto;
+  background: rgba(20, 18, 14, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 999px;
+  padding: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.14);
+}
+
+.psv-container .psv-button {
+  box-sizing: content-box;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  transition: background-color 0.15s ease;
+}
+
+.psv-container .psv-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.psv-container .psv-button--active {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.psv-container .psv-button-svg {
+  width: 17px;
+}
+
+.psv-container .psv-move-button + .psv-move-button {
+  margin-left: 0;
+}
+
+.psv-container .psv-zoom-range.psv-button {
+  display: none;
+}

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, MapPin, Package, CheckCircle2, Clock, Layers } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
-import Dashboard from "@/pages/Dashboard";
 import { PARTS, TOTAL_PARTS, computeTotals, findOption, gbp, type PartId } from "@/data/dwellingParts";
 import avatar1 from "@/assets/avatars/avatar-1.jpg";
 import avatar2 from "@/assets/avatars/avatar-2.jpg";
@@ -19,7 +18,7 @@ const AVATAR_IMAGES: Record<AvatarId, string> = {
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
 
-const TABS = ["Overview", "My Designs", "Orders", "Engine"] as const;
+const TABS = ["Overview", "My Designs", "Orders"] as const;
 type Tab = typeof TABS[number];
 
 /** Everything the profile shows is derived from the same storage the rest of
@@ -83,17 +82,6 @@ export default function Profile() {
   const [tab, setTab] = useState<Tab>("Overview");
   const s = useMemo(readProfileState, []);
   const totals = useMemo(() => computeTotals(s.configured), [s.configured]);
-
-  // The Engine tab reuses the existing Dashboard page wholesale — it brings its
-  // own full-bleed background, so it renders outside the profile's card layout.
-  if (tab === "Engine") {
-    return (
-      <div className="relative">
-        <TabBar tab={tab} setTab={setTab} floating />
-        <Dashboard />
-      </div>
-    );
-  }
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -273,15 +261,9 @@ export default function Profile() {
   );
 }
 
-function TabBar({ tab, setTab, floating }: { tab: Tab; setTab: (t: Tab) => void; floating?: boolean }) {
+function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
-    <div
-      className={
-        floating
-          ? "fixed top-24 left-1/2 -translate-x-1/2 z-30 flex gap-1 liquid-glass rounded-full p-1"
-          : "inline-flex gap-1 bg-white/5 rounded-full p-1"
-      }
-    >
+    <div className="inline-flex gap-1 bg-white/5 rounded-full p-1">
       {TABS.map((t) => (
         <button
           key={t}

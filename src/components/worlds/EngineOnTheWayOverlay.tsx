@@ -26,8 +26,12 @@ export default function EngineOnTheWayOverlay({ reservationRef, total, onContinu
         transition={{ delay: 0.3, duration: 0.7, ease: [0.6, 0.2, 0.2, 1] }}
         className="relative liquid-glass rounded-3xl p-10 max-w-lg w-full text-center"
       >
-        <div className="w-14 h-14 mx-auto rounded-full bg-white/10 inline-flex items-center justify-center anim-reserve-active">
-          <Sparkles className="h-7 w-7 text-white" strokeWidth={1.8} />
+        {/* Emerald matches the "confirmed" state used elsewhere in the app
+            (e.g. Profile's Order confirmed check) rather than the amber
+            pulse used for in-progress reservation states. */}
+        <div className="relative w-14 h-14 mx-auto rounded-full bg-emerald-400/10 border border-emerald-400/30 inline-flex items-center justify-center">
+          <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+          <Sparkles className="relative h-7 w-7 text-emerald-300" strokeWidth={1.8} />
         </div>
 
         <p className="mt-6 text-[11px] uppercase tracking-[.2em] text-white/60 font-body">

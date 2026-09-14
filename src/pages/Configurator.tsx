@@ -1,23 +1,51 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, Palette, Sofa, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, type LucideIcon } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, MousePointer2, Lock, Lightbulb, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
-import landscapeBg from "@/assets/configurator-landscape-bg.jpg";
-import landscapeNamib from "@/assets/configurator-landscape-namib.jpg";
-import landscapeHighland from "@/assets/configurator-landscape-highland.jpg";
-import dwellingFg from "@/assets/configurator-dwelling-fg.png";
-import sectionVol2 from "@/assets/configurator-section-vol2.png";
+import { Switch } from "@/components/ui/switch";
+import landscapeBg from "@/assets/configurator-landscape-bg-v2.png";
+import dwellingFg from "@/assets/configurator-dwelling-baked-crop.png";
+import bedroomPanorama from "@/assets/configurator-bedroom-panorama.jpg";
+import livingroomPanorama from "@/assets/configurator-livingroom-panorama.jpg";
+import kitchenPanorama from "@/assets/configurator-kitchen-panorama.jpg";
+import plantsPanorama from "@/assets/configurator-plants-panorama.jpg";
+import bathroomPanorama from "@/assets/configurator-bathroom-panorama.jpg";
+// Per-zone cutaway "patches" — small crops of just the interior peek (not a
+// full flattened dwelling render). Placed at a fixed position/size on top of
+// whichever base layer is currently showing (plain, bracing, grown, etc.)
+// instead of replacing the whole canvas, so a patch never hides an unrelated
+// customization elsewhere on the dwelling. See CUTAWAY_PATCH_BOXES below for
+// their placement, measured in the same pixel space as the base render.
+import patchPlants from "@/assets/configurator-patch-plants.png";
+import patchEngine from "@/assets/configurator-patch-engine.png";
+import patchBathroom from "@/assets/configurator-patch-bathroom.png";
+import patchDining from "@/assets/configurator-patch-dining.png";
+import patchKitchen from "@/assets/configurator-patch-kitchen.png";
+import patchStorage from "@/assets/configurator-patch-storage.png";
+import patchLiving from "@/assets/configurator-patch-living.png";
+import patchWorking from "@/assets/configurator-patch-working.png";
+import patchBed from "@/assets/configurator-patch-bed.png";
+import patchTerrace from "@/assets/configurator-patch-terrace.png";
+import { PanoramaViewer, type PanoramaMarker } from "@/components/worlds/PanoramaViewer";
+import windowsOnDwelling from "@/assets/configurator-windows-on-dwelling.png";
+import changedBracing from "@/assets/configurator-changed-bracing.png";
+import withGrowDwelling from "@/assets/configurator-with-grow.png";
+import firepitScene from "@/assets/configurator-firepit-scene.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
-import interior1Img from "@/assets/configurator-interior-1.jpg";
-import interior2Img from "@/assets/configurator-interior-2.jpg";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
+import zoneBed from "@/assets/zone-bed.png";
+import zoneLiving from "@/assets/zone-living.png";
+import zoneKitchen from "@/assets/zone-kitchen.png";
+import zoneDining from "@/assets/zone-dining.png";
+import zoneGrow from "@/assets/zone-grow.png";
 import AddOnsPanel from "@/components/worlds/AddOnsPanel";
 import OrderPanel from "@/components/worlds/OrderPanel";
 import PaymentPanel from "@/components/worlds/PaymentPanel";
 import EngineOnTheWayOverlay from "@/components/worlds/EngineOnTheWayOverlay";
 import { useReservation } from "@/hooks/useReservation";
-import { PARTS, PartId, DEPOSIT_RATE } from "@/data/dwellingParts";
+import { PARTS, PartId, DEPOSIT_RATE, DWELLING_VALUE } from "@/data/dwellingParts";
 import { applyPlanDiscount } from "@/data/plans";
 import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
@@ -47,35 +75,143 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
-// Procedural material textures — layered CSS gradients simulating woven
-// canvas, brushed metal and wood-grain flooring. No photos, so no licensing
-// risk, while still reading as an actual material rather than a flat chip.
-const WEAVE = (base: string) =>
-  `repeating-linear-gradient(45deg, rgba(255,255,255,0.14) 0px, rgba(255,255,255,0.14) 1px, transparent 1px, transparent 4px),` +
-  `repeating-linear-gradient(-45deg, rgba(0,0,0,0.09) 0px, rgba(0,0,0,0.09) 1px, transparent 1px, transparent 4px),` +
-  `linear-gradient(135deg, ${base})`;
-const BRUSHED = (base: string) =>
-  `repeating-linear-gradient(100deg, rgba(255,255,255,0.28) 0px, rgba(255,255,255,0.28) 1px, rgba(0,0,0,0.07) 1px, rgba(0,0,0,0.07) 2px),` +
-  `linear-gradient(135deg, ${base})`;
-const PLANKS = (base: string) =>
-  `repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 2px, transparent 2px, transparent 34px),` +
-  `repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 3px),` +
-  `linear-gradient(135deg, ${base})`;
+// Layout Zones — reuses the same bed/living/kitchen/dining ids as the
+// hover/click zone hotspots on the rendered dwelling (see DWELLING_HOTSPOTS'
+// polygon overlay), so the sidebar list and the viewport zones speak the same
+// vocabulary even though this list doesn't (yet) regenerate that render.
+type ZoneId = "bed" | "living" | "kitchen" | "dining" | "grow";
+type ZoneSize = "S" | "M" | "L";
+const ZONE_LABELS: Record<ZoneId, string> = {
+  bed: "Extra Bed", living: "Extra Couch", kitchen: "Extra Counter", dining: "Extra Table", grow: "Plant Bay",
+};
+// Grow Plants leads the list and is the only zone that's actually
+// interactive right now — the rest render locked/"coming soon" in ZoneRow
+// below (see the `locked` check there) until their own drag/resize flows
+// are ready.
+const ALL_ZONE_IDS: ZoneId[] = ["grow", "bed", "living", "kitchen", "dining"];
+// Real renders of each pod module, from the .lovable "icons for zone layout"
+// folder — replaces the earlier lucide-icon + gradient-tint placeholders.
+const ZONE_IMAGES: Record<ZoneId, string> = {
+  bed: zoneBed, living: zoneLiving, kitchen: zoneKitchen, dining: zoneDining, grow: zoneGrow,
+};
+// Realistic starting proportions rather than every zone defaulting to the
+// same size — bed and living read as the primary rooms, kitchen compact.
+const DEFAULT_ZONE_SIZES: Record<ZoneId, ZoneSize> = {
+  bed: "L", living: "M", kitchen: "S", dining: "M", grow: "S",
+};
 
-const MATERIAL_OPTIONS = [
-  { label: "Canvas",   swatch: WEAVE("#d9cba3, #b9a67c") },
-  { label: "Canvas",   swatch: WEAVE("#ece0bd, #cbb98e") },
-  { label: "Metal",    swatch: BRUSHED("#c4c8cc, #8a8f95") },
-  { label: "Metal",    swatch: BRUSHED("#9aa0a6, #5c6166") },
-  { label: "Flooring", swatch: PLANKS("#8a6247, #5e4230") },
-  { label: "Flooring", swatch: PLANKS("#6b4a34, #40291b") },
-];
+// Horizontal carousel card — same shape/behavior as the Site Selector's
+// thumbnail strip (image on top, label below, scrolled with chevrons)
+// instead of the old vertical stacked-row list.
+function ZoneCard({
+  zone,
+  onDragStart,
+  onDragMove,
+  onDragDrop,
+  glow = false,
+}: {
+  zone: { id: ZoneId; size: ZoneSize };
+  onDragStart: (id: ZoneId) => void;
+  onDragMove: (id: ZoneId, point: { x: number; y: number }) => void;
+  onDragDrop: (id: ZoneId, point: { x: number; y: number }) => void;
+  glow?: boolean;
+}) {
+  const image = ZONE_IMAGES[zone.id];
+  // Only Grow Plants is wired up for drag right now — every other zone
+  // shows locked and inert with a "Coming soon" tag until it gets the same
+  // treatment.
+  const locked = zone.id !== "grow";
 
-const PACK_OPTIONS = [
-  { label: "Minimalist",   swatch: "linear-gradient(135deg, #eae7e1, #c9c6bf)" },
-  { label: "Cozy",         swatch: "linear-gradient(135deg, #d99a5b, #a8623a)" },
-  { label: "Tech-Focused", swatch: "linear-gradient(135deg, #3a4a5c, #1b2530)" },
-];
+  // Drag-out-to-viewport is done with raw pointer events + a portaled ghost
+  // rather than framer-motion's `drag` prop — a free-drag element nested
+  // inside the accordion's overflow-hidden wrapper clipped movement to the
+  // panel, never reaching the viewport. A portal to document.body sidesteps
+  // that entirely.
+  const [isDraggingOut, setIsDraggingOut] = useState(false);
+  const [ghostPos, setGhostPos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!isDraggingOut) return;
+    const onMove = (e: PointerEvent) => {
+      const p = { x: e.clientX, y: e.clientY };
+      setGhostPos(p);
+      onDragMove(zone.id, p);
+    };
+    const onUp = (e: PointerEvent) => {
+      onDragDrop(zone.id, { x: e.clientX, y: e.clientY });
+      setIsDraggingOut(false);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDraggingOut]);
+
+  return (
+    <div
+      onPointerDown={
+        locked
+          ? undefined
+          : (e) => {
+              e.preventDefault();
+              setGhostPos({ x: e.clientX, y: e.clientY });
+              setIsDraggingOut(true);
+              onDragStart(zone.id);
+            }
+      }
+      style={{ touchAction: locked ? "auto" : "none" }}
+      title={
+        locked
+          ? `${ZONE_LABELS[zone.id]} — coming soon`
+          : `Drag onto the viewport to place the ${ZONE_LABELS[zone.id]} zone`
+      }
+      className={`relative shrink-0 w-16 snap-start rounded-[0.5rem] ${
+        locked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
+      } ${isDraggingOut ? "opacity-30" : ""} ${glow ? "panel-glow-pulse" : ""}`}
+    >
+      {/* Clipping lives on this inner wrapper, not the outer card — the
+          glow's box-shadow is set on the outer element above, and an
+          overflow-hidden ancestor would clip that shadow off at the card's
+          own edge, same issue as the sidebar panels had. */}
+      <div
+        className={`rounded-[0.5rem] overflow-hidden border transition-colors ${
+          locked
+            ? "opacity-40 border-white/10"
+            : "border-white/20 hover:border-white/50"
+        }`}
+      >
+        <img
+          src={image}
+          alt=""
+          className={`w-full h-10 object-cover pointer-events-none ${locked ? "grayscale" : ""}`}
+        />
+        <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
+          {locked ? "Coming soon" : ZONE_LABELS[zone.id]}
+        </p>
+      </div>
+      {locked && (
+        <Lock
+          className="absolute top-1 right-1 h-2.5 w-2.5 text-white/50"
+          strokeWidth={2}
+          aria-label={`${ZONE_LABELS[zone.id]} locked`}
+        />
+      )}
+
+      {isDraggingOut && createPortal(
+        <img
+          src={image}
+          alt=""
+          className="fixed z-[999] pointer-events-none w-10 h-10 rounded-[0.5rem] object-cover shadow-2xl scale-110"
+          style={{ left: ghostPos.x, top: ghostPos.y, transform: "translate(-50%, -50%)" }}
+        />,
+        document.body,
+      )}
+    </div>
+  );
+}
 
 export default function Configurator() {
   const location = useLocation();
@@ -101,6 +237,17 @@ export default function Configurator() {
     : r.stage === "confirmed" ? "confirmed"
     : "customise";
 
+  // Tracks whether the right-column slot (Your reservation → Choose your
+  // plan → Secure checkout) is moving forward (Continue buttons) or backward
+  // (Back buttons), so each slide enters/exits from the matching side —
+  // combined with the grid-template-columns transition below (the viewport
+  // resizing), this is what makes the two sides slide past each other.
+  const RIGHT_COL_ORDER = { customise: 0, plans: 1, payment: 2 } as const;
+  const rightColIndex = stage in RIGHT_COL_ORDER ? RIGHT_COL_ORDER[stage as keyof typeof RIGHT_COL_ORDER] : 0;
+  const prevRightColIndexRef = useRef(rightColIndex);
+  const rightColDirection = rightColIndex - prevRightColIndexRef.current;
+  useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
+
   const enterCustomise = () => { setShowNext(true); r.setStage("configure"); };
   const backToDesign = () => { setShowNext(false); r.setActive(null); };
   // Payment must charge the same number the order summary shows, so both read
@@ -121,22 +268,54 @@ export default function Configurator() {
   // Grid widens the right column as the flow progresses, and drops the left
   // one at payment — that's what produces the "viewport slides left" move,
   // without transforms that would overflow the container.
+  // Customise used to widen both side columns vs. design, which shrank the
+  // viewport (the "1fr" middle column) right when you clicked "Continue
+  // configuration" — kept it identical to design's widths so the viewport
+  // doesn't resize on that transition.
   const gridCols =
-    stage === "payment" ? "lg:grid-cols-[0px_1fr_820px]"
-    : stage === "plans" ? "lg:grid-cols-[0px_1fr_400px]"
-    : stage === "customise" ? "lg:grid-cols-[260px_1fr_380px]"
+    // Order panel no longer shows at payment (see below), so this column
+    // only needs to fit PaymentPanel alone now, not both side by side.
+    stage === "payment" ? "lg:grid-cols-[0px_1fr_460px]"
+    // Plans stage gives the reservation/plan-picker panel more room (and the
+    // now-static dwelling viewport correspondingly less) since there's no
+    // interaction happening in the viewport at this stage.
+    : stage === "plans" ? "lg:grid-cols-[0px_1fr_640px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
-  const [showBrief, setShowBrief] = useState(true);
-  const [showSiteSelector, setShowSiteSelector] = useState(true);
+  const [showSiteSelector, setShowSiteSelector] = useState(false);
   const [siteSelectorView, setSiteSelectorView] = useState<"map" | "pin" | "route">("pin");
-  const [showMaterialLibrary, setShowMaterialLibrary] = useState(true);
-  const [selectedMaterialIdx, setSelectedMaterialIdx] = useState(0);
-  const [showInteriorPacks, setShowInteriorPacks] = useState(true);
-  const [selectedPackIdx, setSelectedPackIdx] = useState(0);
+  const [showLayoutZones, setShowLayoutZones] = useState(false);
+  // Toggle for the whole "glow whichever step is next" demo hint below — on
+  // by default, but a presenter may want to turn it off mid-demo.
+  const [glowHintsEnabled, setGlowHintsEnabled] = useState(true);
+  // Demo-mode progressive unlock: each panel opens the next. "Seen" (not the
+  // panel's own open/closed toggle) is what stays true once a step has been
+  // visited, so collapsing a panel later doesn't re-lock what comes after it.
+  // Your Summary is a static block now (always visible, nothing to "open"),
+  // so it counts as seen immediately — Site Selector starts unlocked.
+  const briefSeen = true;
+  const [siteSeen, setSiteSeen] = useState(false);
+  // Toggle sitting between Site Selector and Layout Zones — flipping it on
+  // is what reveals the glowing roofline dots and unlocks the Layout Zones
+  // panel in turn. Unlike the "seen" flags below, this one is a genuine
+  // live two-way switch — flipping it back off re-hides the dots.
+  const [dotsRevealed, setDotsRevealed] = useState(false);
+  const [zonesSeen, setZonesSeen] = useState(false);
+  // Final step, unlocked once Layout Zones has been opened — a second live
+  // toggle (same two-way behavior as dotsRevealed above) that gates whether
+  // the "Explore more" button on a hotspot actually opens its 360° panorama.
+  // exploreSeen is the one-way flag (flips true the first time it's switched
+  // on) that gates Continue configuration, same relationship dotsRevealed
+  // has to zonesSeen.
+  const [exploreUnlocked, setExploreUnlocked] = useState(false);
+  const [exploreSeen, setExploreSeen] = useState(false);
+  const [zones, setZones] = useState<{ id: ZoneId; size: ZoneSize }[]>(
+    ALL_ZONE_IDS.map((id) => ({ id, size: DEFAULT_ZONE_SIZES[id] })),
+  );
+  const removeZone = (id: ZoneId) =>
+    setZones((prev) => prev.filter((z) => z.id !== id));
   const siteScrollRef = useRef<HTMLDivElement>(null);
-  const materialScrollRef = useRef<HTMLDivElement>(null);
-  const packScrollRef = useRef<HTMLDivElement>(null);
+  const zoneScrollRef = useRef<HTMLDivElement>(null);
   const scrollStrip = (ref: React.RefObject<HTMLDivElement>, dir: 1 | -1) =>
     ref.current?.scrollBy({ left: dir * 84, behavior: "smooth" });
   const [zoom, setZoom] = useState(1);
@@ -148,6 +327,12 @@ export default function Configurator() {
   // screen (hides browser chrome) instead of just the page content area.
   const viewportRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Dropping a zone tile from the Layout Zones panel onto the viewport
+  // focuses that zone — see handleZoneDrop below, defined after onSectionClick.
+  const [isZoneDragOver, setIsZoneDragOver] = useState(false);
+  // Pins are stored as % of the viewport's own box, not raw pixels, so they
+  // stay put relative to the render if the viewport is resized.
+  const [zonePins, setZonePins] = useState<Partial<Record<ZoneId, { x: number; y: number }>>>({});
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       viewportRef.current?.requestFullscreen();
@@ -160,97 +345,362 @@ export default function Configurator() {
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
-  const [showSectionVol2, setShowSectionVol2] = useState(false);
+  // Which hotspot's cutaway is currently showing (null = none). Every hotspot
+  // has a small interior-peek "patch" image here — see CUTAWAY_PATCH_BOXES
+  // below for where each one sits on the dwelling canvas. Deliberately NOT a
+  // full flattened dwelling render: an earlier version baked the whole
+  // building into each cutaway image, which meant opening any cutaway
+  // silently hid other customizations (e.g. changed bracing) everywhere
+  // outside the peek window, since that flattened image only ever showed the
+  // plain base. A small positioned patch can't cover anything it doesn't
+  // overlap, so whatever's showing elsewhere on the dwelling stays visible.
+  const [activeCutaway, setActiveCutaway] = useState<string | null>(null);
+  const CUTAWAY_IMAGES: Record<string, string> = {
+    s1: patchPlants,
+    s1b: patchEngine,
+    s2: patchBathroom,
+    s3: patchDining,
+    s4: patchKitchen,
+    s4b: patchStorage,
+    s5: patchLiving,
+    s6: patchWorking,
+    s7: patchBed,
+    s8: patchTerrace,
+  };
+  // Pixel placement of each patch on the base dwelling's own canvas
+  // (configurator-dwelling-baked-crop.png is CUTAWAY_CANVAS_W×CUTAWAY_CANVAS_H).
+  // The aspect-locked wrapper is stuck at a fixed "2400/1792" CSS ratio that
+  // does NOT match this image's real ratio, so object-contain letterboxes it
+  // — the image only actually fills a horizontal band of the wrapper's
+  // height, centered, not the full box. DWELLING_HOTSPOTS' own % coordinates
+  // are hand-calibrated against that already-letterboxed rendering, so they
+  // don't need this; a patch computed straight from raw image-pixel
+  // fractions does, or it overflows past the roofline into the letterboxed
+  // empty space above/below (confirmed via getBoundingClientRect — the
+  // wrapper box itself really is taller than the visible dwelling image).
+  const CUTAWAY_CANVAS_W = 4066;
+  const CUTAWAY_CANVAS_H = 1005;
+  const WRAPPER_ASPECT_W = 2400;
+  const WRAPPER_ASPECT_H = 1792;
+  const CUTAWAY_IMG_HEIGHT_FRAC =
+    (WRAPPER_ASPECT_W / WRAPPER_ASPECT_H) / (CUTAWAY_CANVAS_W / CUTAWAY_CANVAS_H);
+  const CUTAWAY_IMG_TOP_FRAC = (1 - CUTAWAY_IMG_HEIGHT_FRAC) / 2;
+  const CUTAWAY_PATCH_BOXES: Record<string, [number, number, number, number]> = {
+    s1: [66, 178.5, 413, 891.5],
+    s1b: [302, 138.5, 567, 879.5],
+    s2: [446, 74.5, 875, 891.5],
+    s3: [752, 54.5, 1387, 901.5],
+    s4: [1318, 194.5, 1647, 899.5],
+    s4b: [1596, 172.5, 2127, 901.5],
+    s5: [2082, 56.5, 2631, 903.5],
+    s6: [2576, 48.5, 3233, 921.5],
+    s7: [3184, 82.5, 3677, 909.5],
+    s8: [3574, 184.5, 4001, 891.5],
+  };
+  // Which hotspot's dot was clicked — gates the "Explore more" button so it
+  // only appears after a deliberate click, not just on hover.
+  const [clickedHotspotId, setClickedHotspotId] = useState<string | null>(null);
+  // Arrival nudge pointing at the Living hotspot — shown fresh every time
+  // someone lands on this page (no localStorage persistence), dismissed for
+  // the rest of this visit the moment any hotspot is clicked or its own
+  // close button is used.
+  const [showHotspotHint, setShowHotspotHint] = useState(true);
+  const dismissHotspotHint = () => {
+    setShowHotspotHint(false);
+  };
+  // Ghost-cursor demo inside the Bed tooltip, from its label down to the
+  // "Explore more" button — plays once, right when Step Inside auto-opens
+  // that tooltip, so the next click target is obvious. Dismissed the moment
+  // "Explore more" is actually clicked.
+  const [showExploreCursorHint, setShowExploreCursorHint] = useState(false);
+  // First-time, 3-step walkthrough for the 360° panorama takeover: 1) you
+  // can drag to look around, 2) glowing dots jump between rooms, 3) here's
+  // how to get back out. Each step advances on its own "Got it" click;
+  // 0 means hidden (not started yet, or the tour is already finished).
+  const [panoramaTourStep, setPanoramaTourStep] = useState<0 | 1 | 2 | 3>(0);
+  const [panoramaTourSeen, setPanoramaTourSeen] = useState(false);
+  // Small spark burst + "Discovered" chip played once, right on the very
+  // first hotspot a user ever clicks — a little reward for finding the
+  // mechanic, positioned at that hotspot's own %-coordinates.
+  const [rewardBurst, setRewardBurst] = useState<{ x: number; y: number } | null>(null);
+  // Dropping Plant Bay doesn't leave a pin on the viewport like the other
+  // zones (there's nowhere sensible to pin it — dropping it changes the
+  // whole dwelling render) — a brief confirmation toast instead.
+  const [growDropToast, setGrowDropToast] = useState(false);
+  // Chat-triggered overlay — typing "add more windows" crossfades this in over
+  // the dwelling the same pixel-aligned way the hotspot cutaways do.
+  const [showWindowsOverlay, setShowWindowsOverlay] = useState(false);
+  // Same mechanism, for the "change the bracing type" suggestion — swaps the
+  // rib bracing pattern while the landscape background stays untouched.
+  const [showBracingOverlay, setShowBracingOverlay] = useState(false);
+  // The dwelling's base render is missing its Grow Plants bay by default —
+  // an overlay showing the bay fades IN once the user drags the Grow Plants
+  // zone onto the viewport (see handleZoneDragDrop), at which point it stays
+  // for good (one-way switch, not tied to the pin staying placed).
+  const [plantsGrown, setPlantsGrown] = useState(false);
+  // "Explore more" on a hotspot takes over the whole viewport with a real
+  // drag-around 360° panorama for that section. Only zones with an actual
+  // panorama get an entry here — add one as each new panorama arrives; that's
+  // also what makes the button appear on that hotspot's tooltip.
+  const [activeExplore, setActiveExplore] = useState<string | null>(null);
+  type PanoramaSceneId = "bedroom" | "livingroom" | "kitchen" | "plants" | "bathroom";
+  // Which hotspot opens which panorama scene — multiple hotspots can point at
+  // the same scene (e.g. two dots sharing one room). Add an entry here as
+  // each new panorama comes online; that's also what makes "Explore more"
+  // appear on that hotspot's tooltip instead of "Coming soon".
+  const SECTION_EXPLORE: Record<string, { type: "panorama"; scene: PanoramaSceneId }> = {
+    s7: { type: "panorama", scene: "bedroom" },
+    s5: { type: "panorama", scene: "livingroom" },
+    s6: { type: "panorama", scene: "livingroom" },
+    s4: { type: "panorama", scene: "kitchen" },
+    s3: { type: "panorama", scene: "kitchen" },
+    s4b: { type: "panorama", scene: "kitchen" },
+    s2: { type: "panorama", scene: "bathroom" },
+    s1: { type: "panorama", scene: "plants" },
+    s1b: { type: "panorama", scene: "plants" },
+  };
+  // The panorama tour — multiple linked scenes, Street-View style. Each scene
+  // has its own spotlight marker(s) to walk into the next one; marker x/y are
+  // pixel positions on that scene's own equirectangular source image. Opens
+  // on whichever scene SECTION_EXPLORE maps the clicked hotspot to.
+  const [panoramaScene, setPanoramaScene] = useState<PanoramaSceneId>("bedroom");
+  // Memoized so PanoramaViewer's marker prop keeps a stable reference across
+  // Configurator's frequent re-renders (chat streaming, etc.) — otherwise its
+  // "sync markers with the plugin" effect re-fires on every render, tearing
+  // down and rebuilding the marker DOM mid-click.
+  const PANORAMA_SCENES = useMemo<Record<PanoramaSceneId, { src: string; markers: PanoramaMarker[] }>>(
+    () => ({
+      bedroom: {
+        src: bedroomPanorama,
+        // y kept well above the floor/navbar band — a marker down near the
+        // bottom of the frame sits under the floating navbar pill and never
+        // receives clicks (the navbar is fixed to the screen, not the sphere).
+        markers: [
+          { id: "to-livingroom", x: 2100, y: 1200, onClick: () => setPanoramaScene("livingroom") },
+        ],
+      },
+      livingroom: {
+        src: livingroomPanorama,
+        // x kept off the image's 0/width wrap seam — a marker placed right at
+        // that boundary never resolves as visible. y moved down toward the
+        // walkway/floor near the shelving (was up near the skylight seam) —
+        // kept short of the bedroom marker's floor-adjacent y (1200/2025) so
+        // it doesn't drop into the same under-navbar dead zone noted there.
+        // Now leads into the kitchen rather than back to the bedroom.
+        markers: [
+          { id: "to-kitchen", x: 1230, y: 1300, onClick: () => setPanoramaScene("kitchen") },
+        ],
+      },
+      kitchen: {
+        src: kitchenPanorama,
+        markers: [
+          // Toward the shelving/orange-couch nook shared with the livingroom
+          // scene — the same landmarks visible from that side of the room.
+          { id: "to-livingroom", x: 5040, y: 1400, onClick: () => setPanoramaScene("livingroom") },
+          // Near the grey nook wall/chairs, by the shelf — leads into the
+          // growing-plants bay.
+          { id: "to-plants", x: 1450, y: 1650, onClick: () => setPanoramaScene("plants") },
+        ],
+      },
+      plants: {
+        src: plantsPanorama,
+        markers: [
+          // Through the doorway on the right, where the shared hallway with
+          // the bunk/orange-chair nook is visible — leads back into the kitchen.
+          { id: "to-kitchen", x: 5384, y: 1400, onClick: () => setPanoramaScene("kitchen") },
+          // On the door itself (the grey fabric-clad door beside the sink
+          // unit) — leads into the bathroom.
+          { id: "to-bathroom", x: 3987, y: 1400, onClick: () => setPanoramaScene("bathroom") },
+        ],
+      },
+      bathroom: {
+        src: bathroomPanorama,
+        // On the door on the right side of this scene — the same door that
+        // was entered from, leads back to the growing-plants bay.
+        markers: [
+          { id: "to-plants", x: 4016, y: 1600, onClick: () => setPanoramaScene("plants") },
+        ],
+      },
+    }),
+    [],
+  );
   // Where a scene zoom is anchored. Set from a hotspot's own coordinates so the
   // view pushes in on that section rather than the middle of the dwelling.
   const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
   const HOTSPOT_ZOOM = 1.75;
+  // Auto-zoom-on-click is off for now (user request) — flip this back to
+  // true to restore the push-in effect in focusHotspot below.
+  const AUTO_ZOOM_ON_HOTSPOT = false;
 
-  /** Clicking a section marker reveals its cutaway and pushes the view in on it. */
+  /** Clicking a section marker reveals its cutaway (and, if enabled, pushes the view in on it). */
   const focusHotspot = (h: { id: string; x: number; y: number }) => {
-    setShowSectionVol2((open) => {
-      const next = !open;
-      setZoomOrigin(next ? { x: h.x, y: h.y } : null);
-      setZoom(next ? HOTSPOT_ZOOM : 1);
+    setActiveCutaway((open) => {
+      const next = open === h.id ? null : h.id;
+      if (AUTO_ZOOM_ON_HOTSPOT) {
+        setZoomOrigin(next ? { x: h.x, y: h.y } : null);
+        setZoom(next ? HOTSPOT_ZOOM : 1);
+      }
       return next;
     });
   };
-  const [showInterior, setShowInterior] = useState(false);
-  const [showInterior2, setShowInterior2] = useState(false);
 
-  // Hotspots for the 6 sections, positioned as % of the dwelling image's own
-  // bounding box (not the viewport) — placed along the roofline by eye
-  // against the actual asset. Purely visual for now, matching the reference's
-  // glowing markers; not wired to real per-section data yet.
+  // Hotspots along the roofline, positioned as % of the dwelling wrapper's
+  // own box (not the viewport, and not the raw image — the image is
+  // letterboxed inside the wrapper by object-contain, so x/y here already
+  // account for that). x values target the actual detected peaks/dips of
+  // the roofline (dense-scanned against the baked-crop asset for the
+  // topmost non-background pixel, +1.5% margin), not eyeballed. Purely
+  // visual for now, matching the reference's glowing markers; not wired to
+  // real per-section data yet.
   const DWELLING_HOTSPOTS = [
-    { id: "s1", x: 14.5, y: 48 },
-    { id: "s2", x: 29.5, y: 46 },
-    { id: "s3", x: 42,   y: 44.5 },
-    { id: "s4", x: 57,   y: 44 },
-    { id: "s5", x: 72,   y: 46 },
-    { id: "s6", x: 86,   y: 48 },
+    { id: "s1", x: 5,  y: 40.86 },
+    { id: "s1b", x: 11, y: 39.5 },
+    { id: "s2", x: 18, y: 36.97 },
+    { id: "s3", x: 27, y: 36.24 },
+    { id: "s4", x: 36, y: 40.76 },
+    { id: "s4b", x: 46, y: 40.96 },
+    { id: "s5", x: 58, y: 38.36 },
+    { id: "s6", x: 70, y: 35.99 },
+    { id: "s7", x: 84, y: 38.5 },
+    { id: "s8", x: 92, y: 41.12 },
   ];
 
-  // Same 6 sections, re-measured against the top-view image — the dwelling
-  // sits at a near-identical horizontal crop in both renders, so x barely
-  // moves, but the body is vertically centered rather than following a
-  // roofline, so y is a single flat value instead of per-section.
-  const PLAN_HOTSPOTS = [
-    { id: "s1", x: 13.5, y: 49 },
-    { id: "s2", x: 28,   y: 49 },
-    { id: "s3", x: 42.5, y: 49 },
-    { id: "s4", x: 57.5, y: 49 },
-    { id: "s5", x: 72,   y: 49 },
-    { id: "s6", x: 86.5, y: 49 },
-  ];
+  // Zone names, left to right along the roofline (matches DWELLING_HOTSPOTS'
+  // x order above) — purely a label, not tied to any real per-zone data.
+  const HOTSPOT_LABELS: Record<string, string> = {
+    s1: "Plant Bay",
+    s1b: "Engine",
+    s2: "Bathroom",
+    s3: "Dining",
+    s4: "Kitchen",
+    s4b: "Lab Storage",
+    s5: "Living",
+    s6: "Working",
+    s7: "Bed",
+    s8: "Terrace",
+  };
 
   // Shared so the 3D scene and the plan view render identical hotspots —
-  // same glow, same s3 pin-on-click + "Explore inside" behavior.
-  const renderHotspots = (hotspots: { id: string; x: number; y: number }[]) =>
-    hotspots.map((h) => (
+  // same glow; clicking the pin itself triggers the zoom + cutaway reveal via
+  // focusHotspot for whichever hotspots have an entry in CUTAWAY_IMAGES (a
+  // pixel-aligned exterior detail, purely cosmetic). The tooltip itself stays
+  // open for any clicked hotspot, and shows an "Explore more" button for
+  // whichever hotspots have an entry in SECTION_EXPLORE — that's the one that
+  // takes over the viewport with that section's render.
+  const renderHotspots = (hotspots: { id: string; x: number; y: number }[], lightUp = false) =>
+    hotspots.map((h, i) => (
       <div
         key={h.id}
         className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
         style={{ left: `${h.x}%`, top: `${h.y}%` }}
       >
-        <button
-          onClick={h.id === "s3" ? () => focusHotspot(h) : undefined}
+        {/* Separate inner wrapper for the light-up animation — Framer Motion
+            manages this element's own transform for the scale animation, so
+            it can't share a node with the -translate-x/y-1/2 centering
+            classes above (its animated transform would silently replace
+            them, since inline style always wins over the class). */}
+        <motion.div
+          initial={lightUp ? { opacity: 0, scale: 0.2 } : false}
+          animate={lightUp ? { opacity: 1, scale: 1 } : undefined}
+          transition={lightUp ? { delay: i * 0.07, type: "spring", stiffness: 300, damping: 15 } : undefined}
           className="absolute inset-0"
-          aria-label={`Section ${h.id}`}
         >
-          <span
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
-            style={{
-              background:
-                "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
+          <button
+            className="absolute inset-0"
+            aria-label={`Section ${h.id}`}
+            onClick={() => {
+              // showHotspotHint still reads its pre-dismiss value here, so this
+              // is true only for the very first hotspot a user ever clicks.
+              if (showHotspotHint) {
+                setRewardBurst({ x: h.x, y: h.y });
+                setTimeout(() => setRewardBurst(null), 1000);
+              }
+              setClickedHotspotId((id) => (id === h.id ? null : h.id));
+              if (CUTAWAY_IMAGES[h.id]) focusHotspot(h);
+              dismissHotspotHint();
             }}
-            aria-hidden
-          />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
-        </button>
-
-        {h.id === "s3" && (
-          <div
-            className={[
-              "absolute left-1/2 bottom-full -translate-x-1/2 mb-3 transition-all duration-300 whitespace-nowrap",
-              showSectionVol2
-                ? "opacity-100 translate-y-0 pointer-events-auto"
-                : "opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
-            ].join(" ")}
           >
-            <div className="liquid-glass-strong rounded-xl px-3.5 py-2.5 flex flex-col items-center gap-2">
-              <span className="font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
-                Living Room
-              </span>
-              <button
-                onClick={() => setShowInterior(true)}
-                className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+            <span
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
+              style={{
+                background:
+                  "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
+              }}
+              aria-hidden
+            />
+            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
+          </button>
+        </motion.div>
+
+        <div
+          className={[
+            "absolute left-1/2 bottom-full -translate-x-1/2 mb-3 transition-all duration-300 whitespace-nowrap",
+            clickedHotspotId === h.id || activeCutaway === h.id
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto",
+          ].join(" ")}
+        >
+          <div className="relative liquid-glass-strong rounded-xl px-3.5 py-2.5 flex flex-col items-center gap-2">
+            {/* Ghost-cursor demo, Bed only — glides from the label down onto
+                "Explore more" and taps it, on a loop, until actually clicked. */}
+            {h.id === "s7" && showExploreCursorHint && exploreUnlocked && (
+              <motion.div
+                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
+                style={{ left: "2%", top: "92%" }}
+                animate={{
+                  left: ["2%", "2%", "58%", "58%", "58%"],
+                  top: ["92%", "92%", "78%", "78%", "78%"],
+                  opacity: [0, 1, 1, 1, 0],
+                  scale: [1, 1, 1, 0.72, 1],
+                }}
+                transition={{
+                  duration: 2.2,
+                  times: [0, 0.12, 0.55, 0.66, 0.9],
+                  repeat: Infinity,
+                  repeatDelay: 0.8,
+                  ease: "easeInOut",
+                }}
               >
-                Explore inside
-              </button>
-            </div>
+                <MousePointer2
+                  className="h-4 w-4 text-white"
+                  style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                  fill="white"
+                  fillOpacity={0.15}
+                  strokeWidth={1.75}
+                />
+              </motion.div>
+            )}
+            <span className="font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
+              {HOTSPOT_LABELS[h.id] ?? h.id}
+            </span>
+            {(clickedHotspotId === h.id || activeCutaway === h.id) && SECTION_EXPLORE[h.id] && (
+              exploreUnlocked ? (
+                <button
+                  onClick={() => {
+                    setActiveExplore(h.id);
+                    setPanoramaScene(SECTION_EXPLORE[h.id].scene);
+                    setShowExploreCursorHint(false);
+                    if (!panoramaTourSeen) {
+                      setPanoramaTourStep(1);
+                      setPanoramaTourSeen(true);
+                    }
+                  }}
+                  className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                >
+                  Explore more
+                </button>
+              ) : (
+                <button
+                  disabled
+                  title="Unlock Step Inside in the sidebar first"
+                  className="px-3 py-1 rounded-full bg-white/15 text-white/50 text-[10px] font-body uppercase tracking-[0.1em] cursor-not-allowed"
+                >
+                  Locked
+                </button>
+              )
+            )}
           </div>
-        )}
+        </div>
       </div>
     ));
 
@@ -333,6 +783,50 @@ export default function Configurator() {
     fetchRender(s, "3D", sectionSpecFromDwelling(s));
   };
 
+  // Dragging a zone panel from the Layout Zones sidebar onto the viewport —
+  // dropping it drops a pin at the exact release point AND focuses that
+  // zone (same as clicking its hotspot). Point is in client/page
+  // coordinates, same space as getBoundingClientRect(), since both come
+  // from the pointer event.
+  const isPointInViewport = (point: { x: number; y: number }) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return false;
+    return point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
+  };
+  // Which zone tile is currently being dragged out of the sidebar — lets the
+  // viewport show a "drop here" target hint for the specific zone in play
+  // (see the Plant Bay target glow below), not just a generic hover state.
+  const [draggedZoneId, setDraggedZoneId] = useState<ZoneId | null>(null);
+  const handleZoneDragStart = (id: ZoneId) => setDraggedZoneId(id);
+  const handleZoneDragMove = (id: ZoneId, point: { x: number; y: number }) => {
+    setIsZoneDragOver(isPointInViewport(point));
+    setDraggedZoneId(id);
+  };
+  const handleZoneDragDrop = (id: ZoneId, point: { x: number; y: number }) => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (rect && point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom) {
+      if (id === "grow") {
+        setPlantsGrown(true);
+        setGrowDropToast(true);
+        setTimeout(() => setGrowDropToast(false), 2500);
+        removeZone("grow");
+      } else {
+        const x = Math.min(100, Math.max(0, ((point.x - rect.left) / rect.width) * 100));
+        const y = Math.min(100, Math.max(0, ((point.y - rect.top) / rect.height) * 100));
+        setZonePins((prev) => ({ ...prev, [id]: { x, y } }));
+      }
+      onSectionClick(id);
+    }
+    setIsZoneDragOver(false);
+    setDraggedZoneId(null);
+  };
+  const removeZonePin = (id: ZoneId) =>
+    setZonePins((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
   // Fresh render on mount.
   useEffect(() => { fetchRender(); }, []);
 
@@ -396,16 +890,15 @@ export default function Configurator() {
     title: _onboardingSiteName || _fallbackSite.title,
     region: _onboardingSiteRegion || _fallbackSite.region,
   };
-  // Namib Dune uses the same custom landscape art as its viewport backdrop
-  // for the Site Selector thumbnail too, instead of the default catalog photo.
-  const _customThumbs: Record<string, string> = {
-    "Namib Dune": landscapeNamib,
-  };
-  const _extraSites = ["Namib Dune", "Highland Spire"]
+  // Sites with their own landscape backdrop use it for the Site Selector
+  // thumbnail too, instead of the default catalog photo. Skye Moor is kept
+  // in this list (not just as the no-answer fallback above) so it's always
+  // offered as an option even when onboarding picked a different site.
+  const _extraSites = ["Namib Dune", "Skye Moor"]
     .filter((t) => t !== _primarySite.title)
     .map((t) => {
       const s = SITES.find((s) => s.title === t)!;
-      return _customThumbs[t] ? { ...s, image: _customThumbs[t] } : s;
+      return s.landscapeImage ? { ...s, image: s.landscapeImage } : s;
     })
     .slice(0, 2);
   const SITE_OPTIONS = [_primarySite, ..._extraSites];
@@ -414,12 +907,9 @@ export default function Configurator() {
   const _siteName = activeSite.title;
   const _siteRegion = activeSite.region;
   const _siteThumb = activeSite.image;
-  // Namib Dune and Highland Spire get their own landscape backdrops in the
-  // viewport; every other site still falls back to the default scene.
-  const _landscapeBg =
-    activeSite.title === "Namib Dune" ? landscapeNamib
-    : activeSite.title === "Highland Spire" ? landscapeHighland
-    : landscapeBg;
+  // Every site can carry its own elevation-view landscape backdrop; sites
+  // without one fall back to the generic default scene.
+  const _landscapeBg = activeSite.landscapeImage ?? landscapeBg;
 
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
@@ -428,28 +918,23 @@ export default function Configurator() {
       : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dining space?";
 
   // Build suggestions client-side from spec so they're always contextual.
-  const _tags = (_spec.preferred_tags as string[] | undefined) ?? [];
-  const suggestions: string[] = locationState?.suggestions?.length
-    ? locationState.suggestions
-    : [
-        _spec.dining_style === "compact"
-          ? "Make it more spacious and open"
-          : "Make it more compact and efficient",
-        ((_spec.h as number) ?? 7) <= 8
-          ? "Raise the ceiling — make it feel more dramatic"
-          : "Lower the ceiling for a cosier feel",
-        _tags.includes("more_shelves")
-          ? "Remove the overhead shelves"
-          : "Add storage shelves above the table",
-        _answers.occupants === "solo"
-          ? "Give the single-person setup more presence"
-          : "Make it feel more intimate for two",
-      ];
+  const suggestions: string[] = [
+    "Change the bracing type of the rib",
+  ];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
+  // After the bracing change is applied, the assistant asks whether to keep
+  // it — Yes leaves showBracingOverlay on, No flips it back off.
+  const [bracingConfirmPending, setBracingConfirmPending] = useState(false);
+  // Brief spinner over the viewport while the bracing swap "renders", before
+  // the cross-braced overlay actually reveals.
+  const [bracingLoading, setBracingLoading] = useState(false);
 
   useEffect(() => {
-    if (!engineReady) return;
+    // Also held back until exploreSeen — the assistant stays locked and
+    // silent until the whole step sequence (Site Selector → ... → Explore
+    // Inside Zone) has been completed, then starts typing its greeting.
+    if (!engineReady || !exploreSeen) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
       setTimeout(() => setIntroPhase("typing"), 1000),
@@ -477,7 +962,7 @@ export default function Configurator() {
       }, 2400),
     );
     return () => timers.forEach(clearTimeout);
-  }, [engineReady]);
+  }, [engineReady, exploreSeen]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -498,11 +983,51 @@ export default function Configurator() {
     setIsStreaming(true);
 
     await new Promise((r) => setTimeout(r, 400));
+    const addsWindows = text.toLowerCase().includes("add more windows");
+    if (addsWindows) setShowWindowsOverlay(true);
+    const changesBracing = text.toLowerCase().includes("bracing");
+    if (changesBracing) {
+      // Spinner over the viewport while the "render" happens, then reveal
+      // the cross-braced overlay — same beat as the assistant's own typing
+      // dots, which are still showing since the message isn't set yet.
+      setBracingLoading(true);
+      await new Promise((r) => setTimeout(r, 1500));
+      setBracingLoading(false);
+      setShowBracingOverlay(true);
+      setBracingConfirmPending(true);
+    }
     setMessages((prev) => {
       const next = [...prev];
       next[next.length - 1] = {
         role: "assistant",
-        content: "Chat isn't wired up to a live backend in this build yet.",
+        content: addsWindows
+          ? "Added more windows along the wall — take a look at the dwelling."
+          : changesBracing
+          ? "Switched the rib bracing to a cross-braced pattern — take a look at the dwelling. Do you like this change?"
+          : "Got it — that change has been adapted into your design.",
+      };
+      return next;
+    });
+    setIsStreaming(false);
+  };
+
+  // Yes/No reply to "Do you like this change?" after the bracing swap —
+  // Yes leaves showBracingOverlay on, No flips it back to the original.
+  const handleBracingChoice = async (liked: boolean) => {
+    if (isStreaming) return;
+    setBracingConfirmPending(false);
+    const userMsg: ChatMsg = { role: "user", content: liked ? "Yes, keep it" : "No, go back" };
+    setMessages((prev) => [...prev, userMsg, { role: "assistant", content: "" }]);
+    setIsStreaming(true);
+    await new Promise((r) => setTimeout(r, 400));
+    if (!liked) setShowBracingOverlay(false);
+    setMessages((prev) => {
+      const next = [...prev];
+      next[next.length - 1] = {
+        role: "assistant",
+        content: liked
+          ? "Great — keeping the cross-braced ribs."
+          : "No problem — reverted back to the original bracing.",
       };
       return next;
     });
@@ -521,7 +1046,6 @@ export default function Configurator() {
   const _D        = (spec.d as number) ?? 3;
   const _areaCm2   = (_W * 40) * (_D * 40);
   const _areaM2Num = _areaCm2 / 10000;
-  const _areaM2    = _areaM2Num.toFixed(2);
   const _assembly  = Math.round(6.5 + _areaM2Num * 1.2);
   const _energy    = (1.8 + _areaM2Num * 0.5).toFixed(1);
   const _mass      = (0.25 + _areaM2Num * 0.13).toFixed(2);
@@ -539,9 +1063,6 @@ export default function Configurator() {
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
-          <p className="text-sm font-body text-white/80 mb-4">
-            {_siteName ? `// ${_siteName}` : "// Worlds"}
-          </p>
           <div className="flex items-end justify-between flex-wrap gap-6">
             <div className="max-w-3xl">
               <BlurText
@@ -553,14 +1074,30 @@ export default function Configurator() {
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
-              className="flex gap-3"
+              className="flex items-center gap-3"
             >
+              {stage === "design" && (
+                <label className="liquid-glass rounded-full pl-3 pr-1.5 py-1.5 inline-flex items-center gap-2 text-xs font-body text-white/70 cursor-pointer">
+                  <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Hints
+                  <Switch
+                    checked={glowHintsEnabled}
+                    onCheckedChange={setGlowHintsEnabled}
+                    aria-label="Toggle step-by-step glow hints"
+                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15 scale-90"
+                  />
+                </label>
+              )}
               {stage === "design" ? (
                 <button
                   onClick={enterCustomise}
-                  className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"
+                  disabled={!exploreSeen}
+                  title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
+                  className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${glowHintsEnabled && exploreSeen ? "panel-glow-pulse" : ""}`}
                 >
-                  Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} />
+                  {exploreSeen
+                    ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
+                    : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
                 </button>
               ) : stage !== "confirmed" ? (
                 <button
@@ -586,13 +1123,13 @@ export default function Configurator() {
           >
             {/* LEFT COLUMN — design panels in stage 1, add-ons in stage 2,
                 collapsed entirely at payment. */}
-            <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
+            <div className="flex flex-col gap-4 min-w-0">
               {stage === "customise" && (
                 <motion.aside
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="liquid-glass rounded-[1rem] p-2.5"
+                  className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
                 >
                   <div className="flex items-center gap-1.5 px-1 pb-2">
                     <Layers className="h-3.5 w-3.5 text-white/60" strokeWidth={1.75} />
@@ -617,75 +1154,61 @@ export default function Configurator() {
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.65, ease: "easeOut" }}
-                className="liquid-glass rounded-[1rem] p-2.5"
+                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
-                <button
-                  onClick={() => setShowBrief((v) => !v)}
-                  className="w-full flex items-center justify-between group"
-                  aria-expanded={showBrief}
-                >
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                    <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    Your Brief
-                  </span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showBrief ? "rotate-180" : ""}`}
-                    strokeWidth={1.75}
-                  />
-                </button>
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                  <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Your Summary
+                </span>
 
-                <AnimatePresence initial={false}>
-                  {showBrief && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-2">
-                        {_briefRows.length ? (
-                          <dl className="space-y-1.5">
-                            {_briefRows.map(({ label, Icon, value }) => (
-                              <div key={label} className="flex items-center justify-between gap-2">
-                                <dt className="inline-flex items-center gap-1.5 text-[9px] font-body uppercase tracking-[0.1em] text-white/40 shrink-0">
-                                  <Icon className="h-3 w-3 text-white/45 shrink-0" strokeWidth={1.75} />
-                                  {label}
-                                </dt>
-                                <dd className="text-[10px] font-body text-white/85 text-right truncate">
-                                  {value}
-                                </dd>
-                              </div>
-                            ))}
-                          </dl>
-                        ) : (
-                          <p className="text-[10px] font-body text-white/40 leading-relaxed">
-                            No questionnaire answers on file — this design is using defaults.
-                          </p>
-                        )}
-                      </div>
-                    </motion.div>
+                <div className="pt-2">
+                  {_briefRows.length ? (
+                    <dl className="space-y-1.5">
+                      {_briefRows.map(({ label, Icon, value }) => (
+                        <div key={label} className="flex items-center justify-between gap-2">
+                          <dt className="inline-flex items-center gap-1.5 text-[9px] font-body uppercase tracking-[0.1em] text-white/40 shrink-0">
+                            <Icon className="h-3 w-3 text-white/45 shrink-0" strokeWidth={1.75} />
+                            {label}
+                          </dt>
+                          <dd className="text-[10px] font-body text-white/85 text-right truncate">
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : (
+                    <p className="text-[10px] font-body text-white/40 leading-relaxed">
+                      No questionnaire answers on file — this design is using defaults.
+                    </p>
                   )}
-                </AnimatePresence>
+                </div>
               </motion.aside>
 
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
-                className="liquid-glass rounded-[1rem] p-2.5"
+                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}
               >
                 <button
-                  onClick={() => setShowSiteSelector((v) => !v)}
-                  className="w-full flex items-center justify-between group"
+                  onClick={() => {
+                    if (!briefSeen) return;
+                    const next = !showSiteSelector;
+                    setShowSiteSelector(next);
+                    if (next) setSiteSeen(true);
+                  }}
+                  disabled={!briefSeen}
+                  className="w-full flex items-center justify-between group disabled:cursor-not-allowed"
                   aria-expanded={showSiteSelector}
+                  aria-disabled={!briefSeen}
+                  title={!briefSeen ? "Open Your Summary first" : undefined}
                 >
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                    <Compass className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${briefSeen ? "text-white/60" : "text-white/30"}`}>
+                    {briefSeen ? <Compass className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
                     Site Selector
                   </span>
                   <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""}`}
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""} ${briefSeen ? "" : "opacity-0"}`}
                     strokeWidth={1.75}
                   />
                 </button>
@@ -789,26 +1312,62 @@ export default function Configurator() {
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
+                transition={{ duration: 0.7, delay: 0.725, ease: "easeOut" }}
+                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${siteSeen ? "text-white/60" : "text-white/30"}`}>
+                    {siteSeen ? <Zap className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
+                    Show Zones
+                  </span>
+                  <Switch
+                    checked={dotsRevealed}
+                    disabled={!siteSeen}
+                    onCheckedChange={(checked) => {
+                      if (!siteSeen) return;
+                      setDotsRevealed(checked);
+                    }}
+                    aria-label="Show the glowing zone dots on the dwelling"
+                    title={!siteSeen ? "Open Site Selector first" : undefined}
+                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15"
+                  />
+                </div>
+              </motion.aside>
+
+              <motion.aside
+                initial={blurInit}
+                animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.75, ease: "easeOut" }}
-                className="liquid-glass rounded-[1rem] p-2.5"
+                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}
               >
                 <button
-                  onClick={() => setShowMaterialLibrary((v) => !v)}
-                  className="w-full flex items-center justify-between group"
-                  aria-expanded={showMaterialLibrary}
+                  onClick={() => {
+                    if (!dotsRevealed) return;
+                    const next = !showLayoutZones;
+                    setShowLayoutZones(next);
+                    if (next) setZonesSeen(true);
+                  }}
+                  disabled={!dotsRevealed}
+                  className="w-full flex items-center justify-between group disabled:cursor-not-allowed"
+                  aria-expanded={showLayoutZones}
+                  aria-disabled={!dotsRevealed}
+                  title={!dotsRevealed ? "Reveal the zones first" : undefined}
                 >
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                    <Palette className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    Material Library
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${dotsRevealed ? "text-white/60" : "text-white/30"}`}>
+                    {dotsRevealed ? <LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
+                    Add Zones
                   </span>
                   <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showMaterialLibrary ? "rotate-180" : ""}`}
+                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showLayoutZones ? "rotate-180" : ""} ${dotsRevealed ? "" : "opacity-0"}`}
                     strokeWidth={1.75}
                   />
                 </button>
+                <p className="text-[10px] font-body text-white/40 leading-relaxed pt-1.5">
+                  Drag a zone onto the dwelling to add it.
+                </p>
 
                 <AnimatePresence initial={false}>
-                  {showMaterialLibrary && (
+                  {showLayoutZones && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
@@ -818,38 +1377,29 @@ export default function Configurator() {
                     >
                       <div className="pt-2 flex items-center gap-1">
                         <button
-                          onClick={() => scrollStrip(materialScrollRef, -1)}
+                          onClick={() => scrollStrip(zoneScrollRef, -1)}
                           className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
                           aria-label="Scroll left"
                         >
                           <ChevronLeft className="h-3 w-3" strokeWidth={2} />
                         </button>
                         <div
-                          ref={materialScrollRef}
+                          ref={zoneScrollRef}
                           className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
                         >
-                          {MATERIAL_OPTIONS.map((opt, i) => (
-                            <button
-                              key={`${opt.label}-${i}`}
-                              onClick={() => setSelectedMaterialIdx(i)}
-                              aria-label={`Select ${opt.label}`}
-                              aria-pressed={i === selectedMaterialIdx}
-                              className={[
-                                "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
-                                i === selectedMaterialIdx
-                                  ? "border-white/60"
-                                  : "border-white/10 hover:border-white/30",
-                              ].join(" ")}
-                            >
-                              <div className="w-full h-10" style={{ background: opt.swatch }} />
-                              <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
-                                {opt.label}
-                              </p>
-                            </button>
+                          {zones.map((z) => (
+                            <ZoneCard
+                              key={z.id}
+                              zone={z}
+                              onDragStart={handleZoneDragStart}
+                              onDragMove={handleZoneDragMove}
+                              onDragDrop={handleZoneDragDrop}
+                              glow={glowHintsEnabled && z.id === "grow" && !plantsGrown}
+                            />
                           ))}
                         </div>
                         <button
-                          onClick={() => scrollStrip(materialScrollRef, 1)}
+                          onClick={() => scrollStrip(zoneScrollRef, 1)}
                           className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
                           aria-label="Scroll right"
                         >
@@ -864,77 +1414,40 @@ export default function Configurator() {
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
-                transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
-                className="liquid-glass rounded-[1rem] p-2.5"
+                transition={{ duration: 0.7, delay: 0.775, ease: "easeOut" }}
+                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && plantsGrown && !exploreSeen ? "panel-glow-pulse" : ""}`}
               >
-                <button
-                  onClick={() => setShowInteriorPacks((v) => !v)}
-                  className="w-full flex items-center justify-between group"
-                  aria-expanded={showInteriorPacks}
-                >
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                    <Sofa className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    Interior Packs
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${plantsGrown ? "text-white/60" : "text-white/30"}`}>
+                    {plantsGrown ? <Compass className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
+                    Step Inside
                   </span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showInteriorPacks ? "rotate-180" : ""}`}
-                    strokeWidth={1.75}
+                  <Switch
+                    checked={exploreUnlocked}
+                    disabled={!plantsGrown}
+                    onCheckedChange={(checked) => {
+                      if (!plantsGrown) return;
+                      setExploreUnlocked(checked);
+                      if (checked && !exploreSeen) {
+                        // First time this unlocks, pop the Bed tooltip open on
+                        // its own (Explore more included) instead of leaving
+                        // the user to guess which dot actually has a 360°
+                        // view behind it.
+                        setClickedHotspotId("s7");
+                        setShowExploreCursorHint(true);
+                      }
+                      if (checked) setExploreSeen(true);
+                    }}
+                    aria-label="Unlock stepping inside a zone's 360° panorama"
+                    title={!plantsGrown ? "Drop Plant Bay onto the dwelling first" : undefined}
+                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15"
                   />
-                </button>
-
-                <AnimatePresence initial={false}>
-                  {showInteriorPacks && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeOut" }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-2 flex items-center gap-1">
-                        <button
-                          onClick={() => scrollStrip(packScrollRef, -1)}
-                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                          aria-label="Scroll left"
-                        >
-                          <ChevronLeft className="h-3 w-3" strokeWidth={2} />
-                        </button>
-                        <div
-                          ref={packScrollRef}
-                          className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
-                        >
-                          {PACK_OPTIONS.map((opt, i) => (
-                            <button
-                              key={opt.label}
-                              onClick={() => setSelectedPackIdx(i)}
-                              aria-label={`Select ${opt.label}`}
-                              aria-pressed={i === selectedPackIdx}
-                              className={[
-                                "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
-                                i === selectedPackIdx
-                                  ? "border-white/60"
-                                  : "border-white/10 hover:border-white/30",
-                              ].join(" ")}
-                            >
-                              <div className="w-full h-10" style={{ background: opt.swatch }} />
-                              <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
-                                {opt.label}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => scrollStrip(packScrollRef, 1)}
-                          className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                          aria-label="Scroll right"
-                        >
-                          <ChevronRight className="h-3 w-3" strokeWidth={2} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                </div>
+                <p className="text-[10px] font-body text-white/40 leading-relaxed pt-1.5">
+                  Unlocks "Explore more" — step fully inside a room.
+                </p>
               </motion.aside>
+
               </div>
             </div>
 
@@ -948,7 +1461,7 @@ export default function Configurator() {
               {/* Section tabs + 2D/3D toggle */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1 bg-white/5 rounded-full p-1">
-                  {(["dwelling", "dining", "kitchen", "living", "bed"] as const).map((s) => (
+                  {(["dwelling"] as const).map((s) => (
                     <button
                       key={s}
                       onClick={() => {
@@ -986,7 +1499,11 @@ export default function Configurator() {
                           : "text-white/50 hover:text-white/80",
                       ].join(" ")}
                     >
-                      {v}
+                      {/* "3D" reads as "Elevation" for the exterior dwelling view — same
+                          underlying viewMode value, just a clearer label. Once inside a
+                          360° panorama (activeExplore), it reverts to plain "3D" since
+                          "Elevation" (an exterior architectural view) no longer applies. */}
+                      {v === "3D" ? (activeExplore ? "3D" : "Elevation") : v}
                     </button>
                   ))}
                 </div>
@@ -994,94 +1511,66 @@ export default function Configurator() {
 
               <div
                 ref={viewportRef}
-                className={
+                className={[
                   isFullscreen
                     ? "relative w-full h-full overflow-hidden liquid-glass rounded-none"
-                    : "relative rounded-[1.25rem] overflow-hidden liquid-glass"
-                }
+                    : "relative rounded-[1.25rem] overflow-hidden liquid-glass",
+                  isZoneDragOver ? "ring-2 ring-white/50" : "",
+                ].join(" ")}
                 style={isFullscreen ? undefined : { height: "58vh" }}
               >
+                {stage === "customise" || stage === "plans" ? (
+                  r.configured.get("door") === "fire-pit-seating" ? (
+                    // Fire pit seating is its own dedicated scene (a different
+                    // vantage/setting entirely), so it still replaces the view
+                    // outright rather than layering onto the dwelling render.
+                    <img
+                      src={firepitScene}
+                      alt="Dwelling with fire pit seating"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    // Once configuration is continued, the viewport shows only
+                    // a static scene — no hotspots, no zone interactions — but
+                    // it's still the same live layered render as the design
+                    // stage (landscape + dwelling + grow/bracing/windows
+                    // overlays), so whatever was last changed in chat carries
+                    // through instead of resetting to a generic default.
+                    <div className="absolute inset-0">
+                      <img src={_landscapeBg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/30" aria-hidden />
+                      <div className="absolute inset-0 flex items-center justify-center p-4">
+                        <div
+                          className="relative translate-y-8"
+                          style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
+                        >
+                          <img src={dwellingFg} alt="Dwelling" className="w-full h-full object-contain pointer-events-none" />
+                          <img
+                            src={withGrowDwelling}
+                            alt="Dwelling with the growing-plants bay"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                            style={{ opacity: plantsGrown ? 1 : 0 }}
+                          />
+                          <img
+                            src={changedBracing}
+                            alt="Dwelling with cross-braced ribs"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                            style={{ opacity: showBracingOverlay ? 1 : 0 }}
+                          />
+                          <img
+                            src={windowsOnDwelling}
+                            alt="Dwelling with more windows"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                            style={{ opacity: showWindowsOverlay ? 1 : 0 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <>
                 <AnimatePresence mode="wait">
-                  {engineReady && (showInterior2 ? (
-                    /* Second interior angle — reached from the carpet-corner hotspot in interior 1 */
-                    <motion.div
-                      key="interior-view-2"
-                      className="absolute inset-0"
-                      initial={{ opacity: 0, scale: 1.04 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.04 }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div
-                          className="relative"
-                          style={{ aspectRatio: "2752/1536", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
-                        >
-                          <img
-                            src={interior2Img}
-                            alt="Living room interior, alternate angle"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setShowInterior2(false)}
-                        className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
-                        aria-label="Back to previous view"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </motion.div>
-                  ) : showInterior ? (
-                    /* Interior takeover — crossfades in over everything else when
-                       "Explore inside" is clicked on the living room hotspot */
-                    <motion.div
-                      key="interior-view"
-                      className="absolute inset-0"
-                      initial={{ opacity: 0, scale: 1.04 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 1.04 }}
-                      transition={{ duration: 0.5, ease: "easeOut" }}
-                    >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div
-                          className="relative"
-                          style={{ aspectRatio: "2752/1536", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
-                        >
-                          <img
-                            src={interior1Img}
-                            alt="Living room interior"
-                            className="w-full h-full object-contain"
-                          />
-                          {/* Carpet-corner hotspot, in front of the shelf — same
-                              aura-glow marker language as the dwelling hotspots */}
-                          <button
-                            onClick={() => setShowInterior2(true)}
-                            className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
-                            style={{ left: "22%", top: "75%" }}
-                            aria-label="Explore alternate angle"
-                          >
-                            <span
-                              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full blur-md opacity-75 transition-all duration-300 group-hover:opacity-100 group-hover:w-14 group-hover:h-14"
-                              style={{
-                                background:
-                                  "radial-gradient(circle, rgba(110,190,240,0.65) 0%, rgba(110,190,240,0.25) 45%, rgba(110,190,240,0) 75%)",
-                              }}
-                              aria-hidden
-                            />
-                            <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white transition-all duration-300 group-hover:w-3 group-hover:h-3" />
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setShowInterior(false)}
-                        className="absolute top-4 left-4 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
-                        aria-label="Back to dwelling view"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </motion.div>
-                  ) : activeSection === "dwelling" && viewMode === "plan" ? (
+                  {engineReady && (activeSection === "dwelling" && viewMode === "plan" ? (
                     /* Plan view — top-down render, crossfades in over the 3D scene */
                     <motion.div
                       key="plan-view"
@@ -1097,9 +1586,8 @@ export default function Configurator() {
                       <img
                         src={topViewImg}
                         alt="Dwelling plan view"
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-contain bg-[#faf8f4]"
                       />
-                      {renderHotspots(PLAN_HOTSPOTS)}
                     </motion.div>
                   ) : (
                     /* Zoomable scene — landscape + dwelling + hotspots scale together */
@@ -1137,7 +1625,7 @@ export default function Configurator() {
                           image regardless of how it's letterboxed inside the viewport */}
                       <div className="absolute inset-0 flex items-center justify-center p-4">
                         <div
-                          className="relative"
+                          className="relative translate-y-8"
                           style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                         >
                           <img
@@ -1145,20 +1633,204 @@ export default function Configurator() {
                             alt="Dwelling"
                             className="w-full h-full object-contain pointer-events-none"
                           />
-                          {/* Vol2 shares the exact same 2400x1792 canvas as the base dwelling
-                              render (just with the section 3 bay opened to a cutaway), so it's
-                              pixel-aligned and can sit directly on top with a plain fade. */}
+                          {/* The dwelling starts without the growing-plants bay — this fades
+                              IN once Grow Plants is dropped onto the viewport. Placed right
+                              after the base (before the cutaways/other overlays below) so
+                              those still render on top of it once active, instead of this
+                              masking them. */}
                           <img
-                            src={sectionVol2}
-                            alt="Section detail"
+                            src={withGrowDwelling}
+                            alt="Dwelling with the growing-plants bay"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
-                            style={{ opacity: showSectionVol2 ? 1 : 0 }}
+                            style={{ opacity: plantsGrown ? 1 : 0 }}
+                          />
+                          {/* Chat-triggered "change the bracing type" overlay — placed
+                              behind the per-zone cutaways below (unlike the windows
+                              overlay after them) so a cutaway a user has open stays
+                              visible on top instead of this covering it. */}
+                          <img
+                            src={changedBracing}
+                            alt="Dwelling with cross-braced ribs"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
+                            style={{ opacity: showBracingOverlay ? 1 : 0 }}
+                          />
+                          {/* Each cutaway is a small patch, not a full dwelling replacement —
+                              sized/positioned from CUTAWAY_PATCH_BOXES (pixel coordinates on
+                              the same canvas as the base render) so it only ever covers its
+                              own peek window, leaving bracing/grow/etc. visible around it. */}
+                          {Object.entries(CUTAWAY_IMAGES).map(([id, img]) => {
+                            const [x0, y0, x1, y1] = CUTAWAY_PATCH_BOXES[id];
+                            return (
+                              <img
+                                key={id}
+                                src={img}
+                                alt="Section detail"
+                                className="absolute pointer-events-none transition-opacity duration-500"
+                                style={{
+                                  left: `${(x0 / CUTAWAY_CANVAS_W) * 100}%`,
+                                  top: `${(CUTAWAY_IMG_TOP_FRAC + (y0 / CUTAWAY_CANVAS_H) * CUTAWAY_IMG_HEIGHT_FRAC) * 100}%`,
+                                  width: `${((x1 - x0) / CUTAWAY_CANVAS_W) * 100}%`,
+                                  height: `${((y1 - y0) / CUTAWAY_CANVAS_H) * CUTAWAY_IMG_HEIGHT_FRAC * 100}%`,
+                                  opacity: activeCutaway === id ? 1 : 0,
+                                  // Soft vertical feather — the patch is a plain rectangular
+                                  // photo crop, taller than the roofline opening it sits in,
+                                  // so a hard edge pokes past the fabric into sky/ground. This
+                                  // fades it into whatever's behind instead of a hard cutoff.
+                                  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%)",
+                                  maskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%)",
+                                }}
+                              />
+                            );
+                          })}
+                          {/* Chat-triggered "add more windows" overlay — same pixel-aligned
+                              crossfade mechanism as the hotspot cutaways above. */}
+                          <img
+                            src={windowsOnDwelling}
+                            alt="Dwelling with more windows"
+                            className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
+                            style={{ opacity: showWindowsOverlay ? 1 : 0 }}
                           />
                           {/* Same aura-glow-behind-a-white-core look as the Tribe page's
                               node markers, shifted bluer. The button itself is sized to
                               match the visible glow (not just the core dot) so hover
-                              actually triggers when the cursor is over the glow. */}
-                          {renderHotspots(DWELLING_HOTSPOTS)}
+                              actually triggers when the cursor is over the glow. Held back
+                              until the "Reveal Zones" toggle is switched on, then powers on
+                              along the roofline one by one instead of just appearing.
+                              s1 (Plant Bay) is left out until the bay actually
+                              exists on the dwelling — i.e. until Grow Plants is dropped
+                              from the Layout Zones panel — then it joins the rest. */}
+                          {dotsRevealed && renderHotspots(
+                            DWELLING_HOTSPOTS.filter((h) => h.id !== "s1" || plantsGrown),
+                            true,
+                          )}
+
+                          {/* Drop target hint — while the Plant Bay tile is being dragged
+                              out of the sidebar, glow the spot on the dwelling where the
+                              bay actually attaches, so it's obvious where to drop it (the
+                              drop itself still works anywhere in the viewport — this is
+                              purely a visual aim). Positioned in the same %-of-wrapper
+                              space as DWELLING_HOTSPOTS, centered on s1's own coordinates. */}
+                          <AnimatePresence>
+                            {draggedZoneId === "grow" && !plantsGrown && (
+                              <motion.div
+                                className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20"
+                                style={{ left: "5%", top: "40.86%" }}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.25 }}
+                              >
+                                <motion.div
+                                  className="rounded-full border-2 border-dashed border-white/80"
+                                  style={{ width: 64, height: 64, boxShadow: "0 0 24px 6px rgba(255,255,255,0.35)" }}
+                                  animate={{ scale: [1, 1.12, 1], opacity: [0.6, 1, 0.6] }}
+                                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                                />
+                                <span className="absolute left-1/2 top-full -translate-x-1/2 mt-2 whitespace-nowrap liquid-glass-strong rounded-full px-2.5 py-1 text-[10px] font-body uppercase tracking-[0.1em] text-white/90">
+                                  Drop here
+                                </span>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+
+                          {/* Arrival nudge — shown fresh every time this page mounts,
+                              dismissed for the rest of this visit the moment any hotspot is
+                              clicked or via its own close button. A ghost cursor glides over
+                              to Living's known (58, 38.36) position and "taps" it on a loop —
+                              showing the mechanic instead of just describing it. Gated behind
+                              dotsRevealed too, same as the hotspots themselves — otherwise
+                              it'd demo tapping a dot that isn't on screen yet. */}
+                          {showHotspotHint && dotsRevealed && (
+                            <div className="absolute inset-0 z-20 pointer-events-none">
+                              <motion.div
+                                className="absolute -translate-x-1/2 -translate-y-1/2"
+                                style={{ left: 0, top: 0 }}
+                                animate={{
+                                  left: ["16%", "16%", "58%", "58%", "58%"],
+                                  top: ["16%", "16%", "38.36%", "38.36%", "38.36%"],
+                                  opacity: [0, 1, 1, 1, 0],
+                                  scale: [1, 1, 1, 0.72, 1],
+                                }}
+                                transition={{
+                                  duration: 3.2,
+                                  times: [0, 0.1, 0.55, 0.66, 0.85],
+                                  repeat: Infinity,
+                                  repeatDelay: 1.4,
+                                  ease: "easeInOut",
+                                }}
+                              >
+                                <MousePointer2
+                                  className="h-5 w-5 text-white"
+                                  style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                                  fill="white"
+                                  fillOpacity={0.15}
+                                  strokeWidth={1.75}
+                                />
+                              </motion.div>
+                              <div
+                                className="absolute pointer-events-auto"
+                                style={{ left: "6%", top: "8%", maxWidth: "200px" }}
+                              >
+                                <div className="liquid-glass-strong rounded-xl pl-3.5 pr-2.5 py-2.5 flex items-start gap-2">
+                                  <p className="font-body text-[12px] text-white/90 leading-snug">
+                                    Click a glowing point to see what's tailored for you
+                                  </p>
+                                  <button
+                                    onClick={dismissHotspotHint}
+                                    aria-label="Dismiss hint"
+                                    className="text-white/50 hover:text-white/90 shrink-0 mt-0.5"
+                                  >
+                                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* One-time reward burst — a little spark + "Discovered" chip
+                              the moment a user finds the mechanic (see rewardBurst above). */}
+                          <AnimatePresence>
+                            {rewardBurst && (
+                              <motion.div
+                                className="absolute z-30 pointer-events-none"
+                                style={{ left: `${rewardBurst.x}%`, top: `${rewardBurst.y}%` }}
+                                initial={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                              >
+                                <motion.span
+                                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+                                  style={{ borderColor: "rgba(110,190,240,0.8)", width: 12, height: 12 }}
+                                  initial={{ scale: 1, opacity: 0.9 }}
+                                  animate={{ scale: 6, opacity: 0 }}
+                                  transition={{ duration: 0.8, ease: "easeOut" }}
+                                />
+                                {[0, 60, 120, 180, 240, 300].map((angle) => (
+                                  <motion.span
+                                    key={angle}
+                                    className="absolute left-1/2 top-1/2 w-1 h-1 rounded-full bg-white"
+                                    initial={{ x: 0, y: 0, opacity: 1 }}
+                                    animate={{
+                                      x: Math.cos((angle * Math.PI) / 180) * 28,
+                                      y: Math.sin((angle * Math.PI) / 180) * 28,
+                                      opacity: 0,
+                                    }}
+                                    transition={{ duration: 0.6, ease: "easeOut" }}
+                                  />
+                                ))}
+                                <motion.div
+                                  className="absolute left-1/2 -translate-x-1/2 bottom-full mb-3 whitespace-nowrap"
+                                  initial={{ opacity: 0, y: 4 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -4 }}
+                                  transition={{ duration: 0.3 }}
+                                >
+                                  <span className="liquid-glass-strong rounded-full px-2.5 py-1 text-[10px] font-body uppercase tracking-[0.12em] text-white/90 inline-block">
+                                    ✨ Discovered
+                                  </span>
+                                </motion.div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       </div>
                     </motion.div>
@@ -1262,11 +1934,57 @@ export default function Configurator() {
                   )}
                 </AnimatePresence>
 
+                {/* Zone pins — dropped from the Layout Zones panel, positioned
+                    as % of the viewport box so they hold their place on resize. */}
+                <div className="absolute inset-0 z-30 pointer-events-none">
+                  {ALL_ZONE_IDS.filter((id) => zonePins[id]).map((id) => {
+                    const pos = zonePins[id]!;
+                    return (
+                      <div
+                        key={id}
+                        className="absolute pointer-events-auto group"
+                        style={{ left: `${pos.x}%`, top: `${pos.y}%`, transform: "translate(-50%, -100%)" }}
+                      >
+                        <img
+                          src={ZONE_IMAGES[id]}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover border border-white/50 shadow-lg"
+                        />
+                        {/* Pin tail */}
+                        <div className="w-2 h-2 rotate-45 mx-auto -mt-1 border-r border-b border-white/50 bg-black/70" />
+                        <button
+                          type="button"
+                          onClick={() => removeZonePin(id)}
+                          aria-label={`Remove ${ZONE_LABELS[id]} pin`}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/80 border border-white/30 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center justify-center"
+                        >
+                          <X className="h-2.5 w-2.5" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Confirmation toast for dropping Plant Bay — no pin left behind
+                    for it (see handleZoneDragDrop), just this brief message. */}
+                <AnimatePresence>
+                  {growDropToast && (
+                    <motion.div
+                      className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <span className="liquid-glass-strong rounded-full px-4 py-2 text-xs font-body text-white/90 inline-block whitespace-nowrap">
+                        You added one more zone
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
                   {[
-                    { Icon: Box, onClick: undefined },
-                    { Icon: RotateCw, onClick: undefined },
                     { Icon: ZoomIn, onClick: zoomIn },
                     { Icon: ZoomOut, onClick: zoomOut },
                     { Icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen },
@@ -1293,18 +2011,160 @@ export default function Configurator() {
                       Plan: {selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)}
                     </span>
                   )}
-                  {showMaterialLibrary && (
+                  {showLayoutZones && (
                     <span className="liquid-glass tag-glass">
-                      Material: {MATERIAL_OPTIONS[selectedMaterialIdx].label}
-                    </span>
-                  )}
-                  {showInteriorPacks && (
-                    <span className="liquid-glass tag-glass">
-                      Pack: {PACK_OPTIONS[selectedPackIdx].label}
+                      Zones: {(plantsGrown ? 1 : 0) + Object.keys(zonePins).length} active
                     </span>
                   )}
                 </div>
 
+                {/* Section interior takeover — full viewport, closeable back to the main
+                    scene. A real drag-around 360° panorama (photo-sphere-viewer) opening
+                    on whichever scene SECTION_EXPLORE maps the clicked hotspot to — all
+                    scenes are linked together via PANORAMA_SCENES' spotlight markers, so
+                    from any entry point you can still walk to every other room. */}
+                <AnimatePresence>
+                  {activeExplore && SECTION_EXPLORE[activeExplore] && (
+                    <motion.div
+                      key={`explore-${activeExplore}`}
+                      className="absolute inset-0 z-40"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                    >
+                      <PanoramaViewer
+                        src={PANORAMA_SCENES[panoramaScene].src}
+                        markers={PANORAMA_SCENES[panoramaScene].markers}
+                      />
+                      <button
+                        onClick={() => {
+                          // Also clear the hotspot's own open/click state — otherwise
+                          // clicking the same dot again just toggles it closed (since
+                          // it never got the chance to "close" while the panorama was
+                          // covering it), which reads as the dot doing nothing.
+                          setActiveExplore(null);
+                          setClickedHotspotId(null);
+                          setActiveCutaway(null);
+                          setPanoramaTourStep(0);
+                        }}
+                        aria-label="Close interior view"
+                        className="absolute top-4 right-4 z-10 rounded-full w-11 h-11 inline-flex items-center justify-center text-white bg-black/70 border border-white/40 shadow-lg hover:bg-black/85 hover:border-white/70 transition-colors"
+                      >
+                        <X className="h-5 w-5" strokeWidth={2} />
+                      </button>
+                      {/* First-time, 3-step walkthrough for anyone who has never opened
+                          the panorama before — separate from the close button's own
+                          highlight in step 3, which points at the real button above
+                          rather than duplicating it. */}
+                      <AnimatePresence mode="wait">
+                        {panoramaTourStep === 1 && (
+                          <motion.div
+                            key="tour-1"
+                            className="absolute top-20 left-1/2 -translate-x-1/2 z-20"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <div className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3">
+                              <p className="font-body text-[12px] text-white/90 leading-snug">
+                                Drag anywhere to look around
+                              </p>
+                              <button
+                                onClick={() => setPanoramaTourStep(2)}
+                                className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                              >
+                                Got it
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                        {panoramaTourStep === 2 && (
+                          <motion.div
+                            key="tour-2"
+                            className="absolute top-20 left-1/2 -translate-x-1/2 z-20"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <div className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3">
+                              <p className="font-body text-[12px] text-white/90 leading-snug">
+                                See a glowing dot? Click it to step into another room
+                              </p>
+                              <button
+                                onClick={() => setPanoramaTourStep(3)}
+                                className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                              >
+                                Got it
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                        {panoramaTourStep === 3 && (
+                          <motion.div
+                            key="tour-3"
+                            className="absolute top-4 right-20 z-20"
+                            initial={{ opacity: 0, x: 8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 8 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <div className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3 whitespace-nowrap">
+                              <p className="font-body text-[12px] text-white/90 leading-snug">
+                                Exit anytime from here
+                              </p>
+                              <button
+                                onClick={() => setPanoramaTourStep(0)}
+                                className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                              >
+                                Got it
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      {/* Pulsing ring around the real close button while step 3 points
+                          at it — clicking the button itself (its own handler above
+                          resets activeExplore) also ends the tour via this same flag
+                          reset, so it doesn't linger into the next time someone opens
+                          the panorama within this visit. */}
+                      {panoramaTourStep === 3 && (
+                        <motion.div
+                          className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full pointer-events-none border-2 border-white/80"
+                          animate={{ scale: [1, 1.25, 1], opacity: [0.8, 0.2, 0.8] }}
+                          transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+              </>
+                )}
+
+                {/* Brief "rendering" spinner while the bracing swap is in flight —
+                    sits on the outer viewport box (not the smaller aspect-locked
+                    dwelling wrapper inside it), so it covers the whole rounded
+                    viewport window edge-to-edge instead of floating as an
+                    undersized rectangle with the dwelling peeking out around it. */}
+                <AnimatePresence>
+                  {bracingLoading && (
+                    <motion.div
+                      className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/55 backdrop-blur-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Loader2 className="h-8 w-8 text-white/85 animate-spin" strokeWidth={1.5} />
+                      <p className="font-body text-white/80 text-[11px] uppercase tracking-[0.18em]">
+                        Updating bracing...
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Performance strip — design stage only; from customisation on,
@@ -1314,54 +2174,68 @@ export default function Configurator() {
                   <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
                   <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
                   <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
-                  <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
+                  <Stat icon={Square} label="Total area" value="32" unit="m²" />
                 </div>
               )}
             </motion.div>
 
-            {/* RIGHT COLUMN — chat while designing, then price/order, then
-                payment. Same slot throughout so the layout never jumps. */}
-            {(stage === "customise" || stage === "plans" || stage === "payment") && (
+            {/* RIGHT COLUMN — chat while designing, then price/order.
+                Payment has moved to its own full-screen modal (below),
+                matching the Congratulations overlay, so it's no longer part
+                of this sliding slot. */}
+            {(stage === "customise" || stage === "plans") && (
               <motion.div
                 key="order-col"
                 initial={{ opacity: 0, x: 16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.45, ease: "easeOut" }}
-                className="flex gap-4 min-w-0"
+                className="flex gap-4 min-w-0 self-stretch h-full"
               >
-                {/* Order panel persists across all three — at payment it just
-                    narrows and slides left as the card panel appears beside it. */}
-                <div className={stage === "payment" ? "w-[340px] shrink-0" : "flex-1 min-w-0"}>
-                  <OrderPanel
-                    configured={r.configured}
-                    totals={r.totals}
-                    showPlans={stage === "plans"}
-                    compact={stage === "payment"}
-                    selectedPlan={selectedPlan}
-                    onSelectPlan={confirmPlan}
-                    onBack={
-                      stage === "customise" ? backToDesign
-                      : stage === "plans" ? () => r.setStage("configure")
-                      : () => r.setStage("summary")
-                    }
-                    onContinue={() =>
-                      r.setStage(stage === "customise" ? "summary" : "payment")
-                    }
-                    hideActions={stage === "payment"}
-                  />
-                </div>
-
+                {/* Your reservation and Choose your plan are two slides of one
+                    strip. Unlike a crossfade, these are normal flex children
+                    (not stacked on top of each other) — so while one is still
+                    sliding out and the next is sliding in, both are genuinely
+                    on screen side by side at once, same as the viewport
+                    easing wider/narrower next to them. */}
                 <AnimatePresence>
-                  {stage === "payment" && (
+                  {stage === "customise" && (
                     <motion.div
-                      key="pay"
-                      initial={{ opacity: 0, x: 40 }}
+                      key="customise"
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
                       animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 40 }}
+                      exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
-                      className="flex-1 min-w-0 h-[calc(58vh+10rem)]"
+                      className="w-[360px] shrink-0 h-full"
                     >
-                      <PaymentPanel totals={pricedTotals} onSubmit={r.submitPayment} inline />
+                      <OrderPanel
+                        configured={r.configured}
+                        totals={r.totals}
+                        showPlans={false}
+                        selectedPlan={selectedPlan}
+                        onSelectPlan={confirmPlan}
+                        onBack={backToDesign}
+                        onContinue={() => r.setStage("summary")}
+                      />
+                    </motion.div>
+                  )}
+                  {stage === "plans" && (
+                    <motion.div
+                      key="plans"
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
+                      transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
+                      className="w-[640px] shrink-0 h-full"
+                    >
+                      <OrderPanel
+                        configured={r.configured}
+                        totals={r.totals}
+                        showPlans={true}
+                        selectedPlan={selectedPlan}
+                        onSelectPlan={confirmPlan}
+                        onBack={() => r.setStage("configure")}
+                        onContinue={() => r.setStage("payment")}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1373,7 +2247,7 @@ export default function Configurator() {
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className={`liquid-glass rounded-[1.25rem] p-6 flex-col h-[calc(58vh+10rem)] ${stage === "design" ? "flex" : "hidden"}`}
+              className={`liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex-col self-stretch h-full ${stage === "design" ? "flex" : "hidden"}`}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -1382,12 +2256,21 @@ export default function Configurator() {
                 <div className="flex flex-col leading-tight">
                   <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
                   <span className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body inline-flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      apiOnline === null  ? "bg-white/30 animate-pulse" :
-                      apiOnline           ? "bg-emerald-400 animate-pulse" :
-                                            "bg-red-400"
-                    }`} />
-                    {apiOnline === null ? "connecting" : apiOnline ? "online" : "offline"}
+                    {!exploreSeen ? (
+                      <>
+                        <Lock className="h-2.5 w-2.5" strokeWidth={2} />
+                        locked
+                      </>
+                    ) : (
+                      <>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          apiOnline === null  ? "bg-white/30 animate-pulse" :
+                          apiOnline           ? "bg-emerald-400 animate-pulse" :
+                                                "bg-red-400"
+                        }`} />
+                        {apiOnline === null ? "connecting" : apiOnline ? "online" : "offline"}
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
@@ -1396,7 +2279,16 @@ export default function Configurator() {
                 ref={scrollRef}
                 className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
-                {introPhase === "typing" && messages.length === 0 && (
+                {!exploreSeen && (
+                  <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-white/35">
+                    <Lock className="h-5 w-5" strokeWidth={1.5} />
+                    <p className="text-xs font-body max-w-[220px]">
+                      Complete the steps on the left — through Step Inside — to wake up the Engine Assistant.
+                    </p>
+                  </div>
+                )}
+
+                {exploreSeen && introPhase === "typing" && messages.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -1467,6 +2359,35 @@ export default function Configurator() {
                     })}
                   </div>
                 )}
+
+                {bracingConfirmPending && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handleBracingChoice(true)}
+                      className="rounded-full px-4 py-2 text-xs font-body border bg-white/[0.06] text-white/85 border-white/15 hover:bg-white/15 hover:border-white/35 hover:shadow-[0_0_20px_-6px_rgba(255,255,255,0.35)] transition-[background,border,box-shadow] duration-300"
+                    >
+                      Yes, keep it
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.06, ease: "easeOut" }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => handleBracingChoice(false)}
+                      className="rounded-full px-4 py-2 text-xs font-body border bg-white/[0.06] text-white/85 border-white/15 hover:bg-white/15 hover:border-white/35 hover:shadow-[0_0_20px_-6px_rgba(255,255,255,0.35)] transition-[background,border,box-shadow] duration-300"
+                    >
+                      No, go back
+                    </motion.button>
+                  </div>
+                )}
               </div>
 
 
@@ -1481,16 +2402,18 @@ export default function Configurator() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
-                    activeSection !== "dining" && activeSection !== "dwelling"
+                    !exploreSeen
+                      ? "Locked — complete the steps on the left first"
+                      : activeSection !== "dining" && activeSection !== "dwelling"
                       ? `Chat only available for dining`
                       : "Message Engine Assistant…"
                   }
-                  disabled={isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!exploreSeen || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!exploreSeen || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="bg-white text-black rounded-full w-9 h-9 inline-flex items-center justify-center disabled:opacity-40"
                   aria-label="Send"
                 >
@@ -1502,14 +2425,48 @@ export default function Configurator() {
         </div>
       </div>
 
+      {/* Payment — full-screen modal styled like the Congratulations overlay
+          below (backdrop blur, particles, centered glass card), reached from
+          Choose your plan's "Continue to payment". */}
+      <AnimatePresence>
+        {stage === "payment" && (
+          <motion.div
+            key="payment-modal"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+            className="fixed inset-0 z-[60] backdrop-blur-md bg-black/70 flex items-center justify-center px-6"
+          >
+            <div className="confirm-particles absolute inset-0 pointer-events-none" />
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.96 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
+              className="relative w-full max-w-lg h-[85vh]"
+            >
+              <button
+                type="button"
+                onClick={() => r.setStage("summary")}
+                aria-label="Back to plans"
+                className="absolute -top-3 -right-3 z-10 liquid-glass rounded-full w-9 h-9 inline-flex items-center justify-center text-white/80 hover:text-white"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              <PaymentPanel totals={pricedTotals} onSubmit={r.submitPayment} inline />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Reservation customizer — opens on Continue configuration */}
       <AnimatePresence>
         {stage === "confirmed" && (
           <EngineOnTheWayOverlay
             reservationRef={r.reservationRef}
             colors={r.colors}
-            total={r.totals.total}
-            onContinue={() => navigate("/profile")}
+            total={r.totals.total + DWELLING_VALUE}
+            onContinue={() => navigate("/engine")}
           />
         )}
       </AnimatePresence>
