@@ -13,7 +13,7 @@ import {
 import { useMockAuth } from "@/context/MockAuth";
 import BlurText from "@/components/BlurText";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 /** Longest the questionnaire will wait on the backend before proceeding with
     defaults. Generous enough for a normal LLM reply, short enough that a dead

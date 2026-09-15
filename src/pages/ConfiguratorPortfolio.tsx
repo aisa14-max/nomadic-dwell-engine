@@ -7,14 +7,14 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2 } from "lucide-react";
+import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, Clock, Zap, Weight, Square, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import dwelling from "@/assets/dwelling-hero.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 import { useMockAuth } from "@/context/MockAuth";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const blurInit = { filter: "blur(10px)", opacity: 0, y: 20 };
 const blurIn = { filter: "blur(0px)", opacity: 1, y: 0 };
@@ -534,10 +534,10 @@ export default function ConfiguratorPortfolio() {
 
               {/* Performance strip */}
               <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat label="Assembly time" value={String(_assembly)} unit="hours" />
-                <Stat label="Energy consumption" value={_energy} unit="kWh/d" />
-                <Stat label="Total mass" value={_mass} unit="t" />
-                <Stat label="Total area" value={_areaM2} unit="m²" />
+                <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
+                <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
+                <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
+                <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
               </div>
             </motion.div>
 
@@ -684,17 +684,20 @@ export default function ConfiguratorPortfolio() {
 }
 
 
-function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
+function Stat({ icon: Icon, label, value, unit }: { icon: LucideIcon; label: string; value: string; unit: string }) {
   return (
     <motion.div
       whileHover={{ scale: 1.03 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="liquid-glass rounded-[1rem] p-4 cursor-default border border-white/10 hover:border-white/30 hover:bg-white/[0.06] hover:shadow-[0_0_30px_-5px_rgba(255,255,255,0.25)] transition-[background,border,box-shadow] duration-300"
+      className="liquid-glass rounded-[1rem] w-full flex items-center gap-3 px-5 py-3 cursor-default"
     >
-      <p className="text-[11px] uppercase tracking-[0.14em] text-white/60 font-body">{label}</p>
-      <div className="mt-2 flex items-baseline gap-1.5">
-        <span className="font-heading text-white text-3xl tracking-[-1px] leading-none">{value}</span>
-        <span className="text-xs text-white/60 font-body">{unit}</span>
+      <Icon className="h-6 w-6 text-white/80 shrink-0" strokeWidth={1.5} />
+      <div className="flex flex-col leading-tight min-w-0">
+        <span className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-body truncate">{label}</span>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-white font-medium text-sm">{value}</span>
+          <span className="text-white/55 text-xs font-body">{unit}</span>
+        </div>
       </div>
     </motion.div>
   );
