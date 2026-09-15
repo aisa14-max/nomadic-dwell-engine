@@ -33,7 +33,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
   };
   const [flashAt, setFlashAt] = useState<{ id: PartId; key: number } | null>(null);
   const [shownPart, setShownPart] = useState<PartId | null>("rib");
-  const [shownOption, setShownOption] = useState<string | undefined>("square");
+  const [shownOption, setShownOption] = useState<string | undefined>("petg-clear");
 
   // close picker on outside click — listener on overlay
   const handleBackdrop = () => {

@@ -1,8 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, Map, MapPin, Navigation, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, MousePointer2, Lock, Lightbulb, type LucideIcon } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, MousePointer2, Lock, Lightbulb, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import { Switch } from "@/components/ui/switch";
 import landscapeBg from "@/assets/configurator-landscape-bg-v2.png";
@@ -31,8 +31,17 @@ import patchTerrace from "@/assets/configurator-patch-terrace.png";
 import { PanoramaViewer, type PanoramaMarker } from "@/components/worlds/PanoramaViewer";
 import windowsOnDwelling from "@/assets/configurator-windows-on-dwelling.png";
 import changedBracing from "@/assets/configurator-changed-bracing.png";
+import changedBracingBlack from "@/assets/configurator-changed-bracing-black.png";
+import bracingBlackGreen from "@/assets/configurator-bracing-black-green.png";
+import bracingBlackRed from "@/assets/configurator-bracing-black-red.png";
+import bracingClearGreen from "@/assets/configurator-bracing-clear-green.png";
+import bracingClearRed from "@/assets/configurator-bracing-clear-red.png";
+import dwellingBlackBeige from "@/assets/configurator-dwelling-black-beige.png";
+import dwellingBlackGreen from "@/assets/configurator-dwelling-black-green.png";
+import dwellingBlackRed from "@/assets/configurator-dwelling-black-red.png";
+import dwellingClearGreen from "@/assets/configurator-dwelling-clear-green.png";
+import dwellingClearRed from "@/assets/configurator-dwelling-clear-red.png";
 import withGrowDwelling from "@/assets/configurator-with-grow.png";
-import firepitScene from "@/assets/configurator-firepit-scene.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import zoneBed from "@/assets/zone-bed.png";
@@ -168,33 +177,38 @@ function ZoneCard({
           ? `${ZONE_LABELS[zone.id]} — coming soon`
           : `Drag onto the viewport to place the ${ZONE_LABELS[zone.id]} zone`
       }
-      className={`relative shrink-0 w-16 snap-start rounded-[0.5rem] ${
+      className={`relative shrink-0 w-14 snap-start ${
         locked ? "cursor-not-allowed" : "cursor-grab active:cursor-grabbing"
-      } ${isDraggingOut ? "opacity-30" : ""} ${glow ? "panel-glow-pulse" : ""}`}
+      } ${isDraggingOut ? "opacity-30" : ""}`}
     >
-      {/* Clipping lives on this inner wrapper, not the outer card — the
-          glow's box-shadow is set on the outer element above, and an
-          overflow-hidden ancestor would clip that shadow off at the card's
-          own edge, same issue as the sidebar panels had. */}
-      <div
-        className={`rounded-[0.5rem] overflow-hidden border transition-colors ${
-          locked
-            ? "opacity-40 border-white/10"
-            : "border-white/20 hover:border-white/50"
-        }`}
-      >
-        <img
-          src={image}
-          alt=""
-          className={`w-full h-10 object-cover pointer-events-none ${locked ? "grayscale" : ""}`}
-        />
-        <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
-          {locked ? "Coming soon" : ZONE_LABELS[zone.id]}
-        </p>
+      {/* The glow (and its rounding) lives on this w-14 h-14 wrapper —
+          exactly the circle's own footprint, not the taller card below that
+          also includes the label — otherwise round-full stretches into a
+          pill shape hugging the whole card instead of the circle. Image
+          clipping is a level deeper still, since an overflow-hidden
+          ancestor would clip the glow's box-shadow off at the card's own
+          edge, same issue as the sidebar panels had. */}
+      <div className={`w-14 h-14 rounded-full ${glow ? "panel-glow-pulse" : ""}`}>
+        <div
+          className={`w-full h-full rounded-full overflow-hidden border transition-colors ${
+            locked
+              ? "opacity-40 border-white/10"
+              : "border-white/20 hover:border-white/50"
+          }`}
+        >
+          <img
+            src={image}
+            alt=""
+            className={`w-full h-full object-cover pointer-events-none ${locked ? "grayscale" : ""}`}
+          />
+        </div>
       </div>
+      <p className="text-[8px] font-body text-white/70 text-center truncate px-0.5 py-0.5">
+        {locked ? "Coming soon" : ZONE_LABELS[zone.id]}
+      </p>
       {locked && (
         <Lock
-          className="absolute top-1 right-1 h-2.5 w-2.5 text-white/50"
+          className="absolute top-0 right-0 h-2.5 w-2.5 text-white/50"
           strokeWidth={2}
           aria-label={`${ZONE_LABELS[zone.id]} locked`}
         />
@@ -204,7 +218,7 @@ function ZoneCard({
         <img
           src={image}
           alt=""
-          className="fixed z-[999] pointer-events-none w-10 h-10 rounded-[0.5rem] object-cover shadow-2xl scale-110"
+          className="fixed z-[999] pointer-events-none w-10 h-10 rounded-full object-cover shadow-2xl scale-110"
           style={{ left: ghostPos.x, top: ghostPos.y, transform: "translate(-50%, -50%)" }}
         />,
         document.body,
@@ -283,7 +297,6 @@ export default function Configurator() {
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
-  const [siteSelectorView, setSiteSelectorView] = useState<"map" | "pin" | "route">("pin");
   const [showLayoutZones, setShowLayoutZones] = useState(false);
   // Toggle for the whole "glow whichever step is next" demo hint below — on
   // by default, but a presenter may want to turn it off mid-demo.
@@ -295,6 +308,11 @@ export default function Configurator() {
   // so it counts as seen immediately — Site Selector starts unlocked.
   const briefSeen = true;
   const [siteSeen, setSiteSeen] = useState(false);
+  // Distinct from siteSeen (which only tracks the panel being opened, and
+  // still gates unlocking Show Zones on its own): Show Zones should only
+  // glow once the visitor has actually picked a different site in the
+  // carousel, not merely opened the panel and looked at the default pick.
+  const [siteChanged, setSiteChanged] = useState(false);
   // Toggle sitting between Site Selector and Layout Zones — flipping it on
   // is what reveals the glowing roofline dots and unlocks the Layout Zones
   // panel in turn. Unlike the "seen" flags below, this one is a genuine
@@ -314,7 +332,6 @@ export default function Configurator() {
   );
   const removeZone = (id: ZoneId) =>
     setZones((prev) => prev.filter((z) => z.id !== id));
-  const siteScrollRef = useRef<HTMLDivElement>(null);
   const zoneScrollRef = useRef<HTMLDivElement>(null);
   const scrollStrip = (ref: React.RefObject<HTMLDivElement>, dir: 1 | -1) =>
     ref.current?.scrollBy({ left: dir * 84, behavior: "smooth" });
@@ -413,11 +430,11 @@ export default function Configurator() {
   // that tooltip, so the next click target is obvious. Dismissed the moment
   // "Explore more" is actually clicked.
   const [showExploreCursorHint, setShowExploreCursorHint] = useState(false);
-  // First-time, 3-step walkthrough for the 360° panorama takeover: 1) you
-  // can drag to look around, 2) glowing dots jump between rooms, 3) here's
-  // how to get back out. Each step advances on its own "Got it" click;
-  // 0 means hidden (not started yet, or the tour is already finished).
-  const [panoramaTourStep, setPanoramaTourStep] = useState<0 | 1 | 2 | 3>(0);
+  // First-time, 2-step walkthrough for the 360° panorama takeover: 1)
+  // glowing dots jump between rooms, 2) here's how to get back out. Each
+  // step advances on its own "Got it" click; 0 means hidden (not started
+  // yet, or the tour is already finished).
+  const [panoramaTourStep, setPanoramaTourStep] = useState<0 | 1 | 2>(0);
   const [panoramaTourSeen, setPanoramaTourSeen] = useState(false);
   // Small spark burst + "Discovered" chip played once, right on the very
   // first hotspot a user ever clicks — a little reward for finding the
@@ -443,6 +460,21 @@ export default function Configurator() {
   // panorama get an entry here — add one as each new panorama arrives; that's
   // also what makes the button appear on that hotspot's tooltip.
   const [activeExplore, setActiveExplore] = useState<string | null>(null);
+  // The Engine Assistant chat specifically waits for a full round trip —
+  // stepped inside a 360° panorama AND backed all the way out again — not
+  // just exploreSeen (which flips true the moment "Step Inside" is merely
+  // switched on, before the visitor has actually been through the door;
+  // that's still the right trigger for unlocking Continue configuration
+  // and the rest, just not for waking up the chat).
+  const [hasExitedExplore, setHasExitedExplore] = useState(false);
+  const hasEnteredExploreRef = useRef(false);
+  useEffect(() => {
+    if (activeExplore) {
+      hasEnteredExploreRef.current = true;
+    } else if (hasEnteredExploreRef.current) {
+      setHasExitedExplore(true);
+    }
+  }, [activeExplore]);
   type PanoramaSceneId = "bedroom" | "livingroom" | "kitchen" | "plants" | "bathroom";
   // Which hotspot opens which panorama scene — multiple hotspots can point at
   // the same scene (e.g. two dots sharing one room). Add an entry here as
@@ -673,31 +705,24 @@ export default function Configurator() {
             <span className="font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
               {HOTSPOT_LABELS[h.id] ?? h.id}
             </span>
-            {(clickedHotspotId === h.id || activeCutaway === h.id) && SECTION_EXPLORE[h.id] && (
-              exploreUnlocked ? (
-                <button
-                  onClick={() => {
-                    setActiveExplore(h.id);
-                    setPanoramaScene(SECTION_EXPLORE[h.id].scene);
-                    setShowExploreCursorHint(false);
-                    if (!panoramaTourSeen) {
-                      setPanoramaTourStep(1);
-                      setPanoramaTourSeen(true);
-                    }
-                  }}
-                  className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
-                >
-                  Explore more
-                </button>
-              ) : (
-                <button
-                  disabled
-                  title="Unlock Step Inside in the sidebar first"
-                  className="px-3 py-1 rounded-full bg-white/15 text-white/50 text-[10px] font-body uppercase tracking-[0.1em] cursor-not-allowed"
-                >
-                  Locked
-                </button>
-              )
+            {/* No "Locked" state here — at this stage (Show Zones on, Step
+                Inside not unlocked yet) the panel just shows the zone's
+                name above and nothing else, rather than a disabled button. */}
+            {(clickedHotspotId === h.id || activeCutaway === h.id) && SECTION_EXPLORE[h.id] && exploreUnlocked && (
+              <button
+                onClick={() => {
+                  setActiveExplore(h.id);
+                  setPanoramaScene(SECTION_EXPLORE[h.id].scene);
+                  setShowExploreCursorHint(false);
+                  if (!panoramaTourSeen) {
+                    setPanoramaTourStep(1);
+                    setPanoramaTourSeen(true);
+                  }
+                }}
+                className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+              >
+                Explore more
+              </button>
             )}
           </div>
         </div>
@@ -882,8 +907,9 @@ export default function Configurator() {
   const _onboardingSiteName = String(_site?.name ?? "");
   const _onboardingSiteRegion = String(_site?.location ?? "");
 
-  // Site Selector — the onboarding pick plus two curated alternates the
+  // Site Selector — the onboarding pick plus three unlocked alternates the
   // user can switch between right here (static/baked, no re-render call).
+  // Always exactly 4 choices, and never a "Coming soon" site.
   const _fallbackSite = SITES.find((s) => s.title === "Skye Moor")!;
   const _primarySite = SITES.find((s) => s.title === _onboardingSiteName) ?? {
     ..._fallbackSite,
@@ -891,25 +917,157 @@ export default function Configurator() {
     region: _onboardingSiteRegion || _fallbackSite.region,
   };
   // Sites with their own landscape backdrop use it for the Site Selector
-  // thumbnail too, instead of the default catalog photo. Skye Moor is kept
-  // in this list (not just as the no-answer fallback above) so it's always
-  // offered as an option even when onboarding picked a different site.
-  const _extraSites = ["Namib Dune", "Skye Moor"]
-    .filter((t) => t !== _primarySite.title)
-    .map((t) => {
-      const s = SITES.find((s) => s.title === t)!;
-      return s.landscapeImage ? { ...s, image: s.landscapeImage } : s;
-    })
-    .slice(0, 2);
+  // thumbnail too, instead of the default catalog photo. Atacama Plateau is
+  // pinned first among the alternates so it's always offered as a choice,
+  // not just whichever 3 happen to come first in the catalog.
+  const _pinnedSite = SITES.find((s) => s.title === "Atacama Plateau" && !s.locked);
+  const _otherSites = SITES.filter(
+    (s) => !s.locked && s.title !== _primarySite.title && s.title !== _pinnedSite?.title,
+  );
+  const _extraSites = [
+    ...(_pinnedSite && _pinnedSite.title !== _primarySite.title ? [_pinnedSite] : []),
+    ..._otherSites,
+  ]
+    .map((s) => (s.landscapeImage ? { ...s, image: s.landscapeImage } : s))
+    .slice(0, 3);
   const SITE_OPTIONS = [_primarySite, ..._extraSites];
   const [selectedSiteIdx, setSelectedSiteIdx] = useState(0);
   const activeSite = SITE_OPTIONS[selectedSiteIdx] ?? SITE_OPTIONS[0];
+  // Coverflow-style site strip that loops: a clone of the last site is
+  // prepended and a clone of the first is appended, so there's always a
+  // real card peeking on both sides — including past the actual ends.
+  // Navigation (arrows, card taps, swipe) always just scrolls the strip;
+  // once the scroll settles, if it landed on a clone we instantly (no
+  // animation) reposition onto the matching real card, so looping past
+  // either end feels continuous instead of sliding back across the list.
+  const _loopedSiteOptions = SITE_OPTIONS.length > 1
+    ? [SITE_OPTIONS[SITE_OPTIONS.length - 1], ...SITE_OPTIONS, SITE_OPTIONS[0]]
+    : SITE_OPTIONS;
+  const _lastLoopIdx = _loopedSiteOptions.length - 1;
+  const siteCarouselRef = useRef<HTMLDivElement | null>(null);
+  const siteCarouselRoRef = useRef<ResizeObserver | null>(null);
+  const siteCardRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // Tracks which loop index we're moving/moved to, updated synchronously
+  // on every call — independent of `selectedSiteIdx`, which only catches up
+  // once the debounced scroll-settle handler fires. The arrows read this
+  // instead of `selectedSiteIdx` so a quick run of clicks keeps advancing
+  // one step each, rather than several clicks in a row all re-targeting the
+  // same still-stale position (which read as the strip "glitching" —
+  // clicks not registering, or jumping more than one card at a time).
+  const currentSiteLoopIdxRef = useRef(1);
+  // Centers the given card by hand rather than via scrollIntoView — with a
+  // scrollable ancestor chain (this strip inside an animated panel inside
+  // the page), the browser's own "center" alignment doesn't reliably land
+  // on the math we need for the loop trick below. Uses getBoundingClientRect
+  // (viewport-relative, unambiguous) rather than offsetLeft — offsetLeft is
+  // relative to the nearest *positioned* ancestor, which isn't necessarily
+  // this scroll container, and was throwing every centering calc off by a
+  // constant amount (the active card never actually reached true center).
+  const scrollToSiteLoopIdx = useCallback((loopIdx: number, smooth = true) => {
+    const container = siteCarouselRef.current;
+    const card = siteCardRefs.current[loopIdx];
+    if (!container || !card) return;
+    currentSiteLoopIdxRef.current = loopIdx;
+    const containerRect = container.getBoundingClientRect();
+    const cardRect = card.getBoundingClientRect();
+    const cardCenterInContent = cardRect.left - containerRect.left + cardRect.width / 2 + container.scrollLeft;
+    const target = cardCenterInContent - container.clientWidth / 2;
+    container.scrollTo({ left: target, behavior: smooth ? "smooth" : "auto" });
+  }, []);
+  // The strip lives inside a collapsed-by-default panel, so a plain
+  // mount effect never sees the DOM node (it's still null at that point) —
+  // this ref callback fires exactly when the panel expands and the strip
+  // actually mounts instead. It measures the container in JS and applies
+  // the card/spacer widths as CSS custom properties (percentage widths on
+  // flex children of a `flex-1` container don't resolve against the size
+  // this element actually ends up with, so pixel values measured straight
+  // off the DOM are what let the boundary/clone cards reach true center,
+  // which the loop trick above depends on), then lands centered on the
+  // real first card — with the loop-clone peeking on its left — instead of
+  // starting on the clone itself.
+  const setSiteCarouselEl = useCallback((el: HTMLDivElement | null) => {
+    siteCarouselRef.current = el;
+    siteCarouselRoRef.current?.disconnect();
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      const cardW = Math.round(w * 0.7);
+      const spacerW = Math.max(0, Math.round((w - cardW) / 2));
+      el.style.setProperty("--site-card-w", `${cardW}px`);
+      el.style.setProperty("--site-spacer-w", `${spacerW}px`);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    siteCarouselRoRef.current = ro;
+    if (SITE_OPTIONS.length > 1) scrollToSiteLoopIdx(1, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollToSiteLoopIdx]);
+  const siteScrollTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  // A raw swipe/drag doesn't go through the arrow or card click handlers
+  // (the only other places that mark siteChanged), so it's tracked here
+  // instead — compared against the last real index this same handler saw,
+  // which starts out matching the strip's own starting position, so the
+  // very first settle right after mount correctly reads as "no change".
+  const lastSettledSiteIdxRef = useRef(0);
+  const handleSiteCarouselScroll = () => {
+    if (siteScrollTimeoutRef.current) clearTimeout(siteScrollTimeoutRef.current);
+    siteScrollTimeoutRef.current = setTimeout(() => {
+      const container = siteCarouselRef.current;
+      if (!container) return;
+      const containerRect = container.getBoundingClientRect();
+      const viewportCenter = containerRect.left + container.clientWidth / 2;
+      let nearestLi = 0, nearestDist = Infinity;
+      siteCardRefs.current.forEach((card, li) => {
+        if (!card) return;
+        const cardRect = card.getBoundingClientRect();
+        const cardCenter = cardRect.left + cardRect.width / 2;
+        const dist = Math.abs(cardCenter - viewportCenter);
+        if (dist < nearestDist) { nearestDist = dist; nearestLi = li; }
+      });
+      let finalRealIdx: number;
+      if (nearestLi === 0) {
+        scrollToSiteLoopIdx(_lastLoopIdx - 1, false);
+        finalRealIdx = SITE_OPTIONS.length - 1;
+      } else if (nearestLi === _lastLoopIdx) {
+        scrollToSiteLoopIdx(1, false);
+        finalRealIdx = 0;
+      } else {
+        finalRealIdx = nearestLi - 1;
+      }
+      setSelectedSiteIdx(finalRealIdx);
+      if (finalRealIdx !== lastSettledSiteIdxRef.current) setSiteChanged(true);
+      lastSettledSiteIdxRef.current = finalRealIdx;
+    }, 130);
+  };
   const _siteName = activeSite.title;
   const _siteRegion = activeSite.region;
-  const _siteThumb = activeSite.image;
   // Every site can carry its own elevation-view landscape backdrop; sites
   // without one fall back to the generic default scene.
   const _landscapeBg = activeSite.landscapeImage ?? landscapeBg;
+  const _landscapeZoom = activeSite.landscapeImage ? activeSite.landscapeZoom ?? 1 : 1;
+  // Rib Colour (an add-on, not a design-stage choice) recolors the cross-braced
+  // overlay's ribs black instead of swapping in an unrelated scene — keeps the
+  // actual site background intact instead of jumping to a different photo.
+  const _ribIsBlack = r.configured.get("rib") === "petg-black";
+  // Two separate tables, same rib-colour × membrane-pattern logic — one for
+  // the normal (default) bracing state, one for the cross-braced overlay —
+  // so both possibilities stay correctly colored instead of just one.
+  const _dwellingImg =
+    r.configured.get("membrane") === "green" ? (_ribIsBlack ? dwellingBlackGreen : dwellingClearGreen)
+    : r.configured.get("membrane") === "red" ? (_ribIsBlack ? dwellingBlackRed : dwellingClearRed)
+    : _ribIsBlack ? dwellingBlackBeige
+    : dwellingFg;
+  // The grow-bay overlay is a full (uncolored) dwelling replacement, not a
+  // small patch — with no rib/membrane-colored versions of it, it would
+  // otherwise sit on top of _dwellingImg and hide any custom colour picked
+  // above. Only show it for the default rib/membrane combo.
+  const _showGrowOverlay = plantsGrown && _dwellingImg === dwellingFg;
+  const _bracingImg =
+    r.configured.get("membrane") === "green" ? (_ribIsBlack ? bracingBlackGreen : bracingClearGreen)
+    : r.configured.get("membrane") === "red" ? (_ribIsBlack ? bracingBlackRed : bracingClearRed)
+    : _ribIsBlack ? changedBracingBlack
+    : changedBracing;
 
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
@@ -931,10 +1089,11 @@ export default function Configurator() {
   const [bracingLoading, setBracingLoading] = useState(false);
 
   useEffect(() => {
-    // Also held back until exploreSeen — the assistant stays locked and
+    // Also held back until hasExitedExplore — the assistant stays locked and
     // silent until the whole step sequence (Site Selector → ... → Explore
-    // Inside Zone) has been completed, then starts typing its greeting.
-    if (!engineReady || !exploreSeen) return;
+    // Inside Zone, then back out of the panorama) has been completed, then
+    // starts typing its greeting.
+    if (!engineReady || !hasExitedExplore) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
       setTimeout(() => setIntroPhase("typing"), 1000),
@@ -962,7 +1121,7 @@ export default function Configurator() {
       }, 2400),
     );
     return () => timers.forEach(clearTimeout);
-  }, [engineReady, exploreSeen]);
+  }, [engineReady, hasExitedExplore]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1222,86 +1381,65 @@ export default function Configurator() {
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="overflow-hidden"
                     >
-                      <div className="pt-2">
-                        <div className="flex gap-0.5 bg-white/5 rounded-full p-0.5 mb-2 w-fit">
-                          {([
-                            { id: "map" as const, Icon: Map },
-                            { id: "pin" as const, Icon: MapPin },
-                            { id: "route" as const, Icon: Navigation },
-                          ]).map(({ id, Icon }) => (
-                            <button
-                              key={id}
-                              onClick={() => setSiteSelectorView(id)}
-                              className={[
-                                "w-6 h-6 rounded-full inline-flex items-center justify-center transition-all",
-                                siteSelectorView === id
-                                  ? "bg-white text-black"
-                                  : "text-white/50 hover:text-white/80",
-                              ].join(" ")}
-                              aria-label={id}
-                            >
-                              <Icon className="h-3 w-3" strokeWidth={1.75} />
-                            </button>
-                          ))}
-                        </div>
+                      <div className="pt-2 flex items-center gap-1">
+                        {SITE_OPTIONS.length > 1 && (
+                          <button
+                            onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1); }}
+                            className="shrink-0 w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                            aria-label="Previous site"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                          </button>
+                        )}
 
-                        <div className="rounded-[0.75rem] overflow-hidden border border-white/10 bg-white/[0.03]">
-                          {_siteThumb ? (
-                            <img src={_siteThumb} alt={_siteName} className="w-full h-16 object-cover" />
-                          ) : (
-                            <div className="w-full h-16 bg-white/5" />
-                          )}
-                          <div className="p-2">
-                            <p className="text-[11px] font-body text-white/90">
-                              Site: {_siteName || "—"}
-                            </p>
-                            {_siteRegion && (
-                              <p className="text-[9px] font-body text-white/50 mt-0.5">{_siteRegion}</p>
-                            )}
-                          </div>
+                        <div
+                          ref={setSiteCarouselEl}
+                          onScroll={handleSiteCarouselScroll}
+                          className="flex-1 min-w-0 flex gap-2 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        >
+                          <div className="shrink-0 w-[var(--site-spacer-w)]" aria-hidden />
+                          {_loopedSiteOptions.map((opt, li) => {
+                            const realIdx = li === 0 ? SITE_OPTIONS.length - 1 : li === _lastLoopIdx ? 0 : li - 1;
+                            const active = realIdx === selectedSiteIdx;
+                            return (
+                              <button
+                                key={`${opt.title}-${li}`}
+                                ref={(el) => (siteCardRefs.current[li] = el)}
+                                onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(li); }}
+                                aria-label={`Switch to ${opt.title}`}
+                                aria-pressed={active}
+                                className={[
+                                  "shrink-0 w-[var(--site-card-w)] text-left rounded-[0.6rem] overflow-hidden border transition-all duration-300",
+                                  active
+                                    ? "border-white/30 opacity-100 scale-100"
+                                    : "border-white/10 opacity-40 scale-[0.93]",
+                                ].join(" ")}
+                              >
+                                {opt.image ? (
+                                  <img src={opt.image} alt={opt.title} className="w-full h-16 object-cover" />
+                                ) : (
+                                  <div className="w-full h-16 bg-white/5" />
+                                )}
+                                <div className="p-1.5">
+                                  <p className="text-[10px] font-body text-white/90 truncate">{opt.title}</p>
+                                  {active && opt.region && (
+                                    <p className="text-[9px] font-body text-white/50 truncate">{opt.region}</p>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                          <div className="shrink-0 w-[var(--site-spacer-w)]" aria-hidden />
                         </div>
 
                         {SITE_OPTIONS.length > 1 && (
-                          <div className="mt-2 flex items-center gap-1">
-                            <button
-                              onClick={() => scrollStrip(siteScrollRef, -1)}
-                              className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                              aria-label="Scroll left"
-                            >
-                              <ChevronLeft className="h-3 w-3" strokeWidth={2} />
-                            </button>
-                            <div
-                              ref={siteScrollRef}
-                              className="flex-1 flex gap-1.5 overflow-x-auto scroll-smooth snap-x snap-mandatory"
-                            >
-                              {SITE_OPTIONS.map((opt, i) => (
-                                <button
-                                  key={opt.title}
-                                  onClick={() => setSelectedSiteIdx(i)}
-                                  aria-label={`Switch to ${opt.title}`}
-                                  aria-pressed={i === selectedSiteIdx}
-                                  className={[
-                                    "shrink-0 w-16 snap-start rounded-[0.5rem] overflow-hidden border transition-colors",
-                                    i === selectedSiteIdx
-                                      ? "border-white/60"
-                                      : "border-white/10 hover:border-white/30",
-                                  ].join(" ")}
-                                >
-                                  <img src={opt.image} alt={opt.title} className="w-full h-10 object-cover" />
-                                  <p className="text-[8px] font-body text-white/70 truncate px-1 py-0.5">
-                                    {opt.title}
-                                  </p>
-                                </button>
-                              ))}
-                            </div>
-                            <button
-                              onClick={() => scrollStrip(siteScrollRef, 1)}
-                              className="shrink-0 w-4 h-4 rounded-full inline-flex items-center justify-center text-white/40 hover:text-white transition-colors"
-                              aria-label="Scroll right"
-                            >
-                              <ChevronRight className="h-3 w-3" strokeWidth={2} />
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1); }}
+                            className="shrink-0 w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                            aria-label="Next site"
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                          </button>
                         )}
                       </div>
                     </motion.div>
@@ -1313,7 +1451,7 @@ export default function Configurator() {
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.725, ease: "easeOut" }}
-                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}
+                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && siteChanged && !dotsRevealed ? "panel-glow-pulse" : ""}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${siteSeen ? "text-white/60" : "text-white/30"}`}>
@@ -1346,6 +1484,12 @@ export default function Configurator() {
                     const next = !showLayoutZones;
                     setShowLayoutZones(next);
                     if (next) setZonesSeen(true);
+                    dismissHotspotHint();
+                    // Close whatever dot panel Show Zones left open — otherwise
+                    // it keeps floating over the viewport while Add Zones is
+                    // also open, covering the very dwelling you're dragging onto.
+                    setClickedHotspotId(null);
+                    setActiveCutaway(null);
                   }}
                   disabled={!dotsRevealed}
                   className="w-full flex items-center justify-between group disabled:cursor-not-allowed"
@@ -1520,43 +1664,70 @@ export default function Configurator() {
                 style={isFullscreen ? undefined : { height: "58vh" }}
               >
                 {stage === "customise" || stage === "plans" ? (
-                  r.configured.get("door") === "fire-pit-seating" ? (
-                    // Fire pit seating is its own dedicated scene (a different
-                    // vantage/setting entirely), so it still replaces the view
-                    // outright rather than layering onto the dwelling render.
-                    <img
-                      src={firepitScene}
-                      alt="Dwelling with fire pit seating"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  ) : (
                     // Once configuration is continued, the viewport shows only
                     // a static scene — no hotspots, no zone interactions — but
-                    // it's still the same live layered render as the design
-                    // stage (landscape + dwelling + grow/bracing/windows
-                    // overlays), so whatever was last changed in chat carries
-                    // through instead of resetting to a generic default.
-                    <div className="absolute inset-0">
-                      <img src={_landscapeBg} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover" />
+                    // it's still the exact same background + dwelling render as
+                    // the design stage (same landscape, same grow/bracing/windows
+                    // overlays, same zoom), so nothing changes underneath when
+                    // "Continue configuration" is clicked. Fire pit seating used
+                    // to swap this out for an unrelated dedicated scene — dropped
+                    // so the two stages always show the same picture.
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        transform: `scale(${zoom})`,
+                        transformOrigin: zoomOrigin ? `${zoomOrigin.x}% ${zoomOrigin.y}%` : "50% 50%",
+                      }}
+                    >
+                      <img
+                        src={_landscapeBg}
+                        alt=""
+                        aria-hidden
+                        className="absolute inset-0 w-full h-full object-cover"
+                        style={{ transform: `scale(${_landscapeZoom})` }}
+                      />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
                       <div className="absolute inset-0 flex items-center justify-center p-4">
                         <div
                           className="relative translate-y-8"
                           style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                         >
-                          <img src={dwellingFg} alt="Dwelling" className="w-full h-full object-contain pointer-events-none" />
+                          <img src={_dwellingImg} alt="Dwelling" className="w-full h-full object-contain pointer-events-none" />
                           <img
                             src={withGrowDwelling}
                             alt="Dwelling with the growing-plants bay"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none"
-                            style={{ opacity: plantsGrown ? 1 : 0 }}
+                            style={{ opacity: _showGrowOverlay ? 1 : 0 }}
                           />
                           <img
-                            src={changedBracing}
+                            src={_bracingImg}
                             alt="Dwelling with cross-braced ribs"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none"
                             style={{ opacity: showBracingOverlay ? 1 : 0 }}
                           />
+                          {/* Whichever zone patch was last peeked open in the design
+                              stage's viewport carries through as the starting point
+                              here too, instead of the cutaway just vanishing. */}
+                          {Object.entries(CUTAWAY_IMAGES).map(([id, img]) => {
+                            const [x0, y0, x1, y1] = CUTAWAY_PATCH_BOXES[id];
+                            return (
+                              <img
+                                key={id}
+                                src={img}
+                                alt="Section detail"
+                                className="absolute pointer-events-none"
+                                style={{
+                                  left: `${(x0 / CUTAWAY_CANVAS_W) * 100}%`,
+                                  top: `${(CUTAWAY_IMG_TOP_FRAC + (y0 / CUTAWAY_CANVAS_H) * CUTAWAY_IMG_HEIGHT_FRAC) * 100}%`,
+                                  width: `${((x1 - x0) / CUTAWAY_CANVAS_W) * 100}%`,
+                                  height: `${((y1 - y0) / CUTAWAY_CANVAS_H) * CUTAWAY_IMG_HEIGHT_FRAC * 100}%`,
+                                  opacity: activeCutaway === id ? 1 : 0,
+                                  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%)",
+                                  maskImage: "linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%)",
+                                }}
+                              />
+                            );
+                          })}
                           <img
                             src={windowsOnDwelling}
                             alt="Dwelling with more windows"
@@ -1566,7 +1737,6 @@ export default function Configurator() {
                         </div>
                       </div>
                     </div>
-                  )
                 ) : (
                   <>
                 <AnimatePresence mode="wait">
@@ -1617,6 +1787,7 @@ export default function Configurator() {
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
+                        style={{ transform: `scale(${_landscapeZoom})` }}
                       />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
 
@@ -1629,7 +1800,7 @@ export default function Configurator() {
                           style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                         >
                           <img
-                            src={dwellingFg}
+                            src={_dwellingImg}
                             alt="Dwelling"
                             className="w-full h-full object-contain pointer-events-none"
                           />
@@ -1642,14 +1813,14 @@ export default function Configurator() {
                             src={withGrowDwelling}
                             alt="Dwelling with the growing-plants bay"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
-                            style={{ opacity: plantsGrown ? 1 : 0 }}
+                            style={{ opacity: _showGrowOverlay ? 1 : 0 }}
                           />
                           {/* Chat-triggered "change the bracing type" overlay — placed
                               behind the per-zone cutaways below (unlike the windows
                               overlay after them) so a cutaway a user has open stays
                               visible on top instead of this covering it. */}
                           <img
-                            src={changedBracing}
+                            src={_bracingImg}
                             alt="Dwelling with cross-braced ribs"
                             className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-500"
                             style={{ opacity: showBracingOverlay ? 1 : 0 }}
@@ -2069,7 +2240,7 @@ export default function Configurator() {
                           >
                             <div className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3">
                               <p className="font-body text-[12px] text-white/90 leading-snug">
-                                Drag anywhere to look around
+                                See a glowing dot? Click it to step into another room
                               </p>
                               <button
                                 onClick={() => setPanoramaTourStep(2)}
@@ -2083,28 +2254,6 @@ export default function Configurator() {
                         {panoramaTourStep === 2 && (
                           <motion.div
                             key="tour-2"
-                            className="absolute top-20 left-1/2 -translate-x-1/2 z-20"
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 8 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <div className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3">
-                              <p className="font-body text-[12px] text-white/90 leading-snug">
-                                See a glowing dot? Click it to step into another room
-                              </p>
-                              <button
-                                onClick={() => setPanoramaTourStep(3)}
-                                className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
-                              >
-                                Got it
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                        {panoramaTourStep === 3 && (
-                          <motion.div
-                            key="tour-3"
                             className="absolute top-4 right-20 z-20"
                             initial={{ opacity: 0, x: 8 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -2125,12 +2274,12 @@ export default function Configurator() {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      {/* Pulsing ring around the real close button while step 3 points
+                      {/* Pulsing ring around the real close button while step 2 points
                           at it — clicking the button itself (its own handler above
                           resets activeExplore) also ends the tour via this same flag
                           reset, so it doesn't linger into the next time someone opens
                           the panorama within this visit. */}
-                      {panoramaTourStep === 3 && (
+                      {panoramaTourStep === 2 && (
                         <motion.div
                           className="absolute top-4 right-4 z-10 w-11 h-11 rounded-full pointer-events-none border-2 border-white/80"
                           animate={{ scale: [1, 1.25, 1], opacity: [0.8, 0.2, 0.8] }}
@@ -2247,7 +2396,7 @@ export default function Configurator() {
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className={`liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex-col self-stretch h-full ${stage === "design" ? "flex" : "hidden"}`}
+              className={`liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex-col self-stretch h-full ${stage === "design" ? "flex" : "hidden"} ${glowHintsEnabled && hasExitedExplore && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -2256,7 +2405,7 @@ export default function Configurator() {
                 <div className="flex flex-col leading-tight">
                   <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
                   <span className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body inline-flex items-center gap-1.5">
-                    {!exploreSeen ? (
+                    {!hasExitedExplore ? (
                       <>
                         <Lock className="h-2.5 w-2.5" strokeWidth={2} />
                         locked
@@ -2279,16 +2428,16 @@ export default function Configurator() {
                 ref={scrollRef}
                 className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
-                {!exploreSeen && (
+                {!hasExitedExplore && (
                   <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-white/35">
                     <Lock className="h-5 w-5" strokeWidth={1.5} />
                     <p className="text-xs font-body max-w-[220px]">
-                      Complete the steps on the left — through Step Inside — to wake up the Engine Assistant.
+                      Complete the steps on the left — through Step Inside, then back out — to wake up the Engine Assistant.
                     </p>
                   </div>
                 )}
 
-                {exploreSeen && introPhase === "typing" && messages.length === 0 && (
+                {hasExitedExplore && introPhase === "typing" && messages.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2402,18 +2551,18 @@ export default function Configurator() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
-                    !exploreSeen
+                    !hasExitedExplore
                       ? "Locked — complete the steps on the left first"
                       : activeSection !== "dining" && activeSection !== "dwelling"
                       ? `Chat only available for dining`
                       : "Message Engine Assistant…"
                   }
-                  disabled={!exploreSeen || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!hasExitedExplore || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={!exploreSeen || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!hasExitedExplore || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="bg-white text-black rounded-full w-9 h-9 inline-flex items-center justify-center disabled:opacity-40"
                   aria-label="Send"
                 >
@@ -2443,7 +2592,7 @@ export default function Configurator() {
               initial={{ y: 20, opacity: 0, scale: 0.96 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
-              className="relative w-full max-w-lg h-[85vh]"
+              className="relative w-full max-w-lg max-h-[85vh]"
             >
               <button
                 type="button"

@@ -52,9 +52,11 @@ export default function Nav() {
   return (
     <nav className="fixed top-4 inset-x-0 z-50 px-8 lg:px-16">
       <div className="mx-auto max-w-[1400px] flex items-center justify-between">
-        {/* Logo */}
+        {/* Logo — going Home is a full reset (same as Sign out) so every
+            return to the start really is a fresh run, not a resumed one. */}
         <Link
           to="/"
+          onClick={signOut}
           className="flex items-center gap-3 text-white"
           aria-label="Nomadic Engine"
         >
@@ -71,6 +73,9 @@ export default function Nav() {
               <Link
                 key={to}
                 to={to}
+                // Home is a full reset (same as Sign out) — same reasoning as
+                // the logo link above.
+                onClick={to === "/" ? signOut : undefined}
                 className="relative px-3 py-2 text-sm font-medium font-body rounded-full transition-colors"
                 style={{ color: active ? "#fff" : "rgba(255,255,255,0.7)" }}
               >

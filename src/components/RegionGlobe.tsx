@@ -392,6 +392,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
       const scoreGlow = score >= 75 ? "rgba(80,220,150,0.35)" : score >= 55 ? "rgba(240,200,110,0.3)" : "rgba(240,130,120,0.3)";
 
       const wrenchSvg = `<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;flex:none"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`;
+      const lockSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`;
 
       const pill = (text: string) =>
         `<span style="display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.85);font-size:12px;line-height:1;white-space:nowrap">${escapeHtml(text)}</span>`;
@@ -427,7 +428,9 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
     ${section("Best nearby", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.activities.map(pill).join("")}</div>`)}
     ${section("Community vibe", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.vibes.map((v, i) => vibeDot(v, i)).join("")}</div>`)}
     ${section("Engine adaptations", `<div style="display:flex;flex-wrap:wrap;gap:4px">${ins.adaptations.map(adaptChip).join("")}</div>`)}
-    <a href="#" data-rg-view="1" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;padding:9px 14px;border-radius:999px;background:#fff;color:#000;font-size:12px;font-weight:600;text-decoration:none;letter-spacing:0.02em">Configure</a>
+    ${site.locked
+      ? `<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,0.08);border:0.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">${lockSvg}Coming soon</div>`
+      : `<a href="#" data-rg-view="1" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:2px;padding:9px 14px;border-radius:999px;background:#fff;color:#000;font-size:12px;font-weight:600;text-decoration:none;letter-spacing:0.02em">Configure</a>`}
   </div>
 </div>`;
     };
@@ -477,7 +480,7 @@ export default function RegionGlobe({ selectedRegion, onSelect, className, focus
         popup.addClassName("rg-popup-visible");
         const el = popup.getElement();
         const link = el?.querySelector('a[data-rg-view="1"]') as HTMLAnchorElement | null;
-        if (link && focusSite && onViewSite) {
+        if (link && focusSite && !focusSite.locked && onViewSite) {
           link.addEventListener("click", (e) => {
             e.preventDefault();
             onViewSite(focusSite);

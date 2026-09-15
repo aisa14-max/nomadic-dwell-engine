@@ -9,8 +9,6 @@ import seating from "@/assets/panels-outside-furniture.png";
 import outdoorSitting from "@/assets/outdoor-sitting.png";
 import outdoorPlants from "@/assets/outdoor-plants.png";
 import defaultImg from "@/assets/parts/Default.png";
-import indoorSquare from "@/assets/panels-square.png";
-import indoorOrganic from "@/assets/panels-organic.png";
 
 const PART_IMAGES: Record<PartId, string> = {
   rib: ribs,
@@ -22,10 +20,6 @@ const PART_IMAGES: Record<PartId, string> = {
 };
 
 const OPTION_IMAGES: Partial<Record<PartId, Record<string, string>>> = {
-  rib: {
-    square: indoorSquare,
-    organic: indoorOrganic,
-  },
   door: {
     sitting: outdoorSitting,
     plants: outdoorPlants,
@@ -57,4 +51,3 @@ export default function PartImageOverlay({ activePart, activeOption }: { activeP
     </div>
   );
 }
-

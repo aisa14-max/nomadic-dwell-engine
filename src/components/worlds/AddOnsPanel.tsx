@@ -8,8 +8,8 @@ const PART_ICONS: Record<PartId, LucideIcon> = {
   endwall: PanelsTopLeft, // no longer in PARTS (Walls Panels removed), key kept to satisfy Record<PartId, ...>
   platform: Layers,      // no longer in PARTS (Flooring removed), key kept to satisfy Record<PartId, ...>
   membrane: Waves,       // Membrane Pattern
-  skylight: Globe,       // Off Grid Elements
-  door: Armchair,        // Outdoor Furniture
+  skylight: Globe,       // parked, not in PARTS for now (Off Grid Elements), key kept to satisfy Record<PartId, ...>
+  door: Armchair,        // parked, not in PARTS for now (Outdoor Furniture), key kept to satisfy Record<PartId, ...>
 };
 
 // Outdoor Furniture options read as an actual catalogue rather than
@@ -179,8 +179,10 @@ export default function AddOnsPanel({
                         );
                       })}
 
-                      {/* Passing on an add-on is a decision too — it unlocks
-                          the next step and costs nothing. */}
+                      {/* Rib Colour and Membrane Pattern pick the dwelling's
+                          shell material — they're not optional add-ons, so
+                          they can't be skipped. */}
+                      {p.id !== "rib" && p.id !== "membrane" && (
                       <button
                         onClick={() => onSelectOption(SKIPPED)}
                         aria-pressed={skipped}
@@ -204,6 +206,7 @@ export default function AddOnsPanel({
                           <Check className="h-3 w-3 text-white/70 shrink-0" strokeWidth={2.5} />
                         )}
                       </button>
+                      )}
                     </div>
                   </motion.div>
                 )}

@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2, ChevronDown } from "lucide-react";
+import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2, ChevronDown, Lock } from "lucide-react";
 import { REGIONS, REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
 import NightSkyScene from "@/components/NightSkyScene";
@@ -48,7 +48,7 @@ export default function Discover() {
 
   const handleConfigure = (s?: typeof SITES[number]) => {
     const site = s ?? focusedSite;
-    if (!site) return;
+    if (!site || site.locked) return;
     const payload = {
       name:         site.title,
       location:     site.region,
@@ -364,27 +364,47 @@ export default function Discover() {
                               onClick={() => handleShowOnMap(s)}
                               className="flex items-start gap-3 min-w-0 flex-1 text-left"
                             >
-                              <img
-                                src={s.image}
-                                alt=""
-                                loading="lazy"
-                                className="w-20 h-20 rounded-lg object-cover border border-white/10 shrink-0"
-                              />
+                              <div className="relative shrink-0">
+                                <img
+                                  src={s.image}
+                                  alt=""
+                                  loading="lazy"
+                                  className={`w-20 h-20 rounded-lg object-cover border border-white/10 ${
+                                    s.locked ? "grayscale opacity-50" : ""
+                                  }`}
+                                />
+                                {s.locked && (
+                                  <span className="absolute inset-0 flex items-center justify-center">
+                                    <Lock className="h-5 w-5 text-white/80" strokeWidth={1.75} />
+                                  </span>
+                                )}
+                              </div>
                               <div className="min-w-0 flex-1">
-                                <p className="font-heading text-white text-base leading-tight truncate">{s.title}</p>
+                                <p className={`font-heading text-base leading-tight truncate ${s.locked ? "text-white/70" : "text-white"}`}>
+                                  {s.title}
+                                </p>
                                 <p className="text-[11px] text-white/60 font-body inline-flex items-center gap-1 truncate">
                                   <MapPin className="h-3 w-3 shrink-0" /> {s.region}
                                 </p>
                                 <div className="mt-1.5 flex flex-wrap gap-1">
-                                  {chip("Temperature", Thermometer, s.temperature)}
-                                  {chip("Rainfall", CloudRain, s.rainfall)}
-                                  {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
-                                  {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
-                                  {chip("Safety", Shield, s.safety, levelTone(s.safety))}
+                                  {s.locked ? (
+                                    <span className="text-[10px] font-body font-medium uppercase tracking-[0.1em] px-2 py-0.5 rounded-full inline-flex items-center gap-1 bg-white/10 text-white/70 border border-white/15">
+                                      <Lock className="h-3 w-3 opacity-80" strokeWidth={2} />
+                                      Coming soon
+                                    </span>
+                                  ) : (
+                                    <>
+                                      {chip("Temperature", Thermometer, s.temperature)}
+                                      {chip("Rainfall", CloudRain, s.rainfall)}
+                                      {chip("Cost of living", DollarSign, s.costOfLiving, levelTone(s.costOfLiving))}
+                                      {chip("Internet speed", Wifi, s.internetSpeed, netTone(s.internetSpeed))}
+                                      {chip("Safety", Shield, s.safety, levelTone(s.safety))}
+                                    </>
+                                  )}
                                 </div>
                               </div>
                             </button>
-                            {active && (
+                            {active && !s.locked && (
                               <button
                                 onClick={() => handleConfigure()}
                                 className="liquid-glass-strong rounded-full px-2.5 py-1.5 text-[10px] font-body font-medium text-white inline-flex items-center gap-1 shrink-0"

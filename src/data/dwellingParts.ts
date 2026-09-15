@@ -22,9 +22,8 @@ export const PARTS: Part[] = [
     label: "Rib Colour",
     hotspot: { x: 59, y: 32 },
     options: [
+      { id: "petg-clear", name: "PETG Clear", hex: "#e6ece9", price: 0 },
       { id: "petg-black", name: "PETG Black", hex: "#1a1a1a", price: 850 },
-      { id: "petg-white", name: "PETG White", hex: "#f5f5f5", price: 820 },
-      { id: "petg-clear", name: "PETG Clear", hex: "#e6ece9", price: 950 },
     ],
   },
   {
@@ -32,34 +31,18 @@ export const PARTS: Part[] = [
     label: "Membrane Pattern",
     hotspot: { x: 52, y: 28 },
     options: [
-      { id: "etfe", name: "ETFE", hex: "#e8e2d4", price: 1200 },
-      { id: "ptfe", name: "PTFE", hex: "#cfcfcf", price: 1350 },
-      { id: "pvc", name: "PVC Coated Polyester", hex: "#5d6e4a", price: 1400 },
+      { id: "beige", name: "Beige", hex: "#e3d5b8", price: 0 },
+      { id: "green", name: "Green", hex: "#4a6b3a", price: 850 },
+      { id: "red", name: "Red", hex: "#8a3a3a", price: 850 },
     ],
   },
-  {
-    id: "skylight",
-    label: "Off Grid Elements",
-    hotspot: { x: 53, y: 33 },
-    options: [
-      { id: "solar", name: "Solar Panel", hex: "#1c2a4a", price: 600 },
-      { id: "bike", name: "Bike Holder", hex: "#8a8a8e", price: 750 },
-      { id: "water", name: "Extra Water Tank", hex: "#7aa0b8", price: 1100 },
-    ],
-  },
-  {
-    id: "door",
-    label: "Outdoor Furniture",
-    hotspot: { x: 85, y: 62 },
-    options: [
-      { id: "lounge-chair", name: "Lounge Chair", hex: "#a06a3a", price: 620 },
-      { id: "picnic-bench", name: "Picnic Bench", hex: "#8a6247", price: 780 },
-      { id: "fire-pit-seating", name: "Fire Pit Seating", hex: "#4a4038", price: 250 },
-      { id: "hammock", name: "Hammock", hex: "#d4a96a", price: 480 },
-      { id: "deck-table", name: "Deck Table", hex: "#6b5240", price: 690 },
-      { id: "pool", name: "Foldable Pool", hex: "#3a8ab8", price: 880 },
-    ],
-  },
+  // "skylight" (Off Grid Elements) and "door" (Outdoor Furniture) are
+  // pulled from PARTS for now at the user's request, to be reinstated
+  // later — not deleted. Their PartId union members and every static
+  // Record<PartId, ...> entry (icons, images, colours) stay in place so
+  // nothing else needs touching when they come back; they just render
+  // nowhere while absent from this array, same pattern already used for
+  // "endwall" and "platform" (see the comments in AddOnsPanel.tsx).
 ];
 
 export const TOTAL_PARTS = PARTS.length;

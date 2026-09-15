@@ -39,6 +39,12 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
     onSubmit();
   };
 
+  const skip = () => {
+    if (submitting) return;
+    setSubmitting(true);
+    onSubmit();
+  };
+
   return (
     <motion.aside
       initial={inline ? { opacity: 0 } : { x: 560, opacity: 0 }}
@@ -48,7 +54,7 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
       className={[
         "liquid-glass-strong overflow-hidden flex flex-col",
         inline
-          ? "w-full h-full rounded-[1.25rem]"
+          ? "w-full max-h-full rounded-[1.25rem]"
           : "fixed top-4 bottom-4 right-4 z-40 w-[460px] rounded-2xl",
       ].join(" ")}
     >
@@ -135,6 +141,16 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
         >
           <Lock className="h-4 w-4" strokeWidth={2} />
           Pay & Confirm <ArrowRight className="h-4 w-4" strokeWidth={2} />
+        </button>
+
+        <button
+          type="button"
+          tabIndex={8}
+          disabled={submitting}
+          onClick={skip}
+          className="mt-2.5 w-full border border-white/25 hover:border-white/50 hover:bg-white/5 text-white/80 hover:text-white rounded-full px-5 py-3 text-sm font-body font-medium transition-colors disabled:opacity-50"
+        >
+          Skip this & continue
         </button>
       </form>
     </motion.aside>
