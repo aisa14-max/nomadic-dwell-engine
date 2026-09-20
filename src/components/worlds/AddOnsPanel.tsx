@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Minus, Palette, PanelsTopLeft, Layers, Waves, Globe, Armchair, UtensilsCrossed, Flame, Trees, Droplets, Table2, type LucideIcon } from "lucide-react";
+import { Check, Minus, Palette, PanelsTopLeft, Layers, Waves, Globe, Armchair, UtensilsCrossed, Flame, Trees, Droplets, Table2, Lock, type LucideIcon } from "lucide-react";
 import { PARTS, PartId, findOption, gbp, SKIPPED, isSkipped } from "@/data/dwellingParts";
 
 /** One icon per part, in PARTS order. */
@@ -8,8 +8,8 @@ const PART_ICONS: Record<PartId, LucideIcon> = {
   endwall: PanelsTopLeft, // no longer in PARTS (Walls Panels removed), key kept to satisfy Record<PartId, ...>
   platform: Layers,      // no longer in PARTS (Flooring removed), key kept to satisfy Record<PartId, ...>
   membrane: Waves,       // Membrane Pattern
-  skylight: Globe,       // parked, not in PARTS for now (Off Grid Elements), key kept to satisfy Record<PartId, ...>
-  door: Armchair,        // parked, not in PARTS for now (Outdoor Furniture), key kept to satisfy Record<PartId, ...>
+  skylight: Globe,       // Off Grid Elements
+  door: Armchair,        // Outdoor Furniture
 };
 
 // Outdoor Furniture options read as an actual catalogue rather than
@@ -47,7 +47,7 @@ export default function AddOnsPanel({
 }: Props) {
   // Steps unlock in order: the first unconfigured one is the furthest you can
   // reach. Everything after it stays locked until it's chosen.
-  const firstIncomplete = PARTS.findIndex((p) => !configured.has(p.id));
+  const firstIncomplete = PARTS.findIndex((p) => !p.locked && !configured.has(p.id));
   const allDone = firstIncomplete === -1;
 
   return (
@@ -59,9 +59,11 @@ export default function AddOnsPanel({
         const skipped = isSkipped(optId);
         const done = !!opt;              // chosen an actual option
         const passed = done || skipped;  // decided either way — unlocks the next
-        const locked = !allDone && i > firstIncomplete;
+        const comingSoon = !!p.locked;
+        const locked = comingSoon || (!allDone && i > firstIncomplete);
         const isLast = i === PARTS.length - 1;
-        const Icon = PART_ICONS[p.id];
+        const Icon = comingSoon ? Lock : PART_ICONS[p.id];
+        const defaultOpt = p.options.find((o) => o.isDefault);
 
         return (
           <div key={p.id} className="flex gap-2.5">
@@ -77,6 +79,8 @@ export default function AddOnsPanel({
                     ? "border-white text-white"
                     : skipped
                       ? "border-white/30 text-white/30 border-dashed"
+                      : comingSoon
+                        ? "border-white/25 text-white/45"
                       : locked
                         ? "border-white/10 text-white/15"
                         : isOpen
@@ -113,7 +117,7 @@ export default function AddOnsPanel({
                 <span
                   className={[
                     "block text-[9px] font-body uppercase tracking-[0.12em] transition-colors",
-                    done ? "text-white/80" : locked ? "text-white/20" : "text-white/60",
+                    done ? "text-white/80" : comingSoon ? "text-white/45" : locked ? "text-white/20" : "text-white/60",
                   ].join(" ")}
                 >
                   {p.label}
@@ -123,16 +127,17 @@ export default function AddOnsPanel({
                     "block text-[11px] font-body truncate transition-colors",
                     opt ? "text-white"
                       : skipped ? "text-white/35 italic"
+                      : comingSoon ? "text-white/40"
                       : locked ? "text-white/15"
                       : "text-white/55 group-hover:text-white/85",
                   ].join(" ")}
                 >
-                  {opt ? opt.name : skipped ? "Skipped" : locked ? "Locked" : "Select"}
+                  {opt ? opt.name : skipped ? "Skipped" : comingSoon ? "Coming soon" : locked ? "Locked" : defaultOpt ? `${defaultOpt.name} · default` : "Select"}
                 </span>
               </button>
 
               <AnimatePresence initial={false}>
-                {isOpen && (
+                {isOpen && !comingSoon && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
@@ -143,6 +148,8 @@ export default function AddOnsPanel({
                     <div className="pt-2 flex flex-col gap-1">
                       {p.options.map((o) => {
                         const selected = optId === o.id;
+                        // Until something else is chosen, the default is what is already applied.
+                        const appliedByDefault = !!o.isDefault && !optId;
                         const OptionIcon = p.id === "door" ? DOOR_OPTION_ICONS[o.id] : null;
                         return (
                           <button
@@ -151,7 +158,7 @@ export default function AddOnsPanel({
                             aria-pressed={selected}
                             className={[
                               "w-full flex items-center gap-2 rounded-[0.5rem] px-2 py-1.5 text-left transition-colors",
-                              selected ? "bg-white/15" : "bg-white/[0.03] hover:bg-white/[0.08]",
+                              selected ? "bg-white/15" : appliedByDefault ? "bg-white/[0.08] ring-1 ring-white/20" : "bg-white/[0.03] hover:bg-white/[0.08]",
                             ].join(" ")}
                           >
                             {OptionIcon ? (
@@ -168,12 +175,15 @@ export default function AddOnsPanel({
                               <span className="block text-[10px] font-body text-white/85 truncate">
                                 {o.name}
                               </span>
-                              <span className="block text-[9px] font-body text-white/40">
-                                {gbp(o.price)}
+                              <span className="block text-[9px] font-body text-white/40 truncate">
+                                {gbp(o.price)}{o.isDefault ? (appliedByDefault ? " · applied by default" : " · default") : ""}
                               </span>
                             </span>
                             {selected && (
                               <Check className="h-3 w-3 text-white/80 shrink-0" strokeWidth={2.5} />
+                            )}
+                            {appliedByDefault && (
+                              <Check className="h-3 w-3 text-white/40 shrink-0" strokeWidth={2.5} />
                             )}
                           </button>
                         );

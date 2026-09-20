@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -19,6 +19,13 @@ const API = "http://localhost:8000";
     defaults. Generous enough for a normal LLM reply, short enough that a dead
     backend doesn't strand the user on the last question. */
 const SUBMIT_TIMEOUT_MS = 12000;
+
+const WAIT_PHASES = [
+  "Matching your brief to the terrain",
+  "Sizing your dwelling",
+  "Placing power, water and shelter",
+  "Almost there",
+];
 
 const _DEFAULT_SITE = {
   name: "Skye Moor", location: "Highlands, UK",
@@ -82,11 +89,20 @@ export default function OnboardingFlow() {
   const [stepIdx, setStepIdx]   = useState(0);
   const [answers, setAnswers]   = useState<Record<number, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const total    = steps.length;
   const step     = steps[stepIdx];
   const selected = answers[stepIdx];
   const isLast   = stepIdx === total - 1;
+
+  useEffect(() => {
+    if (!isSubmitting) { setElapsed(0); return; }
+    const started = Date.now();
+    const id = window.setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(id);
+  }, [isSubmitting]);
 
   // pendingSite already carries all required fields from Discover.tsx.
   // Use it directly — no SITES lookup needed, no silent lookup failures.
@@ -185,6 +201,11 @@ export default function OnboardingFlow() {
   const submitProposal = async () => {
     if (!selected || isSubmitting) return;
     setIsSubmitting(true);
+    // The design service can be slow or down. Abortable so the visitor can
+    // carry on with a default design instead of waiting out the full timeout.
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    const timer = window.setTimeout(() => ctrl.abort(), SUBMIT_TIMEOUT_MS);
     const keys = ["occupants", "duration", "purpose", "priority", "scale"];
     const namedAnswers = Object.fromEntries(
       Object.entries(answers).map(([i, v]) => [keys[Number(i)], v]),
@@ -200,7 +221,7 @@ export default function OnboardingFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ site: sitePayload, answers: namedAnswers }),
-        signal: AbortSignal.timeout(SUBMIT_TIMEOUT_MS),
+        signal: ctrl.signal,
       });
       const data = resp.ok ? await resp.json() : null;
       localStorage.setItem("configuratorInit", JSON.stringify({
@@ -222,6 +243,8 @@ export default function OnboardingFlow() {
       localStorage.setItem("configuratorReady", "true");
       revealResults();
     } finally {
+      window.clearTimeout(timer);
+      abortRef.current = null;
       setIsSubmitting(false);
     }
   };
@@ -249,7 +272,7 @@ export default function OnboardingFlow() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="absolute inset-0 z-20 rounded-[2rem] flex flex-col items-center justify-center gap-5 bg-black/55 backdrop-blur-md"
+                  className="absolute inset-0 z-20 rounded-[2rem] flex flex-col items-center justify-center gap-5 bg-black/85 backdrop-blur-xl"
                 >
                   <div className="absolute w-64 h-64 rounded-full bg-white/5 blur-3xl animate-pulse" aria-hidden />
                   <Loader2 className="relative h-10 w-10 text-white/80 animate-spin" strokeWidth={1.5} />
@@ -260,8 +283,25 @@ export default function OnboardingFlow() {
                         : "Reading your brief…"}
                     </p>
                     <p className="font-body text-white/40 text-[11px] uppercase tracking-[0.18em] mt-2">
-                      {siteWasChosen ? "Matching your brief to the terrain" : "Next: choose your terrain"}
+                      {siteWasChosen
+                        ? WAIT_PHASES[Math.min(WAIT_PHASES.length - 1, Math.floor(elapsed / 3))]
+                        : "Next: choose your terrain"}
                     </p>
+                    {elapsed >= 5 && (
+                      <div className="mt-6 flex flex-col items-center gap-3">
+                        <p className="font-body text-white/55 text-xs max-w-[34ch] leading-snug">
+                          This is taking longer than usual — the design service may be busy. Your answers are saved.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => abortRef.current?.abort()}
+                          className="rounded-full border border-white/25 px-5 py-2 text-xs font-body text-white/90 hover:bg-white/10 transition-colors"
+                        >
+                          Continue with a default design
+                        </button>
+                        <p className="font-body text-white/35 text-[11px]">You can refine everything in the configurator.</p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}

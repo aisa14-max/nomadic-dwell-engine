@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import BlurText from "@/components/BlurText";
 import nomadicLogo from "@/assets/nomadic-logo.png";
 
 const GRID = 3;
@@ -84,19 +85,13 @@ export default function PageReveal({ onComplete }: { onComplete: () => void }) {
         >
           Nomadic Engine
         </motion.h1>
-        <motion.p
-          className="mt-3 text-sm uppercase tracking-[0.25em] text-white/50 font-body text-center"
-          animate={{
-            textShadow: [
-              "0 0 6px rgba(255,244,214,0.15)",
-              "0 0 16px rgba(255,244,214,0.5)",
-              "0 0 6px rgba(255,244,214,0.15)",
-            ],
-          }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        >
-          Click on the squares to assemble your dwelling
-        </motion.p>
+        {/* Same per-letter amber sweep as the "Live anywhere across the wild
+            Earth" hero headline (BlurText's enableSweep), not a generic glow. */}
+        <BlurText
+          text="Click on the squares to assemble your dwelling"
+          className="mt-3 text-sm uppercase tracking-[0.25em] font-body"
+          enableSweep
+        />
       </div>
 
       {/* Grid + pieces — centered on the page regardless of title height */}

@@ -7,7 +7,10 @@ import {
 } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import { useMockAuth } from "@/context/MockAuth";
-import { TOTAL_PARTS } from "@/data/dwellingParts";
+import { TOTAL_PARTS, pruneConfigured } from "@/data/dwellingParts";
+import { SITES } from "@/data/sites";
+import { TRIBES, tribeMembers, tribePresenceNear } from "@/data/tribe";
+import { loadMyTribeId } from "@/lib/tribeStore";
 
 // Mocked "portal" state — read directly from localStorage rather than the
 // live useReservation hook, since this page just needs to know whether a
@@ -32,7 +35,7 @@ function readEnginePortalState() {
     const raw = localStorage.getItem("reservationProgress");
     if (raw) {
       const parsed = JSON.parse(raw);
-      configuredCount = Array.isArray(parsed.configured) ? parsed.configured.length : 0;
+      configuredCount = Array.isArray(parsed.configured) ? pruneConfigured(parsed.configured).length : 0;
     }
   } catch { /* ignore */ }
 
@@ -152,6 +155,15 @@ export default function Dashboard() {
     );
   }
 
+  // Who's around the site, and where the visitor stands with a tribe.
+  const engineSite = SITES.find((s) => s.title === portal.siteName);
+  const neighbours = engineSite ? tribePresenceNear(engineSite.coords[1], engineSite.coords[0]) : null;
+  const myTribe = TRIBES.find((t) => t.id === loadMyTribeId()) ?? null;
+  const goTribe = () =>
+    navigate("/tribe", engineSite
+      ? { state: { near: { lat: engineSite.coords[1], lng: engineSite.coords[0], label: engineSite.title } } }
+      : undefined);
+
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
       {bg}
@@ -202,8 +214,40 @@ export default function Dashboard() {
             )}
           </AnimatePresence>
 
+          {/* Neighbours — closes the loop between the engine and the tribe */}
+          <div className="liquid-glass mt-8 rounded-[1.25rem] p-5 flex items-center gap-4 flex-wrap">
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{
+                background: (myTribe ?? neighbours?.topTribe)?.color ?? "rgba(255,255,255,0.4)",
+                boxShadow: `0 0 10px ${(myTribe ?? neighbours?.topTribe)?.color ?? "transparent"}`,
+              }}
+            />
+            <p className="flex-1 min-w-[240px] text-sm font-body text-white/85 leading-snug">
+              {myTribe ? (
+                <>
+                  You're in <span className="text-white">{myTribe.name}</span> with {tribeMembers.get(myTribe.id)?.length ?? 0} others
+                  {neighbours && neighbours.total > 0 && <> · {neighbours.total} tribe members live within 2,500 km of {portal.siteName}</>}.
+                </>
+              ) : neighbours && neighbours.total > 0 && neighbours.topTribe ? (
+                <>
+                  {neighbours.total} tribe members live within 2,500 km of {portal.siteName}, mostly{" "}
+                  <span className="text-white">{neighbours.topTribe.name}</span>. Join a tribe before your engine arrives.
+                </>
+              ) : (
+                <>No tribe members near {portal.siteName} yet — join one and be the first neighbour.</>
+              )}
+            </p>
+            <button
+              onClick={goTribe}
+              className="liquid-glass rounded-full px-4 py-2 text-xs font-body font-medium text-white hover:bg-white/10 inline-flex items-center gap-1.5"
+            >
+              {myTribe ? "Open your tribe" : "Meet the tribe"} <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
+          </div>
+
           {/* Stat row */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard icon={Sun} label="Solar generation" value={solar} unit="%" />
             <PowerRunwayCard value={battery} />
             <StatCard icon={Wind} label="Wind speed" value={wind} unit="km/h" />

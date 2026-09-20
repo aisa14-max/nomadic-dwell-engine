@@ -1,9 +1,15 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, MapPin, Package, CheckCircle2, Clock, Layers } from "lucide-react";
+import { ArrowUpRight, Check, MapPin, Package, CheckCircle2, Clock, Layers } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
-import { PARTS, TOTAL_PARTS, computeTotals, findOption, gbp, type PartId } from "@/data/dwellingParts";
+import { useJourney } from "@/lib/journey";
+import {
+  loadExchangeRequests, loadIntros, loadMyTribeId, saveExchangeRequests, timeAgo,
+  type ExchangeRequest,
+} from "@/lib/tribeStore";
+import { PEOPLE, TRIBES, tribeMembers } from "@/data/tribe";
+import { PARTS, TOTAL_PARTS, computeTotals, findOption, gbp, pruneConfigured, type PartId } from "@/data/dwellingParts";
 import avatar1 from "@/assets/avatars/avatar-1.jpg";
 import avatar2 from "@/assets/avatars/avatar-2.jpg";
 import avatar3 from "@/assets/avatars/avatar-3.jpg";
@@ -47,7 +53,7 @@ function readProfileState() {
       const parsed = JSON.parse(raw) as {
         configured?: [PartId, string][]; reservationRef?: string; stage?: string;
       };
-      if (Array.isArray(parsed.configured)) configured = new Map(parsed.configured);
+      if (Array.isArray(parsed.configured)) configured = new Map(pruneConfigured(parsed.configured));
       reservationRef = parsed.reservationRef ?? null;
       stage = parsed.stage ?? null;
     }
@@ -79,9 +85,24 @@ const prettify = (v: string) =>
 export default function Profile() {
   const navigate = useNavigate();
   const { user, selectedPlan } = useMockAuth();
-  const [tab, setTab] = useState<Tab>("Overview");
+  // Arriving from a confirmed order lands on the Orders tab.
+  const location = useLocation();
+  const requestedTab = (location.state as { tab?: string } | null)?.tab;
+  const [tab, setTab] = useState<Tab>(TABS.find((t) => t === requestedTab) ?? "Overview");
   const s = useMemo(readProfileState, []);
   const totals = useMemo(() => computeTotals(s.configured), [s.configured]);
+  const journey = useJourney();
+
+  const myTribeId = useMemo(loadMyTribeId, []);
+  const myTribe = TRIBES.find((t) => t.id === myTribeId) ?? null;
+  const intro = myTribe ? loadIntros()[myTribe.id] : undefined;
+  const [requests, setRequests] = useState<ExchangeRequest[]>(loadExchangeRequests);
+  const withdrawRequest = (id: string) => {
+    const next = requests.filter((r) => r.id !== id);
+    setRequests(next);
+    saveExchangeRequests(next);
+  };
+
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -126,6 +147,7 @@ export default function Profile() {
                 </span>
               </div>
             </div>
+
           </motion.div>
 
           <div className="mt-8">
@@ -143,6 +165,41 @@ export default function Profile() {
             >
               {tab === "Overview" && (
                 <div className="grid gap-4 md:grid-cols-2">
+                  <Card title={`Your journey · ${journey.doneCount} of ${journey.steps.length}`} className="md:col-span-2">
+                    <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      {journey.steps.map((step) => {
+                        const isNext = journey.next?.id === step.id;
+                        return (
+                          <li key={step.id}>
+                            <button
+                              onClick={() => navigate(step.to)}
+                              className={[
+                                "w-full h-full text-left rounded-xl border px-3 py-3 transition-colors",
+                                isNext ? "border-white/40 bg-white/10" : "border-white/10 hover:bg-white/5",
+                              ].join(" ")}
+                            >
+                              <span
+                                className={[
+                                  "h-5 w-5 rounded-full border flex items-center justify-center",
+                                  step.done ? "bg-emerald-400/20 border-emerald-400/60 text-emerald-300" : "border-white/25 text-transparent",
+                                ].join(" ")}
+                              >
+                                <Check className="h-3 w-3" strokeWidth={3} />
+                              </span>
+                              <span className={`block mt-2 text-sm font-body ${step.done ? "text-white/50" : "text-white/90"}`}>
+                                {step.label}
+                              </span>
+                              <span className="block mt-0.5 text-[11px] font-body text-white/40">
+                                {step.done ? "Done" : isNext ? "Next up →" : step.detail ?? ""}
+                                {step.done && step.detail ? ` · ${step.detail}` : ""}
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  </Card>
+
                   <Card title="Your brief">
                     {Object.keys(s.answers).length ? (
                       <dl className="space-y-2">
@@ -176,6 +233,78 @@ export default function Profile() {
                       <Empty text="No site chosen yet." cta="Browse Voyages" onClick={() => navigate("/discover")} />
                     )}
                   </Card>
+
+                  {s.delivered && (
+                    <>
+                      <Card title="Your tribe">
+                        {myTribe ? (
+                          <>
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className="h-2.5 w-2.5 rounded-full shrink-0"
+                                style={{ background: myTribe.color, boxShadow: `0 0 10px ${myTribe.color}` }}
+                              />
+                              <p className="font-heading text-3xl tracking-[-1px]">{myTribe.name}</p>
+                            </div>
+                            <p className="text-sm text-white/55 font-body mt-1">{myTribe.tagline}</p>
+                            <p className="text-xs text-white/40 font-body mt-3">
+                              {tribeMembers.get(myTribe.id)?.length ?? 0} other members
+                            </p>
+                            {intro && (
+                              <p className="text-xs text-white/55 font-body mt-2">
+                                Your intro: <span className="text-white/75">“{intro}”</span>
+                              </p>
+                            )}
+                            <button
+                              onClick={() => navigate("/tribe")}
+                              className="mt-4 text-xs font-body text-white/70 hover:text-white inline-flex items-center gap-1"
+                            >
+                              Open the tribe <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+                            </button>
+                          </>
+                        ) : (
+                          <Empty
+                            text="You haven't joined a tribe yet."
+                            cta="Find your tribe"
+                            onClick={() => navigate("/tribe")}
+                          />
+                        )}
+                      </Card>
+
+                      <Card title="Exchange requests">
+                        {requests.length ? (
+                          <ul className="space-y-2.5">
+                            {requests.map((r) => {
+                              const person = PEOPLE.find((p) => p.id === r.id);
+                              if (!person) return null;
+                              const tribe = TRIBES.find((t) => tribeMembers.get(t.id)?.some((m) => m.id === person.id));
+                              return (
+                                <li key={r.id} className="flex items-center gap-3 text-sm font-body">
+                                  <span
+                                    className="h-2 w-2 rounded-full shrink-0"
+                                    style={{ background: tribe?.color ?? "#fff" }}
+                                  />
+                                  <span className="min-w-0 flex-1">
+                                    <span className="text-white/90">{person.alias}</span>
+                                    <span className="text-white/45"> · {person.city}</span>
+                                    <span className="block text-[11px] text-white/40">Awaiting reply · sent {timeAgo(r.at)}</span>
+                                  </span>
+                                  <button
+                                    onClick={() => withdrawRequest(r.id)}
+                                    className="text-[11px] text-white/45 hover:text-white underline underline-offset-4 shrink-0"
+                                  >
+                                    Withdraw
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <Empty text="No exchange requests yet." cta="Find open members" onClick={() => navigate("/tribe")} />
+                        )}
+                      </Card>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -280,9 +409,9 @@ function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   );
 }
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className="liquid-glass border border-white/10 rounded-[1.25rem] p-6">
+    <div className={`liquid-glass border border-white/10 rounded-[1.25rem] p-6 ${className}`}>
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/50 font-body">{title}</p>
       <div className="mt-4">{children}</div>
     </div>

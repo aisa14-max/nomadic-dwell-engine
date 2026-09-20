@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Check } from "lucide-react";
-import { PARTS, TOTAL_PARTS, PartId, findOption, gbp, DEPOSIT_RATE, DWELLING_VALUE, isSkipped } from "@/data/dwellingParts";
+import { AVAILABLE_PARTS, TOTAL_PARTS, PartId, findOption, gbp, DEPOSIT_RATE, DWELLING_VALUE, isSkipped } from "@/data/dwellingParts";
 import { PLANS, findPlan, MAX_DISCOUNT, applyPlanDiscount } from "@/data/plans";
+import { ENGINE_PAGE_ENABLED } from "@/config/features";
 
 type Totals = { subtotal: number; tax: number; total: number; dueToday: number };
 
@@ -16,7 +17,8 @@ type Props = {
   hideActions?: boolean;
   selectedPlan: string | null;
   onSelectPlan: (id: string) => void;
-  onBack: () => void;
+  /** Omit to hide the back arrow (the add-ons step can't return to design). */
+  onBack?: () => void;
   onContinue: () => void;
 };
 
@@ -137,11 +139,11 @@ export default function OrderPanel({
         {count === 0 ? (
           <p className="text-[11px] font-body text-white/40 leading-relaxed">
             No add-ons selected — your engine ships in its standard configuration.
-            You can add them later from your Engine page.
+            {ENGINE_PAGE_ENABLED && " You can add them later from your Engine page."}
           </p>
         ) : (
           <ul className="space-y-2">
-            {PARTS.map((p) => {
+            {AVAILABLE_PARTS.map((p) => {
               const optId = configured.get(p.id);
               const opt = optId ? findOption(p.id, optId) : null;
               const skipped = isSkipped(optId);
@@ -201,13 +203,15 @@ export default function OrderPanel({
       </div>
 
       <div className={`shrink-0 mt-3 items-center gap-2 ${hideActions ? "hidden" : "flex"}`}>
-        <button
-          onClick={onBack}
-          className="liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/70 hover:text-white shrink-0"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-        </button>
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="liquid-glass rounded-full w-10 h-10 inline-flex items-center justify-center text-white/70 hover:text-white shrink-0"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+          </button>
+        )}
         <button
           onClick={onContinue}
           className="flex-1 bg-white text-black rounded-full px-4 py-3 text-[13px] font-body font-medium inline-flex items-center justify-center gap-2"

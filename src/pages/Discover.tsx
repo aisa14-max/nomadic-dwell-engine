@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowUpRight, MapPin, X, Thermometer, CloudRain, DollarSign, Wifi, Shield, Loader2, ChevronDown, Lock } from "lucide-react";
 import { REGIONS, REGION_LABEL } from "@/data/regions";
 import BlurText from "@/components/BlurText";
@@ -27,10 +27,44 @@ export default function Discover() {
   const [focusedSite, setFocusedSite] = useState<typeof SITES[number] | null>(null);
   const [globeInteracted, setGlobeInteracted] = useState(false);
 
+  // Eases the page so the planet sits in the middle of the screen. Used whenever
+  // the globe is interacted with (site picked, continent/climate chosen, or the
+  // planet itself dragged or clicked). Skips the scroll if it is already centred.
+  const centerGlobe = () => {
+    const el = globeRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (Math.abs(r.top + r.height / 2 - window.innerHeight / 2) < 60) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const handleShowOnMap = (s: typeof SITES[number]) => {
     setFocusedSite(s);
-    globeRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    centerGlobe();
   };
+
+  // Touching the planet re-centres the page once the drag or click ends, so the
+  // page never scrolls underneath the pointer mid-drag.
+  const handleGlobePointerDown = () => {
+    window.addEventListener("pointerup", centerGlobe, { once: true });
+  };
+
+  // Arriving from a tribe chapter's "Voyages nearby": open that region with the site focused.
+  const location = useLocation();
+  const focusTitle = (location.state as { focusSite?: string } | null)?.focusSite;
+  useEffect(() => {
+    const site = focusTitle ? SITES.find((s) => s.title === focusTitle) : undefined;
+    if (!site) return;
+    setSelectedRegion(site.regionId);
+    setFocusedSite(site);
+    const id = window.setTimeout(centerGlobe, 500);
+    return () => window.clearTimeout(id);
+  }, [focusTitle]);
+
+  // The continent/climate filter pills sit above the globe, so picking one
+  // doesn't bring it into view on its own — this does, matching how sites
+  // in the sidebar already scroll to it via handleShowOnMap above.
+  const scrollToGlobe = centerGlobe;
 
   const handleRegionSelect = (id: RegionId) => {
     setSelectedRegion(id);
@@ -161,7 +195,7 @@ export default function Discover() {
                   key={r.id}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => setSelectedRegion(r.id)}
+                  onClick={() => { setSelectedRegion(r.id); scrollToGlobe(); }}
                   className={`px-3.5 py-1.5 rounded-full text-[11px] font-body font-medium transition-colors ${
                     isActive ? "bg-white text-black" : "liquid-glass text-white/90"
                   }`}
@@ -177,6 +211,7 @@ export default function Discover() {
         <div className="relative mx-auto max-w-[1800px] px-4 md:px-8 mt-10">
           <motion.div
             ref={globeRef}
+            onPointerDown={handleGlobePointerDown}
             initial={blurInit}
             animate={blurIn}
             transition={{ duration: 0.9, delay: 0.7, ease: "easeOut" }}
@@ -316,7 +351,7 @@ export default function Discover() {
                       return (
                         <button
                           key={c.id}
-                          onClick={() => setSelectedClimate(c.id)}
+                          onClick={() => { setSelectedClimate(c.id); scrollToGlobe(); }}
                           className={`px-3 py-1 rounded-full text-[11px] font-body font-medium transition-colors ${
                             isActive ? "bg-white text-black" : "liquid-glass text-white/90"
                           }`}

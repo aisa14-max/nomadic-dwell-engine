@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { X, ArrowRight } from "lucide-react";
-import { PARTS, findOption, gbp } from "@/data/dwellingParts";
+import { AVAILABLE_PARTS, findOption, gbp } from "@/data/dwellingParts";
 
 type Totals = { subtotal: number; tax: number; total: number; dueToday: number };
 
@@ -42,7 +42,7 @@ export default function SummaryPanel({ configured, totals, compact, onClose, onC
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
-        {PARTS.map((p) => {
+        {AVAILABLE_PARTS.map((p) => {
           const optId = configured.get(p.id);
           const opt = optId ? findOption(p.id as any, optId) : null;
           return (

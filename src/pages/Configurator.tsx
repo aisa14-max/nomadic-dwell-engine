@@ -263,7 +263,6 @@ export default function Configurator() {
   useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
 
   const enterCustomise = () => { setShowNext(true); r.setStage("configure"); };
-  const backToDesign = () => { setShowNext(false); r.setActive(null); };
   // Payment must charge the same number the order summary shows, so both read
   // the discount from one helper rather than each doing their own arithmetic.
   const pricedTotals = applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE);
@@ -275,7 +274,7 @@ export default function Configurator() {
     if (!current) return;
     r.selectOption(current, optionId);
     const idx = PARTS.findIndex((p) => p.id === current);
-    const next = PARTS.slice(idx + 1).find((p) => !r.configured.has(p.id));
+    const next = PARTS.slice(idx + 1).find((p) => !p.locked && !r.configured.has(p.id));
     r.setActive(next ? next.id : null);
   };
 
@@ -312,7 +311,11 @@ export default function Configurator() {
   // still gates unlocking Show Zones on its own): Show Zones should only
   // glow once the visitor has actually picked a different site in the
   // carousel, not merely opened the panel and looked at the default pick.
-  const [siteChanged, setSiteChanged] = useState(false);
+  // A counter (not a plain seen/unseen flag) since it's driven from a
+  // shared settle handler that's easiest to reason about as "how many real
+  // navigations has this landed on so far".
+  const [siteChangeCount, setSiteChangeCount] = useState(0);
+  const markSiteChanged = () => setSiteChangeCount((n) => n + 1);
   // Toggle sitting between Site Selector and Layout Zones — flipping it on
   // is what reveals the glowing roofline dots and unlocks the Layout Zones
   // panel in turn. Unlike the "seen" flags below, this one is a genuine
@@ -1036,7 +1039,7 @@ export default function Configurator() {
         finalRealIdx = nearestLi - 1;
       }
       setSelectedSiteIdx(finalRealIdx);
-      if (finalRealIdx !== lastSettledSiteIdxRef.current) setSiteChanged(true);
+      if (finalRealIdx !== lastSettledSiteIdxRef.current) markSiteChanged();
       lastSettledSiteIdxRef.current = finalRealIdx;
     }, 130);
   };
@@ -1258,19 +1261,18 @@ export default function Configurator() {
                     ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
                     : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
                 </button>
-              ) : stage !== "confirmed" ? (
+              ) : stage === "plans" || stage === "payment" ? (
+                // No way back to the design step once add-ons begin: design is
+                // finished in one go. Later steps still step back one at a time.
                 <button
                   onClick={
-                    stage === "customise" ? backToDesign
-                    : stage === "plans" ? () => r.setStage("configure")
+                    stage === "plans" ? () => r.setStage("configure")
                     : () => r.setStage("summary")
                   }
                   className="liquid-glass rounded-full px-5 py-2.5 text-sm font-body font-medium text-white/85 inline-flex items-center gap-2"
                 >
                   <ArrowLeft className="h-4 w-4" strokeWidth={2} />
-                  {stage === "customise" ? "Back to design"
-                    : stage === "plans" ? "Back to add-ons"
-                    : "Back to plans"}
+                  {stage === "plans" ? "Back to add-ons" : "Back to plans"}
                 </button>
               ) : null}
             </motion.div>
@@ -1284,6 +1286,9 @@ export default function Configurator() {
                 collapsed entirely at payment. */}
             <div className="flex flex-col gap-4 min-w-0">
               {stage === "customise" && (
+                // Glow hint on arrival — same non-clipping wrapper pattern as the
+                // Site Selector; it stops as soon as an add-on is opened or chosen.
+                <div className={`rounded-[1.5rem] ${glowHintsEnabled && !r.activePart && r.configured.size === 0 ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1303,19 +1308,23 @@ export default function Configurator() {
                     onSelectOption={handleOptionSelect}
                   />
                 </motion.aside>
+                </div>
               )}
 
               {/* Design-stage panels — kept mounted only in stage 1 */}
               <div className={stage === "design" ? "flex flex-col gap-3" : "hidden"}>
               {/* Summary of the onboarding answers — otherwise the choices that
-                  drove this design are invisible once you're in the configurator. */}
-              <motion.aside
+                  drove this design are invisible once you're in the configurator.
+                  Deliberately NOT styled like the panels below it (no glass card,
+                  no shadow, no chevron) — it's passive context, not a step, so it
+                  shouldn't read as one more thing to open. */}
+              <motion.div
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.65, ease: "easeOut" }}
-                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
+                className="px-1 pb-2 border-b border-white/10"
               >
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/50">
                   <ClipboardList className="h-3.5 w-3.5" strokeWidth={1.75} />
                   Your Summary
                 </span>
@@ -1341,13 +1350,20 @@ export default function Configurator() {
                     </p>
                   )}
                 </div>
-              </motion.aside>
+              </motion.div>
 
+              {/* Glow lives on this wrapper, not the liquid-glass card inside it —
+                  box-shadow (for a crisp outline instead of drop-shadow's soft
+                  haze) gets clipped flat by the card's own overflow:hidden
+                  (needed for its border-gradient trick) when applied directly
+                  to it, so it has to sit one level up on a plain, non-clipping
+                  box instead. */}
+              <div className={`rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
-                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}
+                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
                 <button
                   onClick={() => {
@@ -1384,11 +1400,11 @@ export default function Configurator() {
                       <div className="pt-2 flex items-center gap-1">
                         {SITE_OPTIONS.length > 1 && (
                           <button
-                            onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1); }}
-                            className="shrink-0 w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                            onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1)}
+                            className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                             aria-label="Previous site"
                           >
-                            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                            <ChevronLeft className="h-4 w-4" strokeWidth={2.25} />
                           </button>
                         )}
 
@@ -1405,7 +1421,7 @@ export default function Configurator() {
                               <button
                                 key={`${opt.title}-${li}`}
                                 ref={(el) => (siteCardRefs.current[li] = el)}
-                                onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(li); }}
+                                onClick={() => scrollToSiteLoopIdx(li)}
                                 aria-label={`Switch to ${opt.title}`}
                                 aria-pressed={active}
                                 className={[
@@ -1434,11 +1450,11 @@ export default function Configurator() {
 
                         {SITE_OPTIONS.length > 1 && (
                           <button
-                            onClick={() => { setSiteChanged(true); scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1); }}
-                            className="shrink-0 w-5 h-5 rounded-full inline-flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                            onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1)}
+                            className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                             aria-label="Next site"
                           >
-                            <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
+                            <ChevronRight className="h-4 w-4" strokeWidth={2.25} />
                           </button>
                         )}
                       </div>
@@ -1446,12 +1462,14 @@ export default function Configurator() {
                   )}
                 </AnimatePresence>
               </motion.aside>
+              </div>
 
+              <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteChangeCount >= 1 && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.725, ease: "easeOut" }}
-                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && siteChanged && !dotsRevealed ? "panel-glow-pulse" : ""}`}
+                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${siteSeen ? "text-white/60" : "text-white/30"}`}>
@@ -1471,12 +1489,14 @@ export default function Configurator() {
                   />
                 </div>
               </motion.aside>
+              </div>
 
+              <div className={`rounded-[1.5rem] ${glowHintsEnabled && dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.75, ease: "easeOut" }}
-                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}
+                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
                 <button
                   onClick={() => {
@@ -1513,9 +1533,9 @@ export default function Configurator() {
                 <AnimatePresence initial={false}>
                   {showLayoutZones && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                      initial={{ height: 0 }}
+                      animate={{ height: "auto" }}
+                      exit={{ height: 0 }}
                       transition={{ duration: 0.3, ease: "easeOut" }}
                       className="overflow-hidden"
                     >
@@ -1554,12 +1574,14 @@ export default function Configurator() {
                   )}
                 </AnimatePresence>
               </motion.aside>
+              </div>
 
+              <div className={`rounded-[1.5rem] ${glowHintsEnabled && plantsGrown && !exploreSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.775, ease: "easeOut" }}
-                className={`liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20 ${glowHintsEnabled && plantsGrown && !exploreSeen ? "panel-glow-pulse" : ""}`}
+                className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${plantsGrown ? "text-white/60" : "text-white/30"}`}>
@@ -1587,10 +1609,8 @@ export default function Configurator() {
                     className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15"
                   />
                 </div>
-                <p className="text-[10px] font-body text-white/40 leading-relaxed pt-1.5">
-                  Unlocks "Explore more" — step fully inside a room.
-                </p>
               </motion.aside>
+              </div>
 
               </div>
             </div>
@@ -2319,7 +2339,7 @@ export default function Configurator() {
               {/* Performance strip — design stage only; from customisation on,
                   the right-hand panel is the thing to read. */}
               {stage === "design" && (
-                <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="mt-5 pt-4 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
                   <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
                   <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
@@ -2362,7 +2382,6 @@ export default function Configurator() {
                         showPlans={false}
                         selectedPlan={selectedPlan}
                         onSelectPlan={confirmPlan}
-                        onBack={backToDesign}
                         onContinue={() => r.setStage("summary")}
                       />
                     </motion.div>
@@ -2391,12 +2410,19 @@ export default function Configurator() {
               </motion.div>
             )}
 
-            {/* AI ASSIST — CHAT */}
+            {/* AI ASSIST — CHAT. Glow lives on this wrapper, not the
+                liquid-glass aside inside it — see the Site Selector wrapper
+                above for why. The design/hidden toggle moves here too, so an
+                off-stage chat still collapses to zero size instead of a
+                wrapper div holding its grid cell open with hidden content. */}
+            <div
+              className={`${stage === "design" ? "h-full" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && hasExitedExplore && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
+            >
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className={`liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex-col self-stretch h-full ${stage === "design" ? "flex" : "hidden"} ${glowHintsEnabled && hasExitedExplore && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
+              className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col self-stretch h-full"
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -2429,9 +2455,9 @@ export default function Configurator() {
                 className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
                 {!hasExitedExplore && (
-                  <div className="h-full flex flex-col items-center justify-center gap-2 text-center text-white/35">
-                    <Lock className="h-5 w-5" strokeWidth={1.5} />
-                    <p className="text-xs font-body max-w-[220px]">
+                  <div className="h-full flex flex-col items-center justify-center gap-4 text-center text-white/60">
+                    <Lock className="h-8 w-8" strokeWidth={1.5} />
+                    <p className="text-lg leading-snug font-body max-w-[300px]">
                       Complete the steps on the left — through Step Inside, then back out — to wake up the Engine Assistant.
                     </p>
                   </div>
@@ -2570,6 +2596,7 @@ export default function Configurator() {
                 </button>
               </form>
             </motion.aside>
+            </div>
           </div>
         </div>
       </div>
@@ -2615,7 +2642,7 @@ export default function Configurator() {
             reservationRef={r.reservationRef}
             colors={r.colors}
             total={r.totals.total + DWELLING_VALUE}
-            onContinue={() => navigate("/engine")}
+            onContinue={() => navigate("/tribe")}
           />
         )}
       </AnimatePresence>
@@ -2624,14 +2651,13 @@ export default function Configurator() {
 }
 
 
+// Deliberately plain, not a card — these are read-only figures, not a
+// control, so they shouldn't carry the same glass/hover treatment as the
+// interactive panels around them (same reasoning as Your Summary above).
 function Stat({ icon: Icon, label, value, unit }: { icon: LucideIcon; label: string; value: string; unit: string }) {
   return (
-    <motion.div
-      whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="liquid-glass rounded-[1rem] w-full flex items-center gap-3 px-5 py-3 cursor-default"
-    >
-      <Icon className="h-6 w-6 text-white/80 shrink-0" strokeWidth={1.5} />
+    <div className="w-full flex items-center gap-3 px-1">
+      <Icon className="h-6 w-6 text-white/60 shrink-0" strokeWidth={1.5} />
       <div className="flex flex-col leading-tight min-w-0">
         <span className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-body truncate">{label}</span>
         <div className="flex items-baseline gap-1.5">
@@ -2639,6 +2665,6 @@ function Stat({ icon: Icon, label, value, unit }: { icon: LucideIcon; label: str
           <span className="text-white/55 text-xs font-body">{unit}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { PARTS, PartId, findOption } from "@/data/dwellingParts";
 import PickerColumn from "./PickerColumn";
 
@@ -39,11 +40,15 @@ export default function PartsStrip({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onClick(p.id);
+                if (!p.locked) onClick(p.id);
               }}
+              disabled={p.locked}
+              aria-disabled={p.locked}
               className={`relative w-full rounded-xl px-3 py-3 text-left transition-all cust-ease ${
-                isActive ? "bg-white/15 ring-1 ring-white/40" : "bg-white/[.04] hover:bg-white/[.08]"
-              } ${isConfigured ? "opacity-100" : "opacity-[.62]"}`}
+                p.locked
+                  ? "bg-white/[.03] cursor-not-allowed opacity-[.5]"
+                  : isActive ? "bg-white/15 ring-1 ring-white/40" : "bg-white/[.04] hover:bg-white/[.08]"
+              } ${p.locked ? "" : isConfigured ? "opacity-100" : "opacity-[.62]"}`}
             >
               <span
                 className={`block text-[10px] font-body uppercase tracking-[.14em] mb-1 ${
@@ -54,8 +59,11 @@ export default function PartsStrip({
                 {p.label}
               </span>
               <span className="block text-xs font-body text-white/70 truncate">
-                {opt ? opt.name : "Select"}
+                {p.locked ? "Coming soon" : opt ? opt.name : "Select"}
               </span>
+              {p.locked && (
+                <Lock className="absolute top-2.5 right-2.5 h-3 w-3 text-white/50" strokeWidth={1.75} />
+              )}
               {opt && (
                 <span
                   className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full border border-white/60"

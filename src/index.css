@@ -390,7 +390,17 @@
 }
 .ring-amber-pulse { animation: ring-amber-pulse 1.6s ease-in-out infinite; }
 
-/* Demo hint — glows on whichever step in a sequence is the next one to do. */
+/* Demo hint — glows on whichever step in a sequence is the next one to do.
+   box-shadow, not filter: drop-shadow() — drop-shadow follows the actual
+   rendered alpha of the element (soft/translucent for a blurred glass
+   panel), which reads as a diffuse haze instead of the crisp halo outline
+   this is meant to be. box-shadow traces the box's own geometry instead,
+   giving that clean ring — but it's clipped by any overflow:hidden on the
+   SAME element, so on .liquid-glass panels (which need overflow:hidden
+   for their own border-gradient trick) this class has to land on a
+   separate, non-clipping wrapper around the panel rather than the panel
+   itself. See the Site Selector/Show Zones/Add Zones/Step Inside/chat
+   panels in Configurator.tsx for that wrapper pattern. */
 @keyframes panel-glow-pulse {
   0%, 100% { box-shadow: 0 0 6px rgba(255,255,255,0.25); }
   50%      { box-shadow: 0 0 26px rgba(255,255,255,0.7), 0 0 8px rgba(255,255,255,0.45); }

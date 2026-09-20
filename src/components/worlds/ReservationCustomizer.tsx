@@ -198,7 +198,7 @@ export default function ReservationCustomizer({ onClose }: Props) {
             reservationRef={r.reservationRef}
             colors={r.colors}
             total={r.totals.total}
-            onContinue={() => navigate("/dashboard")}
+            onContinue={() => navigate("/tribe")}
           />
         )}
       </AnimatePresence>

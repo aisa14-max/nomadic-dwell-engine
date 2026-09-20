@@ -25,7 +25,7 @@ export default function PickerColumn({ activePart, selectedOptionId, onSelect }:
               key={o.id}
               onClick={() => onSelect(o.id)}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
-                active ? "bg-white/15" : "hover:bg-white/[.06]"
+                active ? "bg-white/15" : o.isDefault && !selectedOptionId ? "bg-white/[.08]" : "hover:bg-white/[.06]"
               }`}
             >
               <span
@@ -34,6 +34,11 @@ export default function PickerColumn({ activePart, selectedOptionId, onSelect }:
               />
               <span className="flex-1 min-w-0">
                 <span className="block text-sm font-body text-white truncate">{o.name}</span>
+                {o.isDefault && (
+                  <span className="block text-[10px] font-body text-white/50">
+                    {selectedOptionId ? "Default" : "Applied by default"}
+                  </span>
+                )}
               </span>
               <span className="text-xs font-body text-white/70">{gbp(o.price)}</span>
             </button>

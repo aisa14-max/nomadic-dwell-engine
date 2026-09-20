@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import { PARTS, TOTAL_PARTS, PartId, computeTotals } from "@/data/dwellingParts";
+import { PARTS, AVAILABLE_PARTS, TOTAL_PARTS, PartId, computeTotals, pruneConfigured } from "@/data/dwellingParts";
 
 export type Stage = "configure" | "summary" | "payment" | "confirmed";
 
@@ -41,8 +41,8 @@ function loadStoredState(): State | null {
     return {
       stage: parsed.stage,
       activePart: null,
-      configured: new Map(parsed.configured),
-      flashed: new Set(parsed.flashed),
+      configured: new Map(pruneConfigured(parsed.configured)),
+      flashed: new Set(parsed.flashed.filter((pid) => AVAILABLE_PARTS.some((p) => p.id === pid))),
       reservationRef: parsed.reservationRef,
     };
   } catch {
@@ -67,6 +67,9 @@ type Action =
   | { type: "setStage"; stage: Stage }
   | { type: "reset" };
 
+// "Coming soon" categories can't be opened or chosen, whatever calls in.
+const isLockedPart = (id: PartId) => !!PARTS.find((p) => p.id === id)?.locked;
+
 const makeRef = () => {
   const r = Math.random().toString(36).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6).padEnd(6, "X");
   return `HBTR-${r}`;
@@ -83,8 +86,10 @@ const initial: State = {
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "setActive":
+      if (action.part && isLockedPart(action.part)) return state;
       return { ...state, activePart: action.part };
     case "selectOption": {
+      if (isLockedPart(action.part)) return state;
       const configured = new Map(state.configured);
       configured.set(action.part, action.optionId);
       const flashed = new Set(state.flashed);

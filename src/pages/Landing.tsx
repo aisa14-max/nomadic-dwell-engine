@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, ChevronDown, Timer, Globe2 } from "lucide-react";
@@ -6,6 +6,7 @@ import FadingVideo from "@/components/FadingVideo";
 import StarfieldScene from "@/components/StarfieldScene";
 import BlurText from "@/components/BlurText";
 import PageReveal from "@/components/PageReveal";
+import { useMockAuth } from "@/context/MockAuth";
 
 const HERO_VIDEO =
   "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260418_080021_d598092b-c4c2-4e53-8e46-94cf9064cd50.mp4";
@@ -25,8 +26,13 @@ function loadRevealed() {
 
 export default function Landing() {
   const [revealed, setRevealed] = useState(loadRevealed);
+  // Arriving on the home page always starts from scratch — there is no resuming.
+  // A configuration is finished in one go, or it goes back to the default.
+  const { signOut } = useMockAuth();
+  useEffect(() => { signOut(); }, [signOut]);
   const capabilitiesRef = useRef<HTMLElement | null>(null);
   const lifecycleRef = useRef<HTMLElement | null>(null);
+  const closingCtaRef = useRef<HTMLElement | null>(null);
 
   if (!revealed) {
     return (
@@ -96,7 +102,7 @@ export default function Landing() {
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.1, ease: "easeOut" }}
-              className="flex items-center gap-6 mt-6"
+              className="flex items-center gap-6 mt-6 flex-wrap"
             >
               <Link
                 to="/discover"
@@ -229,6 +235,8 @@ export default function Landing() {
       <section ref={lifecycleRef} className="relative w-full overflow-hidden bg-transparent">
         <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-50" aria-hidden="true" />
         <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-[#03040d]/60 to-transparent z-10 pointer-events-none" />
+        {/* Fade into the closing section below, which starts from the same #03040d — without it the image ends in a hard line. */}
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#03040d] via-[#03040d]/60 to-transparent z-10 pointer-events-none" />
 
         <div className="relative z-20 px-8 md:px-16 lg:px-20 py-20 mx-auto max-w-6xl">
           <div className="mb-10 text-center">
@@ -246,9 +254,9 @@ export default function Landing() {
             whileHover={{ y: -4 }}
             viewport={{ once: true, amount: 0.2 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="liquid-glass group rounded-[1.25rem] p-6 w-full max-w-screen-xl mx-auto min-h-[520px] flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40"
+            className="liquid-glass group rounded-[1.25rem] p-5 w-full max-w-4xl mx-auto flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-1 hover:bg-white/15 hover:border-white/40"
           >
-            <div className="relative overflow-hidden rounded-[1.25rem] h-[560px] bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
+            <div className="relative overflow-hidden rounded-[1rem] h-[260px] sm:h-[340px] md:h-[400px] bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
               <FadingVideo
                 src="/videos/production-to-assembly-lifecycle-1.mp4"
                 className="w-full h-full object-cover"
@@ -279,12 +287,30 @@ export default function Landing() {
             </div>
           </motion.div>
         </div>
+
+        {/* Scroll cue — mirrors the one above the Life Cycle section, this
+            time carrying you on down to the closing CTA. */}
+        <motion.button
+          type="button"
+          onClick={() => closingCtaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          aria-label="Scroll to closing call to action"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1, y: [0, 6, 0] }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{
+            opacity: { duration: 0.7, ease: "easeOut" },
+            y: { duration: 1.8, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-9 h-9 rounded-full bg-black/40 backdrop-blur-md border border-white/30 shadow-[0_2px_12px_rgba(0,0,0,0.35)] flex items-center justify-center cursor-pointer hover:bg-black/60 transition-colors"
+        >
+          <ChevronDown className="h-4 w-4 text-white" strokeWidth={2.25} />
+        </motion.button>
       </section>
 
       {/* ============ CLOSING CTA ============ */}
-      <section className="relative w-full overflow-hidden bg-black">
+      <section ref={closingCtaRef} className="relative w-full overflow-hidden bg-black">
         <div className="absolute inset-0 bg-[url('/background-for-video.jpg')] bg-cover bg-center bg-no-repeat opacity-50 -scale-y-100" aria-hidden="true" />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#03040d] to-transparent z-10 pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#03040d] to-transparent z-10 pointer-events-none" />
         <div className="relative z-20 px-8 md:px-16 lg:px-20 py-28 flex flex-col items-center text-center">
           <motion.div
             initial={{ filter: "blur(10px)", opacity: 0, y: 20 }}

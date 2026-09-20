@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Download, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { PartId, gbp } from "@/data/dwellingParts";
 
 type Props = {
@@ -55,20 +55,12 @@ export default function EngineOnTheWayOverlay({ reservationRef, total, onContinu
           </div>
         </div>
 
-        <div className="mt-7 flex gap-3">
-          <button
-            onClick={() => alert("Download placeholder — confirmation PDF coming soon.")}
-            className="liquid-glass rounded-full px-4 py-2.5 text-sm font-body font-medium text-white inline-flex items-center justify-center gap-2 flex-1"
-          >
-            <Download className="h-4 w-4" strokeWidth={2} /> Receipt
-          </button>
-          <button
-            onClick={onContinue}
-            className="bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium inline-flex items-center justify-center gap-2 flex-1"
-          >
-            Continue <ArrowRight className="h-4 w-4" strokeWidth={2} />
-          </button>
-        </div>
+        <button
+          onClick={onContinue}
+          className="mt-7 w-full bg-white text-black rounded-full px-4 py-2.5 text-sm font-body font-medium inline-flex items-center justify-center gap-2"
+        >
+          Continue <ArrowRight className="h-4 w-4" strokeWidth={2} />
+        </button>
       </motion.div>
     </motion.div>
   );

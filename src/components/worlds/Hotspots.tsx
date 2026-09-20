@@ -1,4 +1,4 @@
-import { PARTS, PartId } from "@/data/dwellingParts";
+import { AVAILABLE_PARTS, PartId } from "@/data/dwellingParts";
 
 type Props = {
   activePart: PartId | null;
@@ -9,7 +9,7 @@ type Props = {
 export default function Hotspots({ activePart, configured, onClick }: Props) {
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {PARTS.map((p) => {
+      {AVAILABLE_PARTS.map((p) => {
         const isActive = activePart === p.id;
         const done = configured.has(p.id);
         return (

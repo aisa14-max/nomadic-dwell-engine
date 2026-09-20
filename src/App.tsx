@@ -13,11 +13,14 @@ import Tribe from "./pages/Tribe.tsx";
 import UnderTheHood from "./pages/UnderTheHood.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
+import IdleReset from "./components/IdleReset.tsx";
 import PageTransition from "./components/PageTransition.tsx";
 import LoginDialog from "./components/LoginDialog.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import PlanSelection from "./components/PlanSelection.tsx";
 import { MockAuthProvider, useMockAuth } from "./context/MockAuth";
+import { ENGINE_REDIRECT, ENGINE_PAGE_ENABLED } from "./config/features";
+import { hasFinishedOrder, readJourney } from "./lib/journey";
 
 const queryClient = new QueryClient();
 
@@ -42,11 +45,21 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** The Tribe opens only once the visitor has finished Voyages, the brief and Worlds
+    (an order is confirmed). Until then they are sent to the next step they still owe. */
+function RequireFinished({ children }: { children: React.ReactNode }) {
+  const { user } = useMockAuth();
+  if (!user) return <Navigate to="/" replace />;
+  if (!hasFinishedOrder()) return <Navigate to={readJourney().next?.to ?? "/discover"} replace />;
+  return <>{children}</>;
+}
+
 const RoutedApp = () => {
   const location = useLocation();
   return (
     <>
       <Nav />
+      <IdleReset />
       <PageTransition>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
@@ -54,12 +67,19 @@ const RoutedApp = () => {
           <Route path="/configurator" element={<RequireOnboarding><Configurator /></RequireOnboarding>} />
           {/* Frozen portfolio snapshot — not gated, not in nav, reachable directly by URL */}
           <Route path="/configurator-portfolio" element={<ConfiguratorPortfolio />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* One dashboard: the old ungated URL now forwards to the signed-in one */}
+          <Route path="/dashboard" element={<Navigate to={ENGINE_REDIRECT.to} state={ENGINE_REDIRECT.state} replace />} />
           {/* Live status dashboard — signed-in only */}
-          <Route path="/engine" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          {/* Hidden while ENGINE_PAGE_ENABLED is false — visitors land on their orders instead */}
+          <Route
+            path="/engine"
+            element={ENGINE_PAGE_ENABLED
+              ? <RequireAuth><Dashboard /></RequireAuth>
+              : <Navigate to={ENGINE_REDIRECT.to} state={ENGINE_REDIRECT.state} replace />}
+          />
           {/* Overview / My Designs / Orders — reached via the nav avatar */}
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-          <Route path="/tribe" element={<RequireAuth><Tribe /></RequireAuth>} />
+          <Route path="/tribe" element={<RequireFinished><Tribe /></RequireFinished>} />
           <Route path="/under-the-hood" element={<UnderTheHood />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

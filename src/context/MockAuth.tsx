@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { TRIBE_STORAGE_KEYS, notifyJourney } from "@/lib/tribeStore";
 
 export type AvatarId = "a1" | "a2" | "a3" | "a4" | "a5" | "a6";
 
@@ -97,12 +98,14 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSelectedPlan(null);
     for (const key of ["mockUser", "selectedPlan", "configuratorReady",
-                        "configuratorInit", "reservationProgress", "engineDelivered"]) {
+                        "configuratorInit", "reservationProgress", "engineDelivered",
+                        ...TRIBE_STORAGE_KEYS]) {
       localStorage.removeItem(key);
     }
     for (const key of ["configuratorReady", "configuratorInit", "pendingSite"]) {
       sessionStorage.removeItem(key);
     }
+    notifyJourney();
   }, []);
 
   const openLogin = useCallback((onSuccess?: () => void) => {
