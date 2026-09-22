@@ -1,6 +1,11 @@
 // Shared tribe data: the people, tribes and chapters behind the Tribe map,
 // also read by Profile (your tribe) and the Engine dashboard (neighbours).
 
+import afraPhoto from "@/assets/tribe/afra.jpeg";
+import aisaPhoto from "@/assets/tribe/aisa.jpeg";
+import prekshaPhoto from "@/assets/tribe/preksha.png";
+import barryPhoto from "@/assets/tribe/barry.png";
+
 // ── Data ─────────────────────────────────────────────────────────────────────
 export type Intention = "create" | "travel" | "work" | "rest" | "explore";
 
@@ -16,6 +21,9 @@ export type Person = {
   age: number;
   occupation: string;
   openToExchange: boolean;
+  /** Real photo, for the handful of real (not generated) people — falls back
+      to the initial-in-a-coloured-orb avatar when absent. */
+  photo?: string;
 };
 
 export const RAW_PEOPLE: Omit<Person, "age" | "occupation" | "openToExchange">[] = [
@@ -69,7 +77,7 @@ export const OCCUPATIONS: Record<Intention, string[]> = {
   explore: ["Geologist", "Marine Biologist", "Cartographer"],
 };
 
-export const PEOPLE: Person[] = RAW_PEOPLE.map((p, i) => {
+const GENERATED_PEOPLE: Person[] = RAW_PEOPLE.map((p, i) => {
   const occs = OCCUPATIONS[p.intention];
   return {
     ...p,
@@ -78,6 +86,39 @@ export const PEOPLE: Person[] = RAW_PEOPLE.map((p, i) => {
     openToExchange: i % 3 !== 0,
   };
 });
+
+// The four real people behind Creators — hand-authored rather than generated,
+// with real photos. Their shared "create" intention plus tag overlap with
+// the Creators tribe (below) is what puts them there, the same scoring path
+// every generated person goes through.
+const CREATORS_PEOPLE: Person[] = [
+  {
+    id: "afra", alias: "Afra", city: "Tehran", lat: 35.6892, lng: 51.389,
+    intention: "create", tags: ["graphic-design", "languages", "yoga"],
+    stayDays: 30, age: 24, occupation: "Backend & Systems, Architect",
+    openToExchange: true, photo: afraPhoto,
+  },
+  {
+    id: "aisa", alias: "Aiša", city: "Sarajevo", lat: 43.8563, lng: 18.4131,
+    intention: "create", tags: ["puzzles-quizzes", "content-creating", "horse-riding"],
+    stayDays: 30, age: 25, occupation: "Product Design & Front-End, Architect",
+    openToExchange: true, photo: aisaPhoto,
+  },
+  {
+    id: "preksha", alias: "Preksha", city: "Delhi", lat: 28.6139, lng: 77.209,
+    intention: "create", tags: ["reading", "travel", "movies"],
+    stayDays: 30, age: 28, occupation: "Digital Fabrication Lead & Project Manager, Architect",
+    openToExchange: true, photo: prekshaPhoto,
+  },
+  {
+    id: "barry", alias: "Barry", city: "Beijing", lat: 39.9042, lng: 116.4074,
+    intention: "create", tags: ["3d-printing", "basketball", "travel"],
+    stayDays: 30, age: 24, occupation: "Manufacturer, Architect",
+    openToExchange: true, photo: barryPhoto,
+  },
+];
+
+export const PEOPLE: Person[] = [...GENERATED_PEOPLE, ...CREATORS_PEOPLE];
 
 // Equirectangular projection
 export const project = (lat: number, lng: number, w: number, h: number) => ({
@@ -96,7 +137,7 @@ export const shareScore = (a: Person, b: Person) => {
 export type Tribe = { id: string; name: string; tagline: string; color: string; intentions: Intention[]; tags: string[] };
 
 export const TRIBES: Tribe[] = [
-  { id: "adventure-writers",  name: "Adventure Writers",  color: "#e6cf96", tagline: "Chronicling the road, one page at a time",  intentions: ["create", "explore"],        tags: ["writing", "ruins", "desert", "fog", "bazaar"] },
+  { id: "creators",           name: "Creators",           color: "#e8dd8f", tagline: "Turning ideas into things you can touch",   intentions: ["create"],                   tags: ["graphic-design", "languages", "yoga", "puzzles-quizzes", "content-creating", "horse-riding", "reading", "travel", "movies", "3d-printing", "basketball"] },
   { id: "travel-vloggers",    name: "Travel Vloggers",    color: "#f5a9d0", tagline: "Capturing motion, sharing the frame",       intentions: ["create", "travel"],         tags: ["film", "sound", "tango", "techno"] },
   { id: "code-nomads",        name: "Code Nomads",        color: "#a48bff", tagline: "Shipping from wherever the wifi holds",     intentions: ["work"],                     tags: ["code", "design"] },
   { id: "slow-living-circle", name: "Slow Living Circle", color: "#ffb6a3", tagline: "Tea, yoga, and unhurried days",              intentions: ["rest"],                     tags: ["tea", "yoga", "weaving", "textile"] },
@@ -116,8 +157,22 @@ export const rankTribes = (intention: Intention | null, tags: string[]) =>
   TRIBES.map((tribe) => ({ tribe, score: tribeScore({ intention, tags }, tribe) }))
     .sort((a, b) => b.score - a.score);
 
+// Creators is reserved for the four real people behind it — generated people
+// never rank into it (even on a score tie, which "create" intentions can hit
+// against Travel Vloggers), so it never picks up unintended members.
+const CREATORS_TRIBE = TRIBES.find((t) => t.id === "creators")!;
+const CREATORS_IDS = new Set(CREATORS_PEOPLE.map((p) => p.id));
+const OTHER_TRIBES = TRIBES.filter((t) => t.id !== "creators");
+
 export const tribeOf = new Map<string, Tribe>();
-for (const p of PEOPLE) tribeOf.set(p.id, rankTribes(p.intention, p.tags)[0].tribe);
+for (const p of PEOPLE) {
+  tribeOf.set(
+    p.id,
+    CREATORS_IDS.has(p.id)
+      ? CREATORS_TRIBE
+      : OTHER_TRIBES.map((tribe) => ({ tribe, score: tribeScore(p, tribe) })).sort((a, b) => b.score - a.score)[0].tribe,
+  );
+}
 
 export const tribeMembers = new Map<string, Person[]>();
 for (const t of TRIBES) tribeMembers.set(t.id, PEOPLE.filter((p) => tribeOf.get(p.id)?.id === t.id));

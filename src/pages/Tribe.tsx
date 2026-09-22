@@ -43,11 +43,14 @@ const toUV = (lat: number, lng: number) => ({
   u: (lng - 8) / 370 + 0.5,
   v: (MAP_TOP - millerY(lat)) / (MAP_TOP - MAP_BOTTOM),
 });
-// The artwork always spans the full width and is centred vertically (cropped on
-// short screens, letterboxed on tall ones), so every longitude stays on screen.
+// The artwork always fully covers the screen (like CSS background-size: cover) —
+// scaled up to whichever axis needs it more, then centred and cropped on the
+// other, so there's never a bare edge, on any aspect ratio.
 const uvToScreen = (uv: { u: number; v: number }, w: number, h: number) => {
-  const ih = ATLAS.h * (w / ATLAS.w);
-  return { x: uv.u * w, y: (h - ih) / 2 + uv.v * ih };
+  const scale = Math.max(w / ATLAS.w, h / ATLAS.h);
+  const iw = ATLAS.w * scale;
+  const ih = ATLAS.h * scale;
+  return { x: (w - iw) / 2 + uv.u * iw, y: (h - ih) / 2 + uv.v * ih };
 };
 const project = (lat: number, lng: number, w: number, h: number) => uvToScreen(toUV(lat, lng), w, h);
 
@@ -650,7 +653,7 @@ export default function TribePage() {
         <img
           src={atlas}
           alt=""
-          className="absolute left-0 top-1/2 h-auto w-full max-w-none -translate-y-1/2 transition-opacity duration-[2000ms]"
+          className="absolute inset-0 h-full w-full object-cover transition-opacity duration-[2000ms]"
           style={{
             filter: "blur(0.5px) saturate(0.85)",
             opacity: layer >= 1 ? 0.55 : 0,
@@ -664,8 +667,8 @@ export default function TribePage() {
             style={{
               WebkitMaskImage: `url(${oceanMask})`,
               maskImage: `url(${oceanMask})`,
-              WebkitMaskSize: "100% auto",
-              maskSize: "100% auto",
+              WebkitMaskSize: "cover",
+              maskSize: "cover",
               WebkitMaskRepeat: "no-repeat",
               maskRepeat: "no-repeat",
               WebkitMaskPosition: "center",
@@ -998,30 +1001,8 @@ export default function TribePage() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="liquid-glass rounded-[1.25rem] p-5 w-[280px]">
-                    {selectedPersonTribe && (
-                      <button
-                        onClick={() => exploreTribe(selectedPersonTribe.id)}
-                        className="w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2 mb-4 text-left transition-colors hover:brightness-125"
-                        style={{ borderColor: `${selectedPersonTribe.color}66`, background: `${selectedPersonTribe.color}1a` }}
-                      >
-                        <span className="flex items-center gap-2 min-w-0">
-                          <span
-                            className="h-2 w-2 rounded-full shrink-0"
-                            style={{ background: selectedPersonTribe.color, boxShadow: `0 0 10px ${selectedPersonTribe.color}` }}
-                          />
-                          <span className="min-w-0">
-                            <span className="block text-[9px] uppercase tracking-[0.16em] text-white/45 font-body">Member of</span>
-                            <span className="block font-heading text-sm text-white/95 truncate">{selectedPersonTribe.name}</span>
-                          </span>
-                        </span>
-                        <span className="text-[10px] uppercase tracking-[0.12em] shrink-0" style={{ color: selectedPersonTribe.color }}>
-                          {(tribeMembers.get(selectedPersonTribe.id)?.length ?? 0)} · Explore →
-                        </span>
-                      </button>
-                    )}
-
                     <div className="flex items-center gap-3">
-                      <PersonAvatar person={selectedPerson} size={48} glow />
+                      <PersonAvatar person={selectedPerson} size={60} glow />
                       <div className="min-w-0">
                         <div className="font-heading text-lg text-white/95 truncate">{selectedPerson.alias}</div>
                         <div className="text-xs text-white/55 truncate">{selectedPerson.city}</div>
@@ -1029,7 +1010,7 @@ export default function TribePage() {
                     </div>
 
                     <p className="mt-3 text-[11px] text-white/45 font-body">
-                      {selectedPerson.occupation}, {selectedPerson.age} · here to {selectedPerson.intention} for {selectedPerson.stayDays} days
+                      {selectedPerson.occupation}, {selectedPerson.age}
                     </p>
 
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -1065,6 +1046,28 @@ export default function TribePage() {
                         {selectedPerson.openToExchange ? "Open to dwelling exchange" : "Not exchanging right now"}
                       </span>
                     </div>
+
+                    {selectedPersonTribe && (
+                      <button
+                        onClick={() => exploreTribe(selectedPersonTribe.id)}
+                        className="w-full flex items-center justify-between gap-2 rounded-xl border px-3 py-2 mt-3 text-left transition-colors hover:brightness-125"
+                        style={{ borderColor: `${selectedPersonTribe.color}66`, background: `${selectedPersonTribe.color}1a` }}
+                      >
+                        <span className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2 w-2 rounded-full shrink-0"
+                            style={{ background: selectedPersonTribe.color, boxShadow: `0 0 10px ${selectedPersonTribe.color}` }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-[9px] uppercase tracking-[0.16em] text-white/45 font-body">Member of</span>
+                            <span className="block font-heading text-sm text-white/95 truncate">{selectedPersonTribe.name}</span>
+                          </span>
+                        </span>
+                        <span className="text-[10px] uppercase tracking-[0.12em] shrink-0" style={{ color: selectedPersonTribe.color }}>
+                          {(tribeMembers.get(selectedPersonTribe.id)?.length ?? 0)} · Explore →
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1371,7 +1374,7 @@ export default function TribePage() {
                       <p className="text-sm text-white/60 font-body mt-2">{justJoined.tagline}</p>
                       <div className="mt-4 flex items-center justify-center -space-x-2">
                         {(tribeMembers.get(justJoined.id) ?? []).slice(0, 5).map((m) => (
-                          <PersonAvatar key={m.id} person={m} size={32} className="ring-2 ring-[#02030a]" />
+                          <PersonAvatar key={m.id} person={m} size={40} className="ring-2 ring-[#02030a]" />
                         ))}
                       </div>
                       <p className="text-[11px] text-white/40 font-body mt-2">
@@ -1477,9 +1480,21 @@ function RevealLight({ bursting, reduce }: { bursting: boolean; reduce: boolean 
   );
 }
 
-/** Local, offline avatar: a tribe-coloured orb with the person's initial. */
+/** Local, offline avatar: a real photo when the person has one, otherwise
+    a tribe-coloured orb with their initial. */
 function PersonAvatar({ person, size, glow, className = "" }: { person: Person; size: number; glow?: boolean; className?: string }) {
   const color = tribeOf.get(person.id)?.color ?? "#ffffff";
+  if (person.photo) {
+    return (
+      <span
+        aria-hidden
+        className={`inline-flex items-center justify-center rounded-full border border-white/15 overflow-hidden shrink-0 select-none ${className}`}
+        style={{ width: size, height: size, boxShadow: glow ? `0 0 18px ${hexA(color, 0.35)}` : undefined }}
+      >
+        <img src={person.photo} alt="" className="w-full h-full object-cover" />
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
@@ -1659,7 +1674,7 @@ function TribeNextSteps({ tribe, userName, intro, onSendIntro, exchangeSent, sta
             const sent = exchangeSent.includes(m.id);
             return (
               <div key={m.id} className="flex items-center gap-2">
-                <PersonAvatar person={m} size={22} />
+                <PersonAvatar person={m} size={28} />
                 <span className="min-w-0 flex-1 text-[11px] text-white/70 font-body truncate">
                   {m.alias} · {m.city}
                   <span className="text-white/35"> · {m.stayDays}d stay</span>
@@ -1766,7 +1781,7 @@ function TribeCard({
               onClick={() => onPickMember(m.id)}
               className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-white/5 transition-colors min-w-0"
             >
-              <PersonAvatar person={m} size={28} />
+              <PersonAvatar person={m} size={36} />
               <span className="min-w-0">
                 <span className="block font-heading text-[13px] text-white/90 truncate">{m.alias}</span>
                 <span className="block text-[10px] text-white/40 font-body truncate">{m.occupation} · {m.city}</span>
