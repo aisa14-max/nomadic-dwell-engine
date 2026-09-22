@@ -84,6 +84,22 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+// Fallback replies for anything the baked demo doesn't recognize — picked at
+// random so hammering the chat with different requests doesn't just repeat
+// the same line. Each one owns naming the one capability that's actually
+// wired up, so the dead end still points somewhere instead of just refusing.
+const UNRECOGNIZED_REQUEST_LINES = [
+  (cap: string) => `That one's still on my blueprint table — for now the only trick I've fully loaded is ${cap}. Want to try that instead?`,
+  (cap: string) => `Ambitious! I'm not wired up for that yet, but ${cap} is a move I can actually pull off right now.`,
+  (cap: string) => `Filed under "coming soon." Until then, ${cap} is the only lever running end-to-end on my end.`,
+  (cap: string) => `My circuits aren't tuned for that request yet — but ${cap}? Fully loaded and ready.`,
+  (cap: string) => `I hear you, I just can't act on it yet. Right now ${cap} is the only thing I've got working end-to-end.`,
+] as const;
+function pickUnrecognizedReply(capability: string): string {
+  const line = UNRECOGNIZED_REQUEST_LINES[Math.floor(Math.random() * UNRECOGNIZED_REQUEST_LINES.length)];
+  return line(capability);
+}
+
 // Layout Zones — reuses the same bed/living/kitchen/dining ids as the
 // hover/click zone hotspots on the rendered dwelling (see DWELLING_HOTSPOTS'
 // polygon overlay), so the sidebar list and the viewport zones speak the same
@@ -463,21 +479,6 @@ export default function Configurator() {
   // panorama get an entry here — add one as each new panorama arrives; that's
   // also what makes the button appear on that hotspot's tooltip.
   const [activeExplore, setActiveExplore] = useState<string | null>(null);
-  // The Engine Assistant chat specifically waits for a full round trip —
-  // stepped inside a 360° panorama AND backed all the way out again — not
-  // just exploreSeen (which flips true the moment "Step Inside" is merely
-  // switched on, before the visitor has actually been through the door;
-  // that's still the right trigger for unlocking Continue configuration
-  // and the rest, just not for waking up the chat).
-  const [hasExitedExplore, setHasExitedExplore] = useState(false);
-  const hasEnteredExploreRef = useRef(false);
-  useEffect(() => {
-    if (activeExplore) {
-      hasEnteredExploreRef.current = true;
-    } else if (hasEnteredExploreRef.current) {
-      setHasExitedExplore(true);
-    }
-  }, [activeExplore]);
   type PanoramaSceneId = "bedroom" | "livingroom" | "kitchen" | "plants" | "bathroom";
   // Which hotspot opens which panorama scene — multiple hotspots can point at
   // the same scene (e.g. two dots sharing one room). Add an entry here as
@@ -1075,13 +1076,17 @@ export default function Configurator() {
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
     : _siteName
-      ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dining space${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
-      : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dining space?";
+      ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
+      : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
 
-  // Build suggestions client-side from spec so they're always contextual.
-  const suggestions: string[] = [
-    "Change the bracing type of the rib",
-  ];
+  // The very first chip row offers only the one suggestion that actually
+  // works, so a first-time visitor's first click is guaranteed to succeed.
+  // Every chip row after that (once any message has been sent) swaps to the
+  // dead-end options instead — they fall through to pickUnrecognizedReply —
+  // so "Change the bracing type of the rib" is never offered a second time.
+  const suggestions: string[] = messages.some((m) => m.role === "user")
+    ? ["Make it shorter", "Add a skylight", "Make it wider"]
+    : ["Change the bracing type of the rib"];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
   // After the bracing change is applied, the assistant asks whether to keep
@@ -1092,11 +1097,10 @@ export default function Configurator() {
   const [bracingLoading, setBracingLoading] = useState(false);
 
   useEffect(() => {
-    // Also held back until hasExitedExplore — the assistant stays locked and
-    // silent until the whole step sequence (Site Selector → ... → Explore
-    // Inside Zone, then back out of the panorama) has been completed, then
+    // Also held back until exploreSeen — the assistant stays locked and
+    // silent until Step Inside has been switched on at least once, then
     // starts typing its greeting.
-    if (!engineReady || !hasExitedExplore) return;
+    if (!engineReady || !exploreSeen) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
       setTimeout(() => setIntroPhase("typing"), 1000),
@@ -1124,7 +1128,7 @@ export default function Configurator() {
       }, 2400),
     );
     return () => timers.forEach(clearTimeout);
-  }, [engineReady, hasExitedExplore]);
+  }, [engineReady, exploreSeen]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1166,11 +1170,16 @@ export default function Configurator() {
           ? "Added more windows along the wall — take a look at the dwelling."
           : changesBracing
           ? "Switched the rib bracing to a cross-braced pattern — take a look at the dwelling. Do you like this change?"
-          : "Got it — that change has been adapted into your design.",
+          : pickUnrecognizedReply("changing the rib bracing"),
       };
       return next;
     });
     setIsStreaming(false);
+    // Bring the suggestion chip back after anything that isn't itself
+    // heading into a confirm-pending state, so a dead-end reply still
+    // leaves an obvious way back to the one thing that actually works —
+    // otherwise the chip vanishes for good after the very first message.
+    if (!changesBracing) setShowSuggestions(true);
   };
 
   // Yes/No reply to "Do you like this change?" after the bracing swap —
@@ -1194,6 +1203,7 @@ export default function Configurator() {
       return next;
     });
     setIsStreaming(false);
+    setShowSuggestions(true);
   };
 
   // Dining floor area in cm² — mirrors _dining_W logic in api.py
@@ -2414,15 +2424,31 @@ export default function Configurator() {
                 liquid-glass aside inside it — see the Site Selector wrapper
                 above for why. The design/hidden toggle moves here too, so an
                 off-stage chat still collapses to zero size instead of a
-                wrapper div holding its grid cell open with hidden content. */}
+                wrapper div holding its grid cell open with hidden content.
+                No hardcoded total height here — this wrapper is a plain flex
+                column whose auto height is just "spacer + card", and it's
+                built to mirror the viewport column's own composition
+                (tabs row + mb-3 + its 58vh box) piece for piece, so the two
+                columns' natural heights end up equal and their bottoms land
+                on the same line without any guessed offset. */}
             <div
-              className={`${stage === "design" ? "h-full" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && hasExitedExplore && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
+              className={`${stage === "design" ? "min-h-0 overflow-hidden flex flex-col" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && exploreSeen && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
             >
+            {/* Invisible stand-in for the viewport's "Section tabs" row —
+                same classes as one of its real pill buttons, so this spacer's
+                rendered height matches that row exactly (no magic-number
+                offset that would drift if that row's padding/font changes). */}
+            <div aria-hidden className="invisible shrink-0 flex items-center justify-between mb-3">
+              <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em]">
+                dwelling
+              </span>
+            </div>
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col self-stretch h-full"
+              className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col min-h-0 shrink-0"
+              style={{ height: "58vh" }}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -2431,7 +2457,7 @@ export default function Configurator() {
                 <div className="flex flex-col leading-tight">
                   <h3 className="text-sm font-body font-medium text-white">Engine Assistant</h3>
                   <span className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body inline-flex items-center gap-1.5">
-                    {!hasExitedExplore ? (
+                    {!exploreSeen ? (
                       <>
                         <Lock className="h-2.5 w-2.5" strokeWidth={2} />
                         locked
@@ -2452,9 +2478,9 @@ export default function Configurator() {
 
               <div
                 ref={scrollRef}
-                className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
+                className="chat-scrollbar mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
-                {!hasExitedExplore && (
+                {!exploreSeen && (
                   <div className="h-full flex flex-col items-center justify-center gap-4 text-center text-white/60">
                     <Lock className="h-8 w-8" strokeWidth={1.5} />
                     <p className="text-lg leading-snug font-body max-w-[300px]">
@@ -2463,7 +2489,7 @@ export default function Configurator() {
                   </div>
                 )}
 
-                {hasExitedExplore && introPhase === "typing" && messages.length === 0 && (
+                {exploreSeen && introPhase === "typing" && messages.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -2577,18 +2603,18 @@ export default function Configurator() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
-                    !hasExitedExplore
+                    !exploreSeen
                       ? "Locked — complete the steps on the left first"
                       : activeSection !== "dining" && activeSection !== "dwelling"
                       ? `Chat only available for dining`
                       : "Message Engine Assistant…"
                   }
-                  disabled={!hasExitedExplore || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!exploreSeen || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={!hasExitedExplore || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!exploreSeen || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="bg-white text-black rounded-full w-9 h-9 inline-flex items-center justify-center disabled:opacity-40"
                   aria-label="Send"
                 >

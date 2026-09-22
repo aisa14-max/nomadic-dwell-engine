@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Landing from "./pages/Landing.tsx";
 import Discover from "./pages/Discover.tsx";
 import Configurator from "./pages/Configurator.tsx";
+import ConfiguratorCouple from "./pages/ConfiguratorCouple.tsx";
+import ConfiguratorSolo from "./pages/ConfiguratorSolo.tsx";
 import ConfiguratorPortfolio from "./pages/ConfiguratorPortfolio.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Profile from "./pages/Profile.tsx";
@@ -65,6 +67,13 @@ const RoutedApp = () => {
           <Route path="/" element={<Landing />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/configurator" element={<RequireOnboarding><Configurator /></RequireOnboarding>} />
+          {/* Occupant-based dwelling variant for "couple" answers — see
+              OnboardingFlow's goToConfigurator for the routing decision.
+              Same gating as the main /configurator route. */}
+          <Route path="/configurator-couple" element={<RequireOnboarding><ConfiguratorCouple /></RequireOnboarding>} />
+          {/* Occupant-based dwelling variant for "solo" answers — same
+              routing pattern as configurator-couple above. */}
+          <Route path="/configurator-solo" element={<RequireOnboarding><ConfiguratorSolo /></RequireOnboarding>} />
           {/* Frozen portfolio snapshot — not gated, not in nav, reachable directly by URL */}
           <Route path="/configurator-portfolio" element={<ConfiguratorPortfolio />} />
           {/* One dashboard: the old ungated URL now forwards to the signed-in one */}

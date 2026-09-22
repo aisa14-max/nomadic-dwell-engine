@@ -7,11 +7,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Box, RotateCw, ZoomIn, ZoomOut, ArrowRight, Send, Loader2, Clock, Zap, Weight, Square, type LucideIcon } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Minimize2, Send, Loader2, Lock, MousePointer2 } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import dwelling from "@/assets/dwelling-hero.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
-import ReservationCustomizer from "@/components/worlds/ReservationCustomizer";
 import { useMockAuth } from "@/context/MockAuth";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -37,10 +36,28 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+// Zone hotspots on the dwelling render — convex hull of each section's 8
+// projected corners, back→front. Shared between the interactive polygons
+// and the guided-tour hint layer that pulses them before the first hover.
+const ZONE_HOTSPOTS = [
+  // All four verified against the actual default-spec render (projected
+  // through the exact same matplotlib transform api.py uses — view_init
+  // elev=25/azim=-60, box_aspect to scale — then convex-hulled from each
+  // zone's real 8 corners), not eyeballed. Each zone's left edge is exactly
+  // the previous zone's right edge at their shared depth boundary, since
+  // they're placed back-to-back along the depth axis (dining → kitchen →
+  // living → bed) — though each zone's own width can differ (dining/kitchen
+  // 6, living 7, bed 8, per dwelling.py's per-section fn_W), so their right
+  // edges don't all line up the way their left edges do.
+  ["bed",     "40.5,20.0 51.7,13.0 90.3,21.2 89.2,56.3 79.3,64.8 41.1,55.1"],
+  ["living",  "31.7,25.6 40.6,20.0 75.0,27.6 74.2,63.5 66.3,70.2 32.5,61.3"],
+  ["kitchen", "19.2,33.5 31.7,25.6 61.5,32.4 61.4,68.9 49.9,78.2 20.4,70.1"],
+  ["dining",  "9.2,39.7 19.3,33.4 49.8,40.7 49.8,78.2 40.8,85.7 10.7,77.1"],
+] as const;
+
 export default function ConfiguratorPortfolio() {
   const location = useLocation();
   const { selectedPlan } = useMockAuth();
-  const [showNext, setShowNext] = useState(false);
   const [engineReady, setEngineReady] = useState(false);
 
   // ── Read onboarding init data ─────────────────────────────────────────────────
@@ -75,6 +92,25 @@ export default function ConfiguratorPortfolio() {
   const [activeSection, setActiveSection] = useState<string>("dwelling");
   const [viewMode, setViewMode] = useState<"2D" | "3D" | "plan">("3D");
 
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
+  const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
+  // True browser Fullscreen API, same approach as the main Configurator page.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      viewportRef.current?.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  };
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === viewportRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
   useEffect(() => {
     const check = () =>
       fetch(`${API}/health`, { signal: AbortSignal.timeout(3000) })
@@ -86,6 +122,22 @@ export default function ConfiguratorPortfolio() {
   }, []);
 
   const [hoveredSection, setHoveredSection] = useState<string | null>(null);
+  // Guided first step: the zone hotspots on the dwelling render are otherwise
+  // invisible until you happen to mouse over one — nothing hints they're
+  // there, let alone clickable. This one-way flag keeps them visibly glowing
+  // until the visitor actually clicks one — a stray hover while the mouse
+  // just passes over the viewport isn't a deliberate enough signal that the
+  // hint's been noticed, so hover alone doesn't dismiss it (see onSectionClick).
+  const [hasHoveredSection, setHasHoveredSection] = useState(false);
+  // Guided tour, in order after the hover step above:
+  //   click a zone → click 2D → click Kitchen → click Dining (unlocks chat)
+  // Each flag is one-way, same reasoning as hasHoveredSection throughout.
+  const [hasClicked2D, setHasClicked2D] = useState(false);
+  const [hasClickedKitchen, setHasClickedKitchen] = useState(false);
+  // Final step: the assistant only edits the dining spec, so it stays fully
+  // locked — no greeting, no input — until the visitor has clicked into the
+  // dining section at least once.
+  const [hasClickedDining, setHasClickedDining] = useState(false);
   // Dwelling spec: seeded from onboarding (has correct W + roof_style), falls back to /dwelling-spec.
   const [dwellingSpec, setDwellingSpec] = useState<Record<string, unknown> | null>(
     locationState?.dwelling_spec ?? null,
@@ -145,6 +197,12 @@ export default function ConfiguratorPortfolio() {
     setActiveSection(s);
     setViewMode("3D");
     fetchRender(s, "3D", sectionSpecFromDwelling(s));
+    // A click is the deliberate "I got it" signal — a stray hover while the
+    // mouse just passes over the viewport shouldn't be enough to dismiss the
+    // hint before it's actually been noticed.
+    setHasHoveredSection(true);
+    if (s === "kitchen") setHasClickedKitchen(true);
+    if (s === "dining") setHasClickedDining(true);
   };
 
   // Fresh render on mount.
@@ -182,8 +240,8 @@ export default function ConfiguratorPortfolio() {
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
     : _siteName
-      ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dining space${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
-      : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dining space?";
+      ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
+      : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
 
   // Build suggestions client-side from spec so they're always contextual.
   const _tags = (_spec.preferred_tags as string[] | undefined) ?? [];
@@ -207,7 +265,10 @@ export default function ConfiguratorPortfolio() {
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
 
   useEffect(() => {
-    if (!engineReady) return;
+    // Held back until hasClickedDining — the assistant only edits the dining
+    // spec, so it stays locked and silent until the visitor has actually
+    // clicked into that section, then starts typing its greeting.
+    if (!engineReady || !hasClickedDining) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
     timers.push(
       setTimeout(() => setIntroPhase("typing"), 1000),
@@ -235,7 +296,7 @@ export default function ConfiguratorPortfolio() {
       }, 2400),
     );
     return () => timers.forEach(clearTimeout);
-  }, [engineReady]);
+  }, [engineReady, hasClickedDining]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -291,25 +352,13 @@ export default function ConfiguratorPortfolio() {
       });
     } finally {
       setIsStreaming(false);
+      // Suggestions reappear after every reply, not just the first greeting,
+      // so there's always a quick next move to tap instead of typing.
+      setSelectedSuggestion(null);
+      setShowSuggestions(true);
     }
   };
 
-  // Dining floor area in cm² — mirrors _dining_W logic in api.py
-  const _dStyle   = (spec.dining_style as string) ?? "compact";
-  const _nChairs  = (spec.num_chairs  as number) ?? 2;
-  const _corrSide = (spec.corridor_side as string) ?? "none";
-  const _corrW    = (spec.corridor_w  as number) ?? 2;
-  const _inner    = _nChairs === 2
-    ? (_dStyle === "compact" ? 6 : 8)
-    : (_dStyle === "compact" ? 4 : 5);
-  const _W        = _inner + (_corrSide !== "none" ? _corrW : 0);
-  const _D        = (spec.d as number) ?? 3;
-  const _areaCm2   = (_W * 40) * (_D * 40);
-  const _areaM2Num = _areaCm2 / 10000;
-  const _areaM2    = _areaM2Num.toFixed(2);
-  const _assembly  = Math.round(6.5 + _areaM2Num * 1.2);
-  const _energy    = (1.8 + _areaM2Num * 0.5).toFixed(1);
-  const _mass      = (0.25 + _areaM2Num * 0.13).toFixed(2);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -334,22 +383,9 @@ export default function ConfiguratorPortfolio() {
                 className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
               />
             </div>
-            <motion.div
-              initial={blurInit}
-              animate={blurIn}
-              transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
-              className="flex gap-3"
-            >
-              <button
-                onClick={() => setShowNext(true)}
-                className="bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2"
-              >
-                Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} />
-              </button>
-            </motion.div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
             {/* VIEWPORT */}
             <motion.div
               initial={blurInit}
@@ -360,37 +396,116 @@ export default function ConfiguratorPortfolio() {
               {/* Section tabs + 2D/3D toggle */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1 bg-white/5 rounded-full p-1">
-                  {(["dwelling", "dining", "kitchen", "living", "bed"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => {
-                        // When switching to a non-dwelling section, "plan" is invalid → fall back to "3D"
-                        const v = s === "dwelling"
-                          ? (viewMode === "plan" ? "plan" : "3D")
-                          : (viewMode === "plan" ? "3D" : viewMode);
-                        setActiveSection(s);
-                        setViewMode(v);
-                        fetchRender(s, v);
-                      }}
-                      className={[
-                        "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
-                        activeSection === s
-                          ? "bg-white text-black font-medium"
-                          : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                  {/* Fifth/sixth guided steps: after 2D, point at Kitchen, then
+                      at Dining (which also unlocks the chat) — one at a time. */}
+                  {(() => {
+                    // Dismissed for good the moment dining is clicked, however
+                    // it was reached — clicking out of order (e.g. dining
+                    // before kitchen) shouldn't leave a stale kitchen hint.
+                    const hintTarget = hasClickedDining ? null
+                      : hasClicked2D && !hasClickedKitchen ? "kitchen"
+                      : hasClickedKitchen ? "dining"
+                      : null;
+                    return (["dwelling", "dining", "kitchen", "living", "bed"] as const).map((s) => (
+                      <div key={s} className="relative">
+                        {s === hintTarget && (
+                          <motion.div
+                            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
+                            animate={{
+                              x: [-22, -22, 0, 0, 0],
+                              y: [18, 18, 0, 0, 0],
+                              opacity: [0, 1, 1, 1, 0],
+                              scale: [1, 1, 1, 0.72, 1],
+                            }}
+                            transition={{
+                              duration: 2.2,
+                              times: [0, 0.3, 0.55, 0.7, 1],
+                              repeat: Infinity,
+                              repeatDelay: 0.9,
+                              ease: "easeInOut",
+                            }}
+                          >
+                            <MousePointer2
+                              className="h-4 w-4 text-white"
+                              style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                              fill="white"
+                              fillOpacity={0.15}
+                              strokeWidth={1.75}
+                            />
+                          </motion.div>
+                        )}
+                        <button
+                          onClick={() => {
+                            // Every section click starts fresh on 3D, regardless of
+                            // whatever view mode the previously-active section was left on.
+                            setActiveSection(s);
+                            setViewMode("3D");
+                            fetchRender(s, "3D");
+                            if (s === "kitchen") setHasClickedKitchen(true);
+                            if (s === "dining") setHasClickedDining(true);
+                          }}
+                          className={[
+                            "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
+                            activeSection === s
+                              ? "bg-white text-black font-medium"
+                              : "text-white/50 hover:text-white/80",
+                            s === hintTarget ? "panel-glow-pulse" : "",
+                          ].join(" ")}
+                        >
+                          {s}
+                        </button>
+                      </div>
+                    ));
+                  })()}
                 </div>
-                <div className="flex gap-1 bg-white/5 rounded-full p-1">
+                <div
+                  className={[
+                    "relative flex gap-1 bg-white/5 rounded-full p-1",
+                    activeSection !== "dwelling" && !hasClicked2D ? "panel-glow-pulse" : "",
+                  ].join(" ")}
+                >
+                  {/* Fourth guided step: 2D only exists once a zone section is
+                      picked — a ghost cursor glides in onto the button and taps
+                      it, same traveling-cursor mechanic as the "Join the Tribe"
+                      hint on Tribe.tsx, instead of just glowing in place. */}
+                  {activeSection !== "dwelling" && !hasClicked2D && (
+                    <motion.div
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
+                      style={{ left: "16%", top: "50%" }}
+                      animate={{
+                        x: [-22, -22, 0, 0, 0],
+                        y: [18, 18, 0, 0, 0],
+                        opacity: [0, 1, 1, 1, 0],
+                        scale: [1, 1, 1, 0.72, 1],
+                      }}
+                      transition={{
+                        duration: 2.2,
+                        times: [0, 0.3, 0.55, 0.7, 1],
+                        repeat: Infinity,
+                        repeatDelay: 0.9,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <MousePointer2
+                        className="h-4 w-4 text-white"
+                        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                        fill="white"
+                        fillOpacity={0.15}
+                        strokeWidth={1.75}
+                      />
+                    </motion.div>
+                  )}
                   {(activeSection === "dwelling"
                     ? (["3D", "plan"] as const)
                     : (["2D", "3D"] as const)
                   ).map((v) => (
                     <button
                       key={v}
-                      onClick={() => { setViewMode(v); fetchRender(activeSection, v); }}
+                      onClick={() => {
+                        setViewMode(v);
+                        fetchRender(activeSection, v);
+                        if (v === "2D") setHasClicked2D(true);
+                      }}
                       className={[
                         "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
                         viewMode === v
@@ -405,8 +520,13 @@ export default function ConfiguratorPortfolio() {
               </div>
 
               <div
-                className="relative rounded-[1.25rem] overflow-hidden liquid-glass"
-                style={{ height: "58vh" }}
+                ref={viewportRef}
+                className={
+                  isFullscreen
+                    ? "relative w-full h-full overflow-hidden liquid-glass rounded-none"
+                    : "relative rounded-[1.25rem] overflow-hidden liquid-glass"
+                }
+                style={isFullscreen ? undefined : { height: "58vh" }}
               >
                 <AnimatePresence mode="wait">
                   {!engineReady ? (
@@ -433,21 +553,27 @@ export default function ConfiguratorPortfolio() {
                     <motion.div
                       key="engine"
                       initial={{ opacity: 0, scale: 0.96, filter: "blur(12px)" }}
-                      animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      animate={{ opacity: 1, scale: zoom, filter: "blur(0px)" }}
+                      transition={{
+                        opacity: { duration: 0.8, ease: "easeOut" },
+                        filter: { duration: 0.8, ease: "easeOut" },
+                        scale: { type: "spring", stiffness: 220, damping: 26 },
+                      }}
                       className="absolute inset-0 flex items-center justify-center p-4"
                     >
                       {sectionImage ? (
                         activeSection === "dwelling" && viewMode === "3D" ? (
                           /* Square container — matches square matplotlib figure, so SVG overlay aligns exactly */
                           <div className="relative" style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}>
-                            {/* Hovered section name — top-left corner, Barlow font */}
+                            {/* Hovered section name — top-left corner, Barlow font.
+                                Before the first hover, this doubles as the guided
+                                first step's own hint text. */}
                             <div
                               className="absolute top-3 left-3 z-10 pointer-events-none transition-opacity duration-200"
-                              style={{ opacity: hoveredSection ? 1 : 0 }}
+                              style={{ opacity: hoveredSection || !hasHoveredSection ? 1 : 0 }}
                             >
                               <span className="font-body text-[11px] uppercase tracking-[0.22em] text-white/60">
-                                {hoveredSection ?? ""}
+                                {hoveredSection ?? "Hover a section to explore"}
                               </span>
                             </div>
                             <img
@@ -469,12 +595,42 @@ export default function ConfiguratorPortfolio() {
                                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                                 </filter>
                               </defs>
-                              {([
-                                ["bed",     "39.9,18.9 49.9,14.4 78.7,20.7 77.9,58.5 68.6,64.2 40.2,56.4"],
-                                ["living",  "29.3,23.6 39.9,18.9 84.5,29.1 83.5,68.3 73.8,74.4 30.0,61.9"],
-                                ["kitchen", "18.2,28.5 29.3,23.6 58.9,30.6 58.7,70.1 48.3,76.3 19.2,67.7"],
-                                ["dining",  "6.5,33.8  18.2,28.5 58.7,38.6 58.5,79.4 47.6,86.1 7.9,73.8"],
-                              ] as const).map(([s, pts]) => (
+                              {/* Guided-tour hint layer — the interactive polygons below stay
+                                  fully transparent until hovered, so nothing signals a
+                                  first-time visitor that these shapes exist at all. This
+                                  purely decorative, non-interactive layer pulses their
+                                  outlines until hasHoveredSection flips true once. */}
+                              {!hasHoveredSection && ZONE_HOTSPOTS.map(([s, pts]) => (
+                                <polygon
+                                  key={`hint-${s}`}
+                                  points={pts}
+                                  fill="none"
+                                  stroke="rgba(255,255,255,0.55)"
+                                  strokeWidth="0.4"
+                                  className="zone-hint-pulse"
+                                  style={{ pointerEvents: "none" }}
+                                />
+                              ))}
+                              {/* One zone demonstrates the actual hover look (filled +
+                                  glow), so the hint reads as "this is what hovering does"
+                                  rather than just an outline around each shape. */}
+                              {!hasHoveredSection && (() => {
+                                const demo = ZONE_HOTSPOTS.find(([s]) => s === "living");
+                                if (!demo) return null;
+                                const [, demoPts] = demo;
+                                return (
+                                  <polygon
+                                    points={demoPts}
+                                    fill="rgba(255,255,255,0.09)"
+                                    stroke="rgba(255,255,255,0.5)"
+                                    strokeWidth="0.4"
+                                    filter="url(#zone-glow)"
+                                    className="zone-demo-pulse"
+                                    style={{ pointerEvents: "none" }}
+                                  />
+                                );
+                              })()}
+                              {ZONE_HOTSPOTS.map(([s, pts]) => (
                                 <g key={s} style={{ pointerEvents: "all" }}>
                                   <polygon
                                     points={pts}
@@ -512,9 +668,17 @@ export default function ConfiguratorPortfolio() {
 
 
                 <div className="absolute top-4 right-4 liquid-glass rounded-full flex flex-col gap-1 p-1.5">
-                  {[Box, RotateCw, ZoomIn, ZoomOut].map((I, i) => (
-                    <button key={i} className="w-8 h-8 rounded-full inline-flex items-center justify-center text-white/80 hover:text-white">
-                      <I className="h-4 w-4" strokeWidth={1.5} />
+                  {[
+                    { Icon: ZoomIn, onClick: zoomIn },
+                    { Icon: ZoomOut, onClick: zoomOut },
+                    { Icon: isFullscreen ? Minimize2 : Maximize2, onClick: toggleFullscreen },
+                  ].map(({ Icon, onClick }, i) => (
+                    <button
+                      key={i}
+                      onClick={onClick}
+                      className="w-8 h-8 rounded-full inline-flex items-center justify-center text-white/80 hover:text-white"
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={1.5} />
                     </button>
                   ))}
                 </div>
@@ -531,22 +695,24 @@ export default function ConfiguratorPortfolio() {
                 </div>
 
               </div>
-
-              {/* Performance strip */}
-              <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
-                <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
-                <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
-                <Stat icon={Square} label="Total area" value={_areaM2} unit="m²" />
-              </div>
             </motion.div>
 
-            {/* AI ASSIST — CHAT */}
+            {/* AI ASSIST — CHAT. Seventh guided step: the moment dining unlocks
+                it, glow draws the eye over here — liquid-glass clips box-shadow,
+                so (same as the guided-tour panels on Configurator.tsx) the glow
+                has to land on this plain outer wrapper, not the panel itself.
+                overflow-hidden here (not just min-h-0) matters: a CSS Grid item
+                left at the default overflow:visible still contributes its full
+                CONTENT height to the row's auto-sizing, growing chain length or
+                not — that's what was pushing the row taller (and misaligning it
+                from the viewport panel) as the conversation got longer, instead
+                of stretching to match the viewport panel from the first message. */}
+            <div className={`rounded-[1.25rem] h-full min-h-0 overflow-hidden ${hasClickedDining && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-6 flex flex-col h-[calc(58vh+10rem)]"
+              className="liquid-glass rounded-[1.25rem] p-6 flex flex-col h-full min-h-0"
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
@@ -567,8 +733,17 @@ export default function ConfiguratorPortfolio() {
 
               <div
                 ref={scrollRef}
-                className="mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
+                className="chat-scrollbar mt-4 flex-1 min-h-0 overflow-y-auto pr-1 space-y-5 text-sm font-body"
               >
+                {!hasClickedDining && (
+                  <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-4">
+                    <Lock className="h-5 w-5 text-white/30" strokeWidth={1.5} />
+                    <p className="text-white/40 text-xs font-body leading-relaxed">
+                      Click the <span className="text-white/60">Dining</span> section to unlock the Engine Assistant.
+                    </p>
+                  </div>
+                )}
+
                 {introPhase === "typing" && messages.length === 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
@@ -654,16 +829,18 @@ export default function ConfiguratorPortfolio() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={
-                    activeSection !== "dining" && activeSection !== "dwelling"
-                      ? `Chat only available for dining`
-                      : "Message Engine Assistant…"
+                    !hasClickedDining
+                      ? "Click Dining to unlock the assistant"
+                      : activeSection !== "dining" && activeSection !== "dwelling"
+                        ? `Chat only available for dining`
+                        : "Message Engine Assistant…"
                   }
-                  disabled={isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!hasClickedDining || isStreaming || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="flex-1 bg-transparent text-sm text-white placeholder:text-white/40 outline-none font-body disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <button
                   type="submit"
-                  disabled={isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
+                  disabled={!hasClickedDining || isStreaming || !input.trim() || (activeSection !== "dining" && activeSection !== "dwelling")}
                   className="bg-white text-black rounded-full w-9 h-9 inline-flex items-center justify-center disabled:opacity-40"
                   aria-label="Send"
                 >
@@ -671,34 +848,11 @@ export default function ConfiguratorPortfolio() {
                 </button>
               </form>
             </motion.aside>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Reservation customizer — opens on Continue configuration */}
-      <AnimatePresence>
-        {showNext && <ReservationCustomizer onClose={() => setShowNext(false)} />}
-      </AnimatePresence>
     </div>
-  );
-}
-
-
-function Stat({ icon: Icon, label, value, unit }: { icon: LucideIcon; label: string; value: string; unit: string }) {
-  return (
-    <motion.div
-      whileHover={{ scale: 1.03 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className="liquid-glass rounded-[1rem] w-full flex items-center gap-3 px-5 py-3 cursor-default"
-    >
-      <Icon className="h-6 w-6 text-white/80 shrink-0" strokeWidth={1.5} />
-      <div className="flex flex-col leading-tight min-w-0">
-        <span className="text-[10px] uppercase tracking-[0.1em] text-white/50 font-body truncate">{label}</span>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-white font-medium text-sm">{value}</span>
-          <span className="text-white/55 text-xs font-body">{unit}</span>
-        </div>
-      </div>
-    </motion.div>
   );
 }

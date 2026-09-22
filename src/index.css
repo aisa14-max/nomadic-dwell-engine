@@ -259,6 +259,18 @@
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 9999px; }
   ::-webkit-scrollbar-track { background: transparent; }
+
+  /* Under the Hood's chat messages — deliberately more visible than the
+     site-wide near-invisible scrollbar above, so a growing conversation
+     reads as "scroll for more" rather than looking cut off. */
+  .chat-scrollbar::-webkit-scrollbar { width: 6px; }
+  .chat-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.35);
+    border-radius: 9999px;
+  }
+  .chat-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.55); }
+  .chat-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .chat-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.35) transparent; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -407,8 +419,29 @@
 }
 .panel-glow-pulse { animation: panel-glow-pulse 1.8s ease-in-out infinite; }
 
+/* Under the Hood — the dwelling's zone hotspots (bed/living/kitchen/dining)
+   are otherwise invisible until hovered, so nothing hints they're there.
+   This pulses their outline so a first-time visitor notices them, until
+   they've hovered any one of them once (see hasHoveredSection). */
+@keyframes zone-hint-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.65; }
+}
+.zone-hint-pulse { animation: zone-hint-pulse 1.8s ease-in-out infinite; }
+
+/* One zone (living) demonstrates the actual hover look — filled, stroked,
+   glow filter already on — so the pulse reads as "this is what hovering
+   does" rather than just an outline. */
+@keyframes zone-demo-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+.zone-demo-pulse { animation: zone-demo-pulse 1.6s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .grid-drift { animation: none; }
   .ring-amber-pulse { animation: none; }
   .panel-glow-pulse { animation: none; box-shadow: 0 0 14px rgba(255,255,255,0.45); }
+  .zone-hint-pulse { animation: none; opacity: 0.45; }
+  .zone-demo-pulse { animation: none; opacity: 0.7; }
 }

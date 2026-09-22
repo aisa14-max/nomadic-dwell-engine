@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -33,17 +33,22 @@ const _DEFAULT_SITE = {
   climate_zone: "temperate",
 };
 
-type Option = { id: string; label: string; subtitle: string; Icon: typeof User };
+type Option = { id: string; label: string; subtitle: string; Icon: typeof User; locked?: boolean };
 type Step   = { question: string; options: Option[] };
 
+// Only 2 dwellings are actually built right now (compact-solo and
+// couple-standard), plus a 3rd (solo-generous/"spacious") that has a route
+// but no dwelling yet — see CONFIGURATOR_ROUTES below. Family and large
+// group have no dwelling variant at all, so they're locked out here rather
+// than silently falling back to the wrong build.
 const steps: Step[] = [
   {
     question: "How many people will be staying?",
     options: [
       { id: "solo",        label: "Solo",        subtitle: "Just me, full independence",  Icon: User },
       { id: "couple",      label: "Couple",      subtitle: "Two people, shared space",    Icon: Users },
-      { id: "family",      label: "Family",      subtitle: "3–4 people, shared setup",    Icon: Home },
-      { id: "large_group", label: "Large group", subtitle: "5+ people, full capacity",    Icon: UsersRound },
+      { id: "family",      label: "Family",      subtitle: "3–4 people, shared setup",    Icon: Home, locked: true },
+      { id: "large_group", label: "Large group", subtitle: "5+ people, full capacity",    Icon: UsersRound, locked: true },
     ],
   },
   {
@@ -83,6 +88,28 @@ const steps: Step[] = [
   },
 ];
 
+// Which scale options are available depends on who's staying — each
+// occupant only has certain dwellings actually built. Computed per-render
+// (not baked into `steps`) since it depends on the occupants answer.
+function isScaleLocked(scaleId: string, occupants: string | undefined): boolean {
+  if (occupants === "solo")   return scaleId === "standard";
+  if (occupants === "couple") return scaleId === "compact" || scaleId === "generous";
+  return false;
+}
+
+// occupants + scale together pick the dwelling. Compact-solo and
+// couple-standard are the only two fully built today; solo-generous
+// ("spacious") routes to the couple page for now — it's built (background,
+// no dwelling yet) and reserved for that variant once it exists, rather
+// than a dead end. Anything not listed here (shouldn't be reachable, since
+// isScaleLocked/the occupants lock rule out every other combination) falls
+// back to the couple-standard build.
+const CONFIGURATOR_ROUTES: Record<string, string> = {
+  "solo:compact":     "/configurator-solo",
+  "solo:generous":    "/configurator-couple",
+  "couple:standard":  "/configurator",
+};
+
 export default function OnboardingFlow() {
   const { onboardingOpen, closeOnboarding, pendingSite, user, openLogin } = useMockAuth();
   const navigate = useNavigate();
@@ -90,7 +117,6 @@ export default function OnboardingFlow() {
   const [answers, setAnswers]   = useState<Record<number, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const abortRef = useRef<AbortController | null>(null);
 
   const total    = steps.length;
   const step     = steps[stepIdx];
@@ -168,7 +194,14 @@ export default function OnboardingFlow() {
   // the questionnaire, then the configurator.
   // Plan/subscription selection happens later, inside the reservation
   // customizer (after parts customization, before checkout).
-  const goToConfigurator = () => navigate("/configurator");
+  //
+  // Occupants (question 0) + scale (question 4) together pick which
+  // dwelling variant to land on — see CONFIGURATOR_ROUTES above.
+  const goToConfigurator = () => {
+    const occupants = answers[0];
+    const scale = answers[4];
+    navigate(CONFIGURATOR_ROUTES[`${occupants}:${scale}`] ?? "/configurator");
+  };
   const goPickSite = () => {
     // Discover reads this and skips re-opening the questionnaire, sending the
     // user straight into the configurator once they choose.
@@ -194,17 +227,29 @@ export default function OnboardingFlow() {
   // questions, it gets its own explicit confirmation.
   const selectOption = (optionId: string) => {
     if (isSubmitting) return;
-    setAnswers(a => ({ ...a, [stepIdx]: optionId }));
+    const locked = step.options.find(o => o.id === optionId)?.locked
+      || (stepIdx === 4 && isScaleLocked(optionId, answers[0]));
+    if (locked) return;
+    setAnswers(a => {
+      const next = { ...a, [stepIdx]: optionId };
+      // Changing occupants can invalidate a scale already picked on a
+      // previous pass through the last question (e.g. solo → compact →
+      // back → couple: compact is locked for couple) — clear it instead of
+      // leaving a locked value selected underneath the last question.
+      if (stepIdx === 0 && next[4] && isScaleLocked(next[4], optionId)) {
+        delete next[4];
+      }
+      return next;
+    });
     if (!isLast) setStepIdx(i => i + 1);
   };
 
   const submitProposal = async () => {
     if (!selected || isSubmitting) return;
     setIsSubmitting(true);
-    // The design service can be slow or down. Abortable so the visitor can
-    // carry on with a default design instead of waiting out the full timeout.
+    // The design service can be slow or down — aborted at SUBMIT_TIMEOUT_MS
+    // so the questionnaire can't spin forever, falling back to defaults.
     const ctrl = new AbortController();
-    abortRef.current = ctrl;
     const timer = window.setTimeout(() => ctrl.abort(), SUBMIT_TIMEOUT_MS);
     const keys = ["occupants", "duration", "purpose", "priority", "scale"];
     const namedAnswers = Object.fromEntries(
@@ -244,7 +289,6 @@ export default function OnboardingFlow() {
       revealResults();
     } finally {
       window.clearTimeout(timer);
-      abortRef.current = null;
       setIsSubmitting(false);
     }
   };
@@ -287,21 +331,11 @@ export default function OnboardingFlow() {
                         ? WAIT_PHASES[Math.min(WAIT_PHASES.length - 1, Math.floor(elapsed / 3))]
                         : "Next: choose your terrain"}
                     </p>
-                    {elapsed >= 5 && (
-                      <div className="mt-6 flex flex-col items-center gap-3">
-                        <p className="font-body text-white/55 text-xs max-w-[34ch] leading-snug">
-                          This is taking longer than usual — the design service may be busy. Your answers are saved.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => abortRef.current?.abort()}
-                          className="rounded-full border border-white/25 px-5 py-2 text-xs font-body text-white/90 hover:bg-white/10 transition-colors"
-                        >
-                          Continue with a default design
-                        </button>
-                        <p className="font-body text-white/35 text-[11px]">You can refine everything in the configurator.</p>
-                      </div>
-                    )}
+                    {/* No manual "give up early" option — the wait just runs
+                        out to SUBMIT_TIMEOUT_MS on its own (falling back to
+                        defaults there, same as before), so the loading state
+                        reads as progress rather than offering a bail-out
+                        every time the design service is a little slow. */}
                   </div>
                 </motion.div>
               )}
@@ -350,28 +384,45 @@ export default function OnboardingFlow() {
               >
                 {step.options.map(opt => {
                   const isSelected = selected === opt.id;
+                  // Static lock (family/large group) or, on the last
+                  // question, a lock that depends on the occupants answer —
+                  // see isScaleLocked/CONFIGURATOR_ROUTES above.
+                  const isLocked = !!opt.locked || (stepIdx === 4 && isScaleLocked(opt.id, answers[0]));
                   return (
                     <button
                       key={opt.id}
                       type="button"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || isLocked}
                       onClick={() => selectOption(opt.id)}
                       className={[
-                        "group relative flex flex-col items-start text-left gap-3 rounded-2xl px-5 py-6 border transition-all disabled:opacity-40 disabled:cursor-not-allowed",
-                        isSelected
+                        "group relative flex flex-col items-start text-left gap-3 rounded-2xl px-5 py-6 border transition-all disabled:cursor-not-allowed disabled:opacity-40",
+                        isLocked
+                          ? "grayscale bg-white/[0.03] text-white border-white/10"
+                          : isSelected
                           ? "bg-white text-black border-white shadow-[0_8px_30px_-10px_rgba(255,255,255,0.4)]"
                           : "bg-white/[0.03] text-white border-white/10 hover:bg-white/[0.06] hover:border-white/20",
                       ].join(" ")}
                     >
+                      {isLocked && (
+                        <span className="absolute top-4 right-4 text-white/60">
+                          <Lock className="h-4 w-4" strokeWidth={1.75} />
+                        </span>
+                      )}
                       <opt.Icon
-                        className={["h-6 w-6", isSelected ? "text-black" : "text-white/80"].join(" ")}
+                        className={["h-6 w-6", isSelected && !isLocked ? "text-black" : "text-white/80"].join(" ")}
                         strokeWidth={1.25}
                       />
                       <div className="space-y-1">
                         <div className="font-heading text-xl leading-none tracking-[-1px]">{opt.label}</div>
-                        <div className={["font-body text-xs leading-snug", isSelected ? "text-black/60" : "text-white/55"].join(" ")}>
-                          {opt.subtitle}
-                        </div>
+                        {isLocked ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-body font-medium uppercase tracking-[0.1em] px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/15">
+                            Coming soon
+                          </span>
+                        ) : (
+                          <div className={["font-body text-xs leading-snug", isSelected ? "text-black/60" : "text-white/55"].join(" ")}>
+                            {opt.subtitle}
+                          </div>
+                        )}
                       </div>
                     </button>
                   );

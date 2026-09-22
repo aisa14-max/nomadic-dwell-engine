@@ -96,16 +96,30 @@ export default function Discover() {
     // attach the site to the saved brief and go straight to the configurator.
     if (sessionStorage.getItem("awaitingSite") === "true") {
       sessionStorage.removeItem("awaitingSite");
+      // Occupants + scale together pick which dwelling variant to land on —
+      // same mapping as OnboardingFlow's CONFIGURATOR_ROUTES, kept in sync
+      // here since quick-start reaches the configurator through this path
+      // instead. Only compact-solo and couple-standard are fully built;
+      // solo-generous ("spacious") routes to the couple page for now — see
+      // OnboardingFlow.tsx for the full explanation.
+      let target = "/configurator";
       try {
         const raw = localStorage.getItem("configuratorInit");
         const init = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+        const answers = (init.answers ?? {}) as Record<string, string>;
+        const configuratorRoutes: Record<string, string> = {
+          "solo:compact":    "/configurator-solo",
+          "solo:generous":   "/configurator-couple",
+          "couple:standard": "/configurator",
+        };
+        target = configuratorRoutes[`${answers.occupants}:${answers.scale}`] ?? target;
         localStorage.setItem("configuratorInit", JSON.stringify({ ...init, site: payload }));
       } catch { /* ignore — configurator falls back to defaults */ }
 
       const proceed = () => {
         setLoadingSite(site.title);
         // Brief hold so the loading state is actually seen before the route swap.
-        window.setTimeout(() => navigate("/configurator"), 1400);
+        window.setTimeout(() => navigate(target), 1400);
       };
       // The brief is only now complete, so this is the first and only point
       // we ask who they are — and not at all if they're already signed in.

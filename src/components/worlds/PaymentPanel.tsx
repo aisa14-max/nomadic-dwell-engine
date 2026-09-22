@@ -19,12 +19,15 @@ const EASE = [0.6, 0.2, 0.2, 1] as const;
 const formatCard = (digits: string) =>
   digits.replace(/(.{4})/g, "$1 ").trim();
 
+// Demo checkout — nobody should have to type fake card details to see the
+// rest of the flow, so every field starts pre-filled with placeholder data
+// (Stripe's well-known 4242 test number) and this step is skippable outright.
 export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
-  const [name, setName] = useState("");
-  const [card, setCard] = useState("");
-  const [exp, setExp] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [country, setCountry] = useState("");
+  const [name, setName] = useState("Jane Nomad");
+  const [card, setCard] = useState("4242424242424242");
+  const [exp, setExp] = useState("12/29");
+  const [cvv, setCvv] = useState("123");
+  const [country, setCountry] = useState("United Kingdom");
   const [save, setSave] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -64,6 +67,24 @@ export default function PaymentPanel({ totals, onSubmit, inline }: Props) {
       </div>
 
       <form onSubmit={submit} className="flex-1 overflow-y-auto px-6 py-5 space-y-1">
+        {/* Demo notice — the fields below are already filled in with
+            placeholder details, and this whole step can be skipped; this is
+            the thing that actually needs to be obvious, not just the button
+            at the bottom which is easy to miss on first glance. */}
+        <div className="mb-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-body text-emerald-300 leading-snug">
+            Demo checkout — details are pre-filled. Feel free to just skip ahead.
+          </p>
+          <button
+            type="button"
+            onClick={skip}
+            disabled={submitting}
+            className="shrink-0 text-xs font-body font-medium text-emerald-300 underline underline-offset-2 hover:text-emerald-200 disabled:opacity-50"
+          >
+            Skip
+          </button>
+        </div>
+
         {/* Card preview */}
         <div className="liquid-glass rounded-2xl p-5 mb-5 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none" />
