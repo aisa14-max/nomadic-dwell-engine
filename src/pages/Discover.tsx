@@ -99,9 +99,7 @@ export default function Discover() {
       // Occupants + scale together pick which dwelling variant to land on —
       // same mapping as OnboardingFlow's CONFIGURATOR_ROUTES, kept in sync
       // here since quick-start reaches the configurator through this path
-      // instead. Only compact-solo and couple-standard are fully built;
-      // solo-generous ("spacious") routes to the couple page for now — see
-      // OnboardingFlow.tsx for the full explanation.
+      // instead. See OnboardingFlow.tsx for the full explanation.
       let target = "/configurator";
       try {
         const raw = localStorage.getItem("configuratorInit");
@@ -109,7 +107,7 @@ export default function Discover() {
         const answers = (init.answers ?? {}) as Record<string, string>;
         const configuratorRoutes: Record<string, string> = {
           "solo:compact":    "/configurator-solo",
-          "solo:generous":   "/configurator-couple",
+          "solo:generous":   "/configurator-solo-generous",
           "couple:standard": "/configurator",
         };
         target = configuratorRoutes[`${answers.occupants}:${answers.scale}`] ?? target;

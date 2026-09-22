@@ -97,16 +97,14 @@ function isScaleLocked(scaleId: string, occupants: string | undefined): boolean 
   return false;
 }
 
-// occupants + scale together pick the dwelling. Compact-solo and
-// couple-standard are the only two fully built today; solo-generous
-// ("spacious") routes to the couple page for now — it's built (background,
-// no dwelling yet) and reserved for that variant once it exists, rather
-// than a dead end. Anything not listed here (shouldn't be reachable, since
-// isScaleLocked/the occupants lock rule out every other combination) falls
-// back to the couple-standard build.
+// occupants + scale together pick the dwelling. All three of compact-solo,
+// solo-generous ("Generous Single") and couple-standard are built. Anything
+// not listed here (shouldn't be reachable, since isScaleLocked/the occupants
+// lock rule out every other combination) falls back to the couple-standard
+// build.
 const CONFIGURATOR_ROUTES: Record<string, string> = {
   "solo:compact":     "/configurator-solo",
-  "solo:generous":    "/configurator-couple",
+  "solo:generous":    "/configurator-solo-generous",
   "couple:standard":  "/configurator",
 };
 
