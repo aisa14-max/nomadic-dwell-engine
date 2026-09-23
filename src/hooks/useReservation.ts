@@ -19,15 +19,35 @@ type State = {
 // CURRENT/ACTIVE configuration only. Once an order is confirmed it's no
 // longer "in progress" — reopening the customizer after that should start a
 // fresh configuration, not resume the old completed one (see loadStoredState).
+//
+// Kept as one flat key (not namespaced per page) deliberately — Dashboard,
+// Profile, journey.ts and MockAuth's restart-cleanup all read/clear this
+// exact literal string directly, outside this hook.
 const STORAGE_KEY = "reservationProgress";
+
+// Which dwelling page last wrote STORAGE_KEY — every configurator page
+// (Configurator, ConfiguratorCouple, ConfiguratorSolo,
+// ConfiguratorSoloGenerous) shares that one key, so advancing to
+// "Plans"/"Payment" on one page used to silently carry that same stage into
+// every OTHER dwelling page too: testing checkout on Solo, then opening
+// Couple's add-ons page, would skip straight to Couple's Plans step
+// (Add-ons panel hidden) instead of starting fresh at "Add-ons + Reservation
+// together," which read as that page being broken when it was really just
+// resuming someone else's saved progress. On load, if this doesn't match
+// the page asking, that page's stored progress is discarded and it starts
+// fresh — but the raw STORAGE_KEY value itself isn't touched until this
+// page's own next save, so switching back to the original page still
+// resumes it correctly.
+const DWELLING_KEY = "reservationDwelling";
 
 // Set once, permanently, the moment an order is actually confirmed — this is
 // what Dashboard reads to know "something was delivered," independent of
 // whatever reservationProgress holds afterward (which resets to fresh).
 const DELIVERED_KEY = "engineDelivered";
 
-function loadStoredState(): State | null {
+function loadStoredState(namespace: string): State | null {
   try {
+    if (localStorage.getItem(DWELLING_KEY) !== namespace) return null;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as {
@@ -50,8 +70,9 @@ function loadStoredState(): State | null {
   }
 }
 
-function saveState(state: State) {
+function saveState(namespace: string, state: State) {
   try {
+    localStorage.setItem(DWELLING_KEY, namespace);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       stage: state.stage,
       reservationRef: state.reservationRef,
@@ -104,13 +125,16 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-export function useReservation() {
-  const [state, dispatch] = useReducer(reducer, undefined, () => loadStoredState() ?? initial);
+// namespace: distinct per dwelling page ("solo", "couple", "solo-generous",
+// "default", ...) — keeps each page's reservation progress independent, see
+// DWELLING_KEY above.
+export function useReservation(namespace: string) {
+  const [state, dispatch] = useReducer(reducer, undefined, () => loadStoredState(namespace) ?? initial);
   const submittingRef = useRef(false);
 
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    saveState(namespace, state);
+  }, [namespace, state]);
 
   const totals = useMemo(() => computeTotals(state.configured), [state.configured]);
   const isComplete = state.configured.size === TOTAL_PARTS;

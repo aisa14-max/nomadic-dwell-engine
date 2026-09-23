@@ -255,7 +255,7 @@ export default function Configurator() {
   //   plan      -> subscription packages
   //   confirmed -> engine on the way
   const [showNext, setShowNext] = useState(false);
-  const r = useReservation();
+  const r = useReservation("default");
   // The reservation hook's own stages map onto the page's:
   //   configure -> customise (add-ons)
   //   summary   -> plans     (subscription tiers, shown above the order)

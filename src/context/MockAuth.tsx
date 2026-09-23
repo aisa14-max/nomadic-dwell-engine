@@ -104,7 +104,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSelectedPlan(null);
     for (const key of ["mockUser", "selectedPlan", "configuratorReady",
-                        "configuratorInit", "reservationProgress", "engineDelivered",
+                        "configuratorInit", "reservationProgress", "reservationDwelling", "engineDelivered",
                         ...TRIBE_STORAGE_KEYS]) {
       localStorage.removeItem(key);
     }

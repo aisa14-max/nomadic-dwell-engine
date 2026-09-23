@@ -309,7 +309,7 @@ export default function ConfiguratorSoloGenerous() {
   const navigate = useNavigate();
   const { selectedPlan, confirmPlan } = useMockAuth();
   const [showNext, setShowNext] = useState(false);
-  const r = useReservation();
+  const r = useReservation("solo-generous");
   const stage: "design" | "customise" | "plans" | "payment" | "confirmed" =
     !showNext ? "design"
     : r.stage === "summary" ? "plans"
@@ -348,22 +348,9 @@ export default function ConfiguratorSoloGenerous() {
     r.setActive(next ? next.id : null);
   };
 
-  // On the add-ons page, the order/price panel used to sit there from the
-  // moment you arrived, competing with the dwelling for attention right
-  // away. Now it only appears once you've actually started (opened a step
-  // or picked something) — before that it's just add-ons + dwelling, two
-  // panels, not three.
-  const addOnsEngaged = r.activePart !== null || r.configured.size > 0;
-
   const gridCols =
     stage === "payment" ? "lg:grid-cols-[0px_1fr_460px]"
     : stage === "plans" ? "lg:grid-cols-[0px_1fr_640px]"
-    // Before add-ons are engaged, the order panel isn't rendered at all
-    // (see addOnsEngaged above) — collapsing its column to 0 instead of
-    // leaving it reserved-but-empty lets the viewport grow into that space,
-    // then the same grid-template-columns transition below eases it back
-    // down to 360px right as the order panel slides in.
-    : stage === "customise" && !addOnsEngaged ? "lg:grid-cols-[220px_1fr_0px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
@@ -476,32 +463,6 @@ export default function ConfiguratorSoloGenerous() {
   const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
   const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
   const viewportRef = useRef<HTMLDivElement>(null);
-  // The add-ons viewport grows wider (right column collapses) before
-  // add-ons are engaged — see gridCols/addOnsEngaged above. The background
-  // is object-cover, so a wider box on the same fixed height just reveals
-  // more of the scene horizontally, making the sited dwelling within it
-  // read smaller against the frame instead of staying the same size. This
-  // tracks how much wider the box currently is than its normal (engaged)
-  // width and feeds that back in as extra zoom, so the framing stays
-  // consistent regardless of which width state it's in.
-  const viewportNormalWidthRef = useRef(0);
-  const [viewportBgZoomBoost, setViewportBgZoomBoost] = useState(1);
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const w = el.getBoundingClientRect().width;
-      if (w <= 0) return;
-      if (stage !== "customise" || addOnsEngaged) {
-        viewportNormalWidthRef.current = w;
-        setViewportBgZoomBoost(1);
-      } else if (viewportNormalWidthRef.current > 0) {
-        setViewportBgZoomBoost(w / viewportNormalWidthRef.current);
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [stage, addOnsEngaged]);
   // Mouse-wheel zoom + left-click-drag pan, alongside the existing +/-
   // buttons. Pan resets whenever zoom returns to 1 — otherwise the scene
   // could stay visibly offset even at rest scale, with nothing to pan. Both
@@ -1531,14 +1492,20 @@ export default function ConfiguratorSoloGenerous() {
                           alt=""
                           aria-hidden
                           className="absolute inset-0 w-full h-full object-cover"
-                          style={{ transform: `scale(${_landscapeZoom * viewportBgZoomBoost})` }}
+                          style={{ transform: `scale(${_landscapeZoom})` }}
                         />
                         <div className="absolute inset-0 bg-black/30" aria-hidden />
 
                         <div className="absolute inset-0 flex items-center justify-center p-4">
                           <div
                             className="relative translate-y-8"
-                            style={{ aspectRatio: "4096/3058", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
+                            style={{
+                              aspectRatio: "4096/3058",
+                              maxHeight: "100%",
+                              maxWidth: "100%",
+                              minWidth: 0,
+                              minHeight: 0,
+                            }}
                           >
                             {/* Base elevation — incomplete (torn edge) until the
                                 first zone lands, then complete for good, then
@@ -1902,10 +1869,10 @@ export default function ConfiguratorSoloGenerous() {
                 className="flex gap-4 min-w-0 self-stretch h-full"
               >
                 <AnimatePresence>
-                  {stage === "customise" && addOnsEngaged && (
+                  {stage === "customise" && (
                     <motion.div
                       key="customise"
-                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 380 }}
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
