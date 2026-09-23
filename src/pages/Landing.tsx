@@ -269,22 +269,6 @@ export default function Landing() {
                 Life Cycle
               </div>
             </div>
-
-            <div className="mt-3 flex-1 flex flex-col justify-start">
-              <div className="flex flex-wrap gap-2">
-                {[
-                  "Assembly",
-                  "Habitation",
-                  "Disassembly",
-                  "Reuse",
-                  "Return",
-                ].map((tag) => (
-                  <span key={tag} className="liquid-glass tag-glass text-xs font-semibold text-white/90">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
           </motion.div>
         </div>
 

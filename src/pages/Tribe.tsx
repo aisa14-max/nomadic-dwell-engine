@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { MousePointer2, X } from "lucide-react";
+import { MessageCircle, MousePointer2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import BlurText from "@/components/BlurText";
+import StartOverButton from "@/components/StartOverButton";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 import {
@@ -13,8 +14,8 @@ import {
   type Chapter, type Intention, type Person, type Tribe, type TribeLink,
 } from "@/data/tribe";
 import {
-  TRIBE_KEYS, loadExchangeRequests, loadIntros, loadJSON, loadMyTribeId,
-  readBrief, saveExchangeRequests, saveJSON, saveMyTribeId,
+  TRIBE_KEYS, WRAPUP_EVENT, loadExchangeRequests, loadIntros, loadJSON, loadMyTribeId,
+  readBrief, saveExchangeRequests, saveJSON, saveMyTribeId, setWrapUpEligible,
   type ExchangeRequest,
 } from "@/lib/tribeStore";
 import atlas from "@/assets/cosmic-atlas.jpg";
@@ -148,6 +149,16 @@ export default function TribePage() {
   const [interactions, setInteractions] = useState(arrival ? 4 : 0);
   const [hovered, setHovered] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [messagingOpen, setMessagingOpen] = useState(false);
+  const [messageDraft, setMessageDraft] = useState("");
+  // Wrap-up nudge lives in the nav (see Nav.tsx's "Ready to wrap up?"), in
+  // the same spot Start Over sits on every other page — this just tracks
+  // whether it should glow: either enough clicking around, or having
+  // actually opened Creators (the tribe behind the app), which alone is
+  // "explored enough" even with a low click count.
+  const [exploredCreators, setExploredCreators] = useState(false);
+  const [showEndScreen, setShowEndScreen] = useState(false);
+  const wrapUpEligible = interactions >= 6 || exploredCreators;
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(arrivalChapterId);
   const [showTribes, setShowTribes] = useState(false);
   const [selectedTribeId, setSelectedTribeId] = useState<string | null>(null);
@@ -237,7 +248,18 @@ export default function TribePage() {
     setShowTribes(false);
     setShowPresence(false);
     setShowEntryHint(false);
+    setMessagingOpen(false);
+    setMessageDraft("");
     bump();
+  };
+
+  const sendMessage = (p: Person) => {
+    if (!messageDraft.trim()) return;
+    toast.success(`Message sent to ${p.alias}`, {
+      action: { label: "View in Profile", onClick: () => navigate("/profile") },
+    });
+    setMessagingOpen(false);
+    setMessageDraft("");
   };
 
   const selectChapter = (id: string) => {
@@ -254,6 +276,15 @@ export default function TribePage() {
     setSelected(null);
     setSelectedChapterId(null);
     setShowPresence(false);
+  };
+
+  const openEndScreen = () => {
+    setSelected(null);
+    setSelectedChapterId(null);
+    setSelectedTribeId(null);
+    setShowTribes(false);
+    setShowPresence(false);
+    setShowEndScreen(true);
   };
 
   const showNearestChapter = (t: Tribe) => {
@@ -278,6 +309,25 @@ export default function TribePage() {
     if (interactions >= 2) setLayer((l) => Math.max(l, 2)); // connections
     if (interactions >= 4) setLayer((l) => Math.max(l, 3)); // chapters
   }, [interactions]);
+
+  // Opening Creators (the tribe behind the app) counts as "explored enough"
+  // on its own, regardless of click count.
+  useEffect(() => {
+    if (selectedTribeId === "creators") setExploredCreators(true);
+  }, [selectedTribeId]);
+
+  // The wrap-up button lives in the nav, not on this page, so its eligibility
+  // (glow or not) has to be pushed out — and the click that opens the end
+  // screen comes back the same way. See tribeStore's WRAPUP_EVENT.
+  useEffect(() => { setWrapUpEligible(wrapUpEligible); }, [wrapUpEligible]);
+  useEffect(() => {
+    const onEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { type: string } | undefined;
+      if (detail?.type === "open") openEndScreen();
+    };
+    window.addEventListener(WRAPUP_EVENT, onEvent);
+    return () => window.removeEventListener(WRAPUP_EVENT, onEvent);
+  }, []);
 
   // Clicking the light blooms a flash of light, then the map appears.
   const reduceMotion = useReducedMotion();
@@ -1047,6 +1097,43 @@ export default function TribePage() {
                       </span>
                     </div>
 
+                    {messagingOpen ? (
+                      <div className="mt-3">
+                        <textarea
+                          autoFocus
+                          value={messageDraft}
+                          onChange={(e) => setMessageDraft(e.target.value)}
+                          maxLength={200}
+                          rows={2}
+                          placeholder={`Say hi to ${selectedPerson.alias}...`}
+                          className="w-full resize-none rounded-lg bg-white/5 border border-white/10 px-2.5 py-2 text-[11px] text-white/90 font-body focus:outline-none focus:border-white/30"
+                        />
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          <button
+                            onClick={() => sendMessage(selectedPerson)}
+                            disabled={!messageDraft.trim()}
+                            className="flex-1 rounded-full bg-white text-black hover:bg-white/90 px-3 py-1.5 text-[11px] font-body font-medium transition-colors disabled:opacity-40"
+                          >
+                            Send
+                          </button>
+                          <button
+                            onClick={() => { setMessagingOpen(false); setMessageDraft(""); }}
+                            className="text-[11px] text-white/45 hover:text-white/80 font-body px-2"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setMessagingOpen(true)}
+                        className="mt-3 w-full flex items-center justify-center gap-1.5 rounded-xl border border-white/15 px-3 py-2 text-[11px] text-white/75 hover:text-white hover:border-white/30 font-body transition-colors"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        Send a message
+                      </button>
+                    )}
+
                     {selectedPersonTribe && (
                       <button
                         onClick={() => exploreTribe(selectedPersonTribe.id)}
@@ -1150,42 +1237,57 @@ export default function TribePage() {
                   <div className="flex items-center gap-1.5 flex-nowrap lg:flex-wrap overflow-x-auto lg:overflow-visible min-w-0">
                     {orderedTribes.map((t) => {
                       const on = selectedTribeId === t.id;
+                      // Creators is the real team behind the app — worth a nudge
+                      // so people actually open it rather than skim past it as
+                      // just another tag on the map. Wrapped in its own element
+                      // (not the button itself) because the button falls back to
+                      // .liquid-glass, which clips box-shadow via its own
+                      // overflow:hidden — see the panel-glow-pulse note above.
+                      const isCreators = t.id === "creators";
                       return (
-                        <button
-                          key={t.id}
-                          onMouseEnter={() => setPreviewTribeId(t.id)}
-                          onMouseLeave={() => setPreviewTribeId((cur) => (cur === t.id ? null : cur))}
-                          onFocus={() => setPreviewTribeId(t.id)}
-                          onBlur={() => setPreviewTribeId((cur) => (cur === t.id ? null : cur))}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (on) setSelectedTribeId(null);
-                            else exploreTribe(t.id);
-                            bump();
-                          }}
-                          aria-pressed={on}
-                          className={`flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[13px] font-body font-medium whitespace-nowrap shrink-0 transition-colors ${
-                            on ? "bg-white text-black" : "liquid-glass text-white/90 hover:text-white"
-                          } ${selectedTribeId && !on ? "opacity-60" : ""}`}
-                        >
-                          <span
-                            className="h-3 w-3 rounded-full shrink-0"
-                            style={{ background: t.color, boxShadow: on ? "none" : `0 0 10px ${t.color}` }}
-                          />
-                          <span>{t.name}{myTribeId === t.id ? " ✓" : ""}</span>
-                          <span className={`text-[11px] tabular-nums ${on ? "text-black/50" : "text-white/55"}`}>
-                            {tribeMembers.get(t.id)?.length ?? 0}
-                          </span>
-                          {!myTribeId && suggestedTribeId === t.id && (
+                        <div key={t.id} className={`rounded-full shrink-0 ${isCreators && !on ? "panel-glow-pulse" : ""}`}>
+                          <button
+                            onMouseEnter={() => setPreviewTribeId(t.id)}
+                            onMouseLeave={() => setPreviewTribeId((cur) => (cur === t.id ? null : cur))}
+                            onFocus={() => setPreviewTribeId(t.id)}
+                            onBlur={() => setPreviewTribeId((cur) => (cur === t.id ? null : cur))}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (on) setSelectedTribeId(null);
+                              else exploreTribe(t.id);
+                              bump();
+                            }}
+                            aria-pressed={on}
+                            className={`flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[13px] font-body font-medium whitespace-nowrap transition-colors ${
+                              on ? "bg-white text-black" : "liquid-glass text-white/90 hover:text-white"
+                            } ${selectedTribeId && !on ? "opacity-60" : ""}`}
+                          >
                             <span
-                              className={`text-[9px] uppercase tracking-[0.12em] rounded-full px-1.5 py-0.5 ${
-                                on ? "bg-black/10 text-black/70" : "bg-white/15 text-white/90"
-                              }`}
-                            >
-                              For you
+                              className="h-3 w-3 rounded-full shrink-0"
+                              style={{ background: t.color, boxShadow: on ? "none" : `0 0 10px ${t.color}` }}
+                            />
+                            <span>{t.name}{myTribeId === t.id ? " ✓" : ""}</span>
+                            <span className={`text-[11px] tabular-nums ${on ? "text-black/50" : "text-white/55"}`}>
+                              {tribeMembers.get(t.id)?.length ?? 0}
                             </span>
-                          )}
-                        </button>
+                            {isCreators ? (
+                              <span
+                                className="text-[9px] uppercase tracking-[0.12em] rounded-full px-1.5 py-0.5"
+                                style={on ? { background: "rgba(0,0,0,0.1)", color: "rgba(0,0,0,0.7)" } : { background: `${t.color}33`, color: t.color }}
+                              >
+                                Meet us
+                              </span>
+                            ) : !myTribeId && suggestedTribeId === t.id && (
+                              <span
+                                className={`text-[9px] uppercase tracking-[0.12em] rounded-full px-1.5 py-0.5 ${
+                                  on ? "bg-black/10 text-black/70" : "bg-white/15 text-white/90"
+                                }`}
+                              >
+                                For you
+                              </span>
+                            )}
+                          </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -1392,6 +1494,65 @@ export default function TribePage() {
                         className="mt-5 rounded-full bg-white text-black hover:bg-white/90 px-6 py-3 text-sm font-body font-medium inline-flex items-center gap-2 transition-colors"
                       >
                         Continue exploring
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Wrap-up — a soft, optional finish line reached only by
+                clicking "Ready to wrap up?" above, never automatic. Start
+                Over reuses the same full reset used everywhere else in the
+                app (StartOverButton -> restartApp), so that logic stays in
+                one place instead of being reimplemented here. */}
+            <AnimatePresence>
+              {showEndScreen && (
+                <motion.div
+                  key="wrap-up"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4"
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.92, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="relative liquid-glass-strong rounded-[1.5rem] p-8 w-full max-w-sm text-center"
+                  >
+                    <button
+                      onClick={() => setShowEndScreen(false)}
+                      aria-label="Keep exploring"
+                      className="absolute top-4 right-4 text-white/50 hover:text-white/90"
+                    >
+                      <X className="h-4 w-4" strokeWidth={1.75} />
+                    </button>
+
+                    <div className="relative w-14 h-14 mx-auto rounded-full bg-emerald-400/10 border border-emerald-400/30 inline-flex items-center justify-center">
+                      <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
+                      <Sparkles className="relative h-7 w-7 text-emerald-300" strokeWidth={1.8} />
+                    </div>
+
+                    <p className="mt-5 text-[11px] uppercase tracking-[.2em] text-white/60 font-body">
+                      Thank you for exploring
+                    </p>
+                    <h2 className="font-heading text-2xl text-white/95 mt-2 leading-tight">
+                      You're part of the Nomadic Engine tribe now.
+                    </h2>
+                    <p className="text-sm text-white/55 font-body mt-2">
+                      Come back anytime to meet more people, or start over from the beginning.
+                    </p>
+
+                    <div className="mt-6 flex flex-col items-center gap-2">
+                      <StartOverButton className="w-full rounded-full bg-white text-black hover:bg-white/90 px-6 py-3 text-sm font-body font-medium inline-flex items-center justify-center gap-2 transition-colors" />
+                      <button
+                        onClick={() => setShowEndScreen(false)}
+                        className="text-[12px] text-white/50 hover:text-white/85 font-body"
+                      >
+                        Keep exploring
                       </button>
                     </div>
                   </motion.div>
@@ -1724,7 +1885,17 @@ function TribeCard({
   const hasSide = chapters.length > 0 || isMine;
 
   return (
-    <div className={`grid gap-x-8 gap-y-5 ${hasSide ? "lg:grid-cols-[1.1fr_1.5fr_1fr]" : "lg:grid-cols-[1.1fr_1.5fr]"}`}>
+    <div className={`relative pt-7 grid gap-x-8 gap-y-5 ${hasSide ? "lg:grid-cols-[1.1fr_1.5fr_1fr]" : "lg:grid-cols-[1.1fr_1.5fr]"}`}>
+      {/* Closes this tribe card back to the tribes legend — top-right,
+          under where Presence sits in the row above this card, rather than
+          a text link buried next to the Join button. */}
+      <button
+        onClick={onClose}
+        aria-label="Close"
+        className="absolute top-0 right-0 liquid-glass rounded-full w-7 h-7 inline-flex items-center justify-center text-white/70 hover:text-white"
+      >
+        <X className="h-3.5 w-3.5" strokeWidth={1.75} />
+      </button>
       <div className="min-w-0">
         <div className="flex items-center gap-2.5">
           <span
@@ -1757,12 +1928,6 @@ function TribeCard({
             }`}
           >
             {isMine ? "✓ Your tribe" : hasOtherTribe ? "Switch to this tribe" : "Join this tribe"}
-          </button>
-          <button
-            onClick={onClose}
-            className="text-xs font-body text-white/50 hover:text-white underline underline-offset-4"
-          >
-            Close
           </button>
         </div>
       </div>

@@ -127,3 +127,19 @@ export const JOURNEY_EVENT = "nomadic:journey";
 export function notifyJourney() {
   try { window.dispatchEvent(new Event(JOURNEY_EVENT)); } catch { /* ignore */ }
 }
+
+// Bridges the Tribe page's own click/engagement count (never persisted —
+// it's per-visit, same as the map's interaction counter) to the nav's
+// "Ready to wrap up?" button, which lives outside the page and stays
+// mounted across navigation (see App.tsx), and back again when that
+// button is clicked. Not folded into JOURNEY_EVENT since this is ephemeral
+// engagement, not a persisted milestone.
+export const WRAPUP_EVENT = "nomadic:tribe-wrapup";
+
+export function setWrapUpEligible(eligible: boolean) {
+  try { window.dispatchEvent(new CustomEvent(WRAPUP_EVENT, { detail: { type: "eligible", eligible } })); } catch { /* ignore */ }
+}
+
+export function requestWrapUp() {
+  try { window.dispatchEvent(new CustomEvent(WRAPUP_EVENT, { detail: { type: "open" } })); } catch { /* ignore */ }
+}

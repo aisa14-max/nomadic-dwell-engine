@@ -20,7 +20,10 @@ export const PLANS: Plan[] = [
   {
     id: "standard",
     name: "Standard",
-    price: "$89/mo",
+    // £, matching gbp() everywhere else in the flow (add-ons, tax, total,
+    // dwelling value) — this used to be a bare $, so the subscription price
+    // shown right next to those GBP figures looked like a different currency.
+    price: "£89/mo",
     discount: 0.15,
     tagline: "The full dwelling, ready to move in",
     features: [
@@ -33,7 +36,7 @@ export const PLANS: Plan[] = [
   {
     id: "premium",
     name: "Premium",
-    price: "$149/mo",
+    price: "£149/mo",
     discount: 0.25,
     tagline: "Full customization, priority everything",
     features: [

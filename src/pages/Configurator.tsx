@@ -54,7 +54,7 @@ import OrderPanel from "@/components/worlds/OrderPanel";
 import PaymentPanel from "@/components/worlds/PaymentPanel";
 import EngineOnTheWayOverlay from "@/components/worlds/EngineOnTheWayOverlay";
 import { useReservation } from "@/hooks/useReservation";
-import { PARTS, PartId, DEPOSIT_RATE, DWELLING_VALUE } from "@/data/dwellingParts";
+import { PARTS, PartId, DEPOSIT_RATE } from "@/data/dwellingParts";
 import { applyPlanDiscount } from "@/data/plans";
 import { useMockAuth } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
@@ -89,11 +89,11 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 // the same line. Each one owns naming the one capability that's actually
 // wired up, so the dead end still points somewhere instead of just refusing.
 const UNRECOGNIZED_REQUEST_LINES = [
-  (cap: string) => `That one's still on my blueprint table — for now the only trick I've fully loaded is ${cap}. Want to try that instead?`,
-  (cap: string) => `Ambitious! I'm not wired up for that yet, but ${cap} is a move I can actually pull off right now.`,
-  (cap: string) => `Filed under "coming soon." Until then, ${cap} is the only lever running end-to-end on my end.`,
-  (cap: string) => `My circuits aren't tuned for that request yet — but ${cap}? Fully loaded and ready.`,
-  (cap: string) => `I hear you, I just can't act on it yet. Right now ${cap} is the only thing I've got working end-to-end.`,
+  (cap: string) => `Can't do that yet — but ${cap} is possible.`,
+  (cap: string) => `Not wired up yet. Try: ${cap}.`,
+  (cap: string) => `Coming soon! For now: ${cap}.`,
+  (cap: string) => `Outside my skills right now — ${cap} isn't though.`,
+  (cap: string) => `Not yet possible, but ${cap} is.`,
 ] as const;
 function pickUnrecognizedReply(capability: string): string {
   const line = UNRECOGNIZED_REQUEST_LINES[Math.floor(Math.random() * UNRECOGNIZED_REQUEST_LINES.length)];
@@ -278,7 +278,17 @@ export default function Configurator() {
   const rightColDirection = rightColIndex - prevRightColIndexRef.current;
   useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
 
-  const enterCustomise = () => { setShowNext(true); r.setStage("configure"); };
+  // Add-ons should only ever show the plain exterior dwelling — any zone
+  // peek left open from the design stage (clicked a hotspot, never closed
+  // it before hitting Continue configuration) would otherwise carry straight
+  // into the static customise-stage scene, since that scene reuses the same
+  // CUTAWAY_IMAGES/activeCutaway state instead of resetting it.
+  const enterCustomise = () => {
+    setActiveCutaway(null);
+    setClickedHotspotId(null);
+    setShowNext(true);
+    r.setStage("configure");
+  };
   // Payment must charge the same number the order summary shows, so both read
   // the discount from one helper rather than each doing their own arithmetic.
   const pricedTotals = applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE);
@@ -308,7 +318,7 @@ export default function Configurator() {
     // Plans stage gives the reservation/plan-picker panel more room (and the
     // now-static dwelling viewport correspondingly less) since there's no
     // interaction happening in the viewport at this stage.
-    : stage === "plans" ? "lg:grid-cols-[0px_1fr_640px]"
+    : stage === "plans" ? "lg:grid-cols-[0px_1fr_520px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
@@ -323,15 +333,10 @@ export default function Configurator() {
   // so it counts as seen immediately — Site Selector starts unlocked.
   const briefSeen = true;
   const [siteSeen, setSiteSeen] = useState(false);
-  // Distinct from siteSeen (which only tracks the panel being opened, and
-  // still gates unlocking Show Zones on its own): Show Zones should only
-  // glow once the visitor has actually picked a different site in the
-  // carousel, not merely opened the panel and looked at the default pick.
-  // A counter (not a plain seen/unseen flag) since it's driven from a
-  // shared settle handler that's easiest to reason about as "how many real
-  // navigations has this landed on so far".
-  const [siteChangeCount, setSiteChangeCount] = useState(0);
-  const markSiteChanged = () => setSiteChangeCount((n) => n + 1);
+  // The "Start here" arrival nudge dismisses on its own once the panel is
+  // opened, but its own close (X) button just hides the nudge — it doesn't
+  // fast-forward the step the way Skip does.
+  const [siteHintDismissed, setSiteHintDismissed] = useState(false);
   // Toggle sitting between Site Selector and Layout Zones — flipping it on
   // is what reveals the glowing roofline dots and unlocks the Layout Zones
   // panel in turn. Unlike the "seen" flags below, this one is a genuine
@@ -346,6 +351,17 @@ export default function Configurator() {
   // has to zonesSeen.
   const [exploreUnlocked, setExploreUnlocked] = useState(false);
   const [exploreSeen, setExploreSeen] = useState(false);
+  // The chat's own glow waits a bit longer than exploreSeen itself — flipping
+  // Step Inside on fires it immediately, but that's exactly when visitors are
+  // busy looking at the 360° panorama they just opened, not the sidebar, so
+  // the glow was starting (and often finishing invisibly) while nobody could
+  // see it. Delayed until they've had time to actually look around.
+  const [chatGlowReady, setChatGlowReady] = useState(false);
+  useEffect(() => {
+    if (!exploreSeen) return;
+    const t = setTimeout(() => setChatGlowReady(true), 6000);
+    return () => clearTimeout(t);
+  }, [exploreSeen]);
   const [zones, setZones] = useState<{ id: ZoneId; size: ZoneSize }[]>(
     ALL_ZONE_IDS.map((id) => ({ id, size: DEFAULT_ZONE_SIZES[id] })),
   );
@@ -479,6 +495,46 @@ export default function Configurator() {
   // panorama get an entry here — add one as each new panorama arrives; that's
   // also what makes the button appear on that hotspot's tooltip.
   const [activeExplore, setActiveExplore] = useState<string | null>(null);
+  // Mouse-wheel zoom + left-click-drag pan, alongside the existing +/-
+  // buttons. Pan resets whenever zoom returns to 1 — otherwise the scene
+  // could stay visibly offset even at rest scale, with nothing to pan. Both
+  // are skipped entirely while the 360° panorama (activeExplore) is open —
+  // photo-sphere-viewer already owns left-click-drag and wheel-zoom for
+  // looking around, and this viewport's own listeners would otherwise
+  // fight it for the same gestures on the same element underneath.
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  useEffect(() => { if (zoom === 1) setPan({ x: 0, y: 0 }); }, [zoom]);
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    // Native listener (not React's onWheel) — React 17+ registers wheel
+    // handlers as passive by default, so preventDefault() inside a plain
+    // onWheel prop silently does nothing and the page scrolls underneath.
+    const onWheel = (e: WheelEvent) => {
+      if (activeExplore) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom((z) => Math.min(2, Math.max(1, +(z + delta).toFixed(2))));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [activeExplore]);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const handleViewportPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || zoom <= 1 || activeExplore) return;
+    e.preventDefault();
+    isPanningRef.current = true;
+    panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+  const handleViewportPointerMove = (e: React.PointerEvent) => {
+    if (!isPanningRef.current) return;
+    setPan({
+      x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+      y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+    });
+  };
+  const stopPanning = () => { isPanningRef.current = false; };
   type PanoramaSceneId = "bedroom" | "livingroom" | "kitchen" | "plants" | "bathroom";
   // Which hotspot opens which panorama scene — multiple hotspots can point at
   // the same scene (e.g. two dots sharing one room). Add an entry here as
@@ -839,6 +895,12 @@ export default function Configurator() {
         setGrowDropToast(true);
         setTimeout(() => setGrowDropToast(false), 2500);
         removeZone("grow");
+        // Close Add Zones now that its one job is done — otherwise the
+        // still-open zone carousel keeps the newly-glowing Step Inside
+        // switch (see its panel-glow-pulse condition further down, gated on
+        // plantsGrown) crowded out below it instead of being the obvious
+        // next thing to notice.
+        setShowLayoutZones(false);
       } else {
         const x = Math.min(100, Math.max(0, ((point.x - rect.left) / rect.width) * 100));
         const y = Math.min(100, Math.max(0, ((point.y - rect.top) / rect.height) * 100));
@@ -1040,7 +1102,6 @@ export default function Configurator() {
         finalRealIdx = nearestLi - 1;
       }
       setSelectedSiteIdx(finalRealIdx);
-      if (finalRealIdx !== lastSettledSiteIdxRef.current) markSiteChanged();
       lastSettledSiteIdxRef.current = finalRealIdx;
     }, 130);
   };
@@ -1076,8 +1137,8 @@ export default function Configurator() {
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
     : _siteName
-      ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
-      : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
+      ? `Hi! I've designed your ${_spec.dining_style ?? "compact"} dwelling at ${_siteName}. Anything to adjust?`
+      : "Hi! Anything you'd like to adjust about your dwelling?";
 
   // The very first chip row offers only the one suggestion that actually
   // works, so a first-time visitor's first click is guaranteed to succeed.
@@ -1141,6 +1202,16 @@ export default function Configurator() {
   const send = async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
     if (!text || isStreaming) return;
+    // Chat-triggered changes render on the exterior dwelling viewport, which
+    // the 360° panorama takeover covers completely — sending a message while
+    // still inside it would apply the change somewhere the visitor can't
+    // see. Same reset as the panorama's own close button.
+    if (activeExplore) {
+      setActiveExplore(null);
+      setClickedHotspotId(null);
+      setActiveCutaway(null);
+      setPanoramaTourStep(0);
+    }
     setShowSuggestions(false);
     const userMsg: ChatMsg = { role: "user", content: text };
     const chatHistory = messages.filter((m) => m.content !== "");
@@ -1167,9 +1238,9 @@ export default function Configurator() {
       next[next.length - 1] = {
         role: "assistant",
         content: addsWindows
-          ? "Added more windows along the wall — take a look at the dwelling."
+          ? "Added more windows — take a look!"
           : changesBracing
-          ? "Switched the rib bracing to a cross-braced pattern — take a look at the dwelling. Do you like this change?"
+          ? "Switched to cross-braced ribs — like it?"
           : pickUnrecognizedReply("changing the rib bracing"),
       };
       return next;
@@ -1197,8 +1268,8 @@ export default function Configurator() {
       next[next.length - 1] = {
         role: "assistant",
         content: liked
-          ? "Great — keeping the cross-braced ribs."
-          : "No problem — reverted back to the original bracing.",
+          ? "Great — keeping it!"
+          : "No problem — reverted!",
       };
       return next;
     });
@@ -1217,10 +1288,15 @@ export default function Configurator() {
   const _W        = _inner + (_corrSide !== "none" ? _corrW : 0);
   const _D        = (spec.d as number) ?? 3;
   const _areaCm2   = (_W * 40) * (_D * 40);
-  const _areaM2Num = _areaCm2 / 10000;
+  // Neither the onboarding spec above nor these stats ever reacted to what
+  // actually happens on the dwelling afterward — adding the Grow zone left
+  // Assembly time/Energy/Mass/Area exactly as they were. Rough multiplier
+  // since there's no live backend call here to recompute the real figures.
+  const _areaM2Num = (_areaCm2 / 10000) * (plantsGrown ? 1.3 : 1);
   const _assembly  = Math.round(6.5 + _areaM2Num * 1.2);
   const _energy    = (1.8 + _areaM2Num * 0.5).toFixed(1);
   const _mass      = (0.25 + _areaM2Num * 0.13).toFixed(2);
+  const _totalArea = Math.round(_areaM2Num);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -1235,7 +1311,13 @@ export default function Configurator() {
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
-          <div className="flex items-end justify-between flex-wrap gap-6">
+          {/* relative z-20 here (not just on the ghost-cursor's own inner
+              wrapper) is the actual fix for it rendering behind the chat
+              panel below: this row and the grid row further down are direct
+              siblings, so THIS is the level where their stacking order gets
+              decided — a z-index set only on something nested deep inside
+              this row can't win that comparison, no matter how high. */}
+          <div className="relative z-20 flex items-end justify-between flex-wrap gap-6">
             <div className="max-w-3xl">
               <BlurText
                 text="Compose your engine."
@@ -1261,16 +1343,53 @@ export default function Configurator() {
                 </label>
               )}
               {stage === "design" ? (
-                <button
-                  onClick={enterCustomise}
-                  disabled={!exploreSeen}
-                  title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
-                  className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${glowHintsEnabled && exploreSeen ? "panel-glow-pulse" : ""}`}
-                >
-                  {exploreSeen
-                    ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
-                    : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
-                </button>
+                <div className="relative z-30">
+                  <button
+                    onClick={enterCustomise}
+                    disabled={!exploreSeen}
+                    title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
+                    className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${glowHintsEnabled && exploreSeen ? "panel-glow-pulse" : ""}`}
+                  >
+                    {exploreSeen
+                      ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
+                      : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
+                  </button>
+                  {/* Ghost-cursor nudge toward Continue configuration — once
+                      they've actually sent a chat message, that's the next
+                      obvious move, so it gets the same "here's what to do
+                      next" treatment as the earlier steps instead of relying
+                      on the button's own glow alone to be noticed. z-30 (on
+                      this wrapper, and the cursor itself below) since the
+                      header sits directly above the chat panel's own card —
+                      without it the cursor was rendering behind that card
+                      instead of in front of it. */}
+                  {glowHintsEnabled && exploreSeen && messages.some((m) => m.role === "user") && (
+                    <motion.div
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
+                      style={{ left: "50%", top: "220%" }}
+                      animate={{
+                        top: ["220%", "220%", "50%", "50%", "50%"],
+                        opacity: [0, 1, 1, 1, 0],
+                        scale: [1, 1, 1, 0.72, 1],
+                      }}
+                      transition={{
+                        duration: 2,
+                        times: [0, 0.12, 0.55, 0.66, 0.88],
+                        repeat: Infinity,
+                        repeatDelay: 0.6,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <MousePointer2
+                        className="h-4 w-4 text-white"
+                        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                        fill="white"
+                        fillOpacity={0.15}
+                        strokeWidth={1.75}
+                      />
+                    </motion.div>
+                  )}
+                </div>
               ) : stage === "plans" || stage === "payment" ? (
                 // No way back to the design step once add-ons begin: design is
                 // finished in one go. Later steps still step back one at a time.
@@ -1368,35 +1487,107 @@ export default function Configurator() {
                   (needed for its border-gradient trick) when applied directly
                   to it, so it has to sit one level up on a plain, non-clipping
                   box instead. */}
-              <div className={`rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
+              <div className={`relative rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
                 className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
               >
-                <button
-                  onClick={() => {
-                    if (!briefSeen) return;
-                    const next = !showSiteSelector;
-                    setShowSiteSelector(next);
-                    if (next) setSiteSeen(true);
-                  }}
-                  disabled={!briefSeen}
-                  className="w-full flex items-center justify-between group disabled:cursor-not-allowed"
-                  aria-expanded={showSiteSelector}
-                  aria-disabled={!briefSeen}
-                  title={!briefSeen ? "Open Your Summary first" : undefined}
-                >
-                  <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${briefSeen ? "text-white/60" : "text-white/30"}`}>
-                    {briefSeen ? <Compass className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
-                    Site Selector
-                  </span>
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""} ${briefSeen ? "" : "opacity-0"}`}
-                    strokeWidth={1.75}
-                  />
-                </button>
+                <div className="w-full flex items-center justify-between gap-2">
+                  <button
+                    onClick={() => {
+                      if (!briefSeen) return;
+                      setShowSiteSelector((v) => !v);
+                    }}
+                    disabled={!briefSeen}
+                    className="flex-1 min-w-0 flex items-center justify-between group disabled:cursor-not-allowed"
+                    aria-expanded={showSiteSelector}
+                    aria-disabled={!briefSeen}
+                    title={!briefSeen ? "Open Your Summary first" : undefined}
+                  >
+                    <span className={`inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] ${briefSeen ? "text-white/60" : "text-white/30"}`}>
+                      {briefSeen ? <Compass className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Lock className="h-3 w-3" strokeWidth={1.75} />}
+                      Site Selector
+                    </span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""} ${briefSeen ? "" : "opacity-0"}`}
+                      strokeWidth={1.75}
+                    />
+                  </button>
+                  {/* Only once the carousel is actually open — before that,
+                      "skip past a step you haven't looked at yet" doesn't
+                      make sense. The default site is already a real pick
+                      (onboarding's or a fallback), not a placeholder, so
+                      this is a real way past the step once they've seen it,
+                      not just a decoy next to the real interaction. Doesn't
+                      close the panel — unlike Add Zones below, which closes
+                      itself once its one job is done, Site Selector is left
+                      open so browsing can continue afterward. */}
+                  {showSiteSelector && !siteSeen && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSiteSeen(true); }}
+                      className="shrink-0 text-[10px] font-body font-medium uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-emerald-400/15 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/25 hover:text-emerald-200 transition-colors"
+                    >
+                      Skip
+                    </button>
+                  )}
+                </div>
+
+                {/* Arrival nudge — the very first thing a visitor needs to do,
+                    so it's shown from the moment the panel is interactive
+                    (briefSeen is true immediately) until Site Selector is
+                    actually opened (its job — get them to open it — is done
+                    at that point, whether or not they go on to pick a site
+                    or Skip) or its own X is dismissed. Same ghost-cursor +
+                    dismissible bubble pattern as the hotspot arrival nudge
+                    further down, just on a shorter loop — this is the very
+                    first thing anyone sees, so it shouldn't feel like it's
+                    idling between passes. */}
+                {glowHintsEnabled && briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
+                  <div className="absolute inset-0 z-20 pointer-events-none">
+                    <motion.div
+                      className="absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{ left: "85%", top: "125%" }}
+                      animate={{
+                        left: ["85%", "85%", "45%", "45%", "45%"],
+                        top: ["125%", "125%", "45%", "45%", "45%"],
+                        opacity: [0, 1, 1, 1, 0],
+                        scale: [1, 1, 1, 0.72, 1],
+                      }}
+                      transition={{
+                        duration: 1.8,
+                        times: [0, 0.12, 0.55, 0.66, 0.88],
+                        repeat: Infinity,
+                        repeatDelay: 0.4,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <MousePointer2
+                        className="h-5 w-5 text-white"
+                        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                        fill="white"
+                        fillOpacity={0.15}
+                        strokeWidth={1.75}
+                      />
+                    </motion.div>
+                    <div className="absolute pointer-events-auto" style={{ right: "8px", top: "-40px", maxWidth: "170px" }}>
+                      <div className="liquid-glass-strong rounded-xl pl-3.5 pr-2.5 py-2.5 flex items-start gap-2">
+                        <p className="font-body text-[12px] text-white/90 leading-snug">
+                          Start here
+                        </p>
+                        <button
+                          onClick={() => setSiteHintDismissed(true)}
+                          className="shrink-0 mt-0.5 text-white/40 hover:text-white/80"
+                          aria-label="Dismiss hint"
+                        >
+                          <X className="h-3 w-3" strokeWidth={2} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <AnimatePresence initial={false}>
                   {showSiteSelector && (
@@ -1410,7 +1601,7 @@ export default function Configurator() {
                       <div className="pt-2 flex items-center gap-1">
                         {SITE_OPTIONS.length > 1 && (
                           <button
-                            onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1)}
+                            onClick={() => { scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1); setSiteSeen(true); }}
                             className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                             aria-label="Previous site"
                           >
@@ -1431,7 +1622,7 @@ export default function Configurator() {
                               <button
                                 key={`${opt.title}-${li}`}
                                 ref={(el) => (siteCardRefs.current[li] = el)}
-                                onClick={() => scrollToSiteLoopIdx(li)}
+                                onClick={() => { scrollToSiteLoopIdx(li); setSiteSeen(true); }}
                                 aria-label={`Switch to ${opt.title}`}
                                 aria-pressed={active}
                                 className={[
@@ -1460,7 +1651,7 @@ export default function Configurator() {
 
                         {SITE_OPTIONS.length > 1 && (
                           <button
-                            onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1)}
+                            onClick={() => { scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1); setSiteSeen(true); }}
                             className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                             aria-label="Next site"
                           >
@@ -1474,7 +1665,10 @@ export default function Configurator() {
               </motion.aside>
               </div>
 
-              <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteChangeCount >= 1 && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
+              {/* siteSeen covers both real ways past Site Selector — picking
+                  a different site in the carousel, or Skip — so either one
+                  is enough to move the glow on to Show Zones. */}
+              <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -1635,52 +1829,54 @@ export default function Configurator() {
               {/* Section tabs + 2D/3D toggle */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1 bg-white/5 rounded-full p-1">
+                  {/* "dwelling" is the only section this page ever has — no
+                      other section to switch to, so it's shown (always
+                      active) but not clickable, unlike the real 3D/Plan
+                      toggle beside it. It used to still be a live button
+                      that re-ran fetchRender on every click despite nothing
+                      actually changing, which read as a glitch (a visible
+                      re-render flash) rather than a no-op. */}
                   {(["dwelling"] as const).map((s) => (
-                    <button
+                    <span
                       key={s}
-                      onClick={() => {
-                        // When switching to a non-dwelling section, "plan" is invalid → fall back to "3D"
-                        const v = s === "dwelling"
-                          ? (viewMode === "plan" ? "plan" : "3D")
-                          : (viewMode === "plan" ? "3D" : viewMode);
-                        setActiveSection(s);
-                        setViewMode(v);
-                        fetchRender(s, v);
-                      }}
-                      className={[
-                        "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
-                        activeSection === s
-                          ? "bg-white text-black font-medium"
-                          : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
+                      className="px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] bg-white text-black font-medium cursor-default"
                     >
                       {s}
-                    </button>
+                    </span>
                   ))}
                 </div>
-                <div className="flex gap-1 bg-white/5 rounded-full p-1">
-                  {(activeSection === "dwelling"
-                    ? (["3D", "plan"] as const)
-                    : (["2D", "3D"] as const)
-                  ).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => { setViewMode(v); fetchRender(activeSection, v); }}
-                      className={[
-                        "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
-                        viewMode === v
-                          ? "bg-white text-black font-medium"
-                          : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
-                    >
-                      {/* "3D" reads as "Elevation" for the exterior dwelling view — same
-                          underlying viewMode value, just a clearer label. Once inside a
-                          360° panorama (activeExplore), it reverts to plain "3D" since
-                          "Elevation" (an exterior architectural view) no longer applies. */}
-                      {v === "3D" ? (activeExplore ? "3D" : "Elevation") : v}
-                    </button>
-                  ))}
-                </div>
+                {/* Hidden on the add-ons page — the viewport there is a
+                    static exterior scene (see stage === "customise" below),
+                    so 2D/Plan didn't switch anything and just looked like
+                    a live control that wasn't. */}
+                {stage !== "customise" && (
+                  <div className="flex gap-1 bg-white/5 rounded-full p-1">
+                    {/* Always Elevation/Plan, never 2D — clicking a zone
+                        hotspot used to switch activeSection away from
+                        "dwelling" and flip this to a 2D/3D toggle that had
+                        no real 2D content behind it (nothing renders
+                        viewMode === "2D" distinctly), so it just looked
+                        broken. */}
+                    {(["3D", "plan"] as const).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => { setViewMode(v); fetchRender(activeSection, v); }}
+                        className={[
+                          "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
+                          viewMode === v
+                            ? "bg-white text-black font-medium"
+                            : "text-white/50 hover:text-white/80",
+                        ].join(" ")}
+                      >
+                        {/* "3D" reads as "Elevation" for the exterior dwelling view — same
+                            underlying viewMode value, just a clearer label. Once inside a
+                            360° panorama (activeExplore), it reverts to plain "3D" since
+                            "Elevation" (an exterior architectural view) no longer applies. */}
+                        {v === "3D" ? (activeExplore ? "3D" : "Elevation") : v}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div
@@ -1690,8 +1886,13 @@ export default function Configurator() {
                     ? "relative w-full h-full overflow-hidden liquid-glass rounded-none"
                     : "relative rounded-[1.25rem] overflow-hidden liquid-glass",
                   isZoneDragOver ? "ring-2 ring-white/50" : "",
+                  zoom > 1 && !activeExplore ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
                 style={isFullscreen ? undefined : { height: "58vh" }}
+                onPointerDown={handleViewportPointerDown}
+                onPointerMove={handleViewportPointerMove}
+                onPointerUp={stopPanning}
+                onPointerLeave={stopPanning}
               >
                 {stage === "customise" || stage === "plans" ? (
                     // Once configuration is continued, the viewport shows only
@@ -1705,7 +1906,7 @@ export default function Configurator() {
                     <div
                       className="absolute inset-0"
                       style={{
-                        transform: `scale(${zoom})`,
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
                         transformOrigin: zoomOrigin ? `${zoomOrigin.x}% ${zoomOrigin.y}%` : "50% 50%",
                       }}
                     >
@@ -1776,11 +1977,13 @@ export default function Configurator() {
                       key="plan-view"
                       className="absolute inset-0"
                       initial={{ opacity: 0, scale: 1.04 }}
-                      animate={{ opacity: 1, scale: zoom }}
+                      animate={{ opacity: 1, scale: zoom, x: pan.x, y: pan.y }}
                       exit={{ opacity: 0, scale: 1.04 }}
                       transition={{
                         opacity: { duration: 0.5, ease: "easeOut" },
                         scale: { type: "spring", stiffness: 220, damping: 26 },
+                        x: { type: "tween", duration: 0 },
+                        y: { type: "tween", duration: 0 },
                       }}
                     >
                       <img
@@ -1795,7 +1998,7 @@ export default function Configurator() {
                       key="scene-3d"
                       className="absolute inset-0"
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 1, scale: zoom }}
+                      animate={{ opacity: 1, scale: zoom, x: pan.x, y: pan.y }}
                       exit={{ opacity: 0 }}
                       // Anchor the scale on the focused hotspot so the zoom
                       // pushes in on that section; falls back to centre for the
@@ -1809,6 +2012,8 @@ export default function Configurator() {
                       transition={{
                         opacity: { duration: 0.5, ease: "easeOut" },
                         scale: { type: "spring", stiffness: 220, damping: 26 },
+                        x: { type: "tween", duration: 0 },
+                        y: { type: "tween", duration: 0 },
                       }}
                     >
                       {/* Landscape backdrop, matching the reference — sits behind everything else in this viewport */}
@@ -2353,7 +2558,7 @@ export default function Configurator() {
                   <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
                   <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
                   <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
-                  <Stat icon={Square} label="Total area" value="32" unit="m²" />
+                  <Stat icon={Square} label="Total area" value={String(_totalArea)} unit="m²" />
                 </div>
               )}
             </motion.div>
@@ -2403,7 +2608,7 @@ export default function Configurator() {
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
-                      className="w-[640px] shrink-0 h-full"
+                      className="w-[520px] shrink-0 h-full"
                     >
                       <OrderPanel
                         configured={r.configured}
@@ -2420,36 +2625,37 @@ export default function Configurator() {
               </motion.div>
             )}
 
-            {/* AI ASSIST — CHAT. Glow lives on this wrapper, not the
-                liquid-glass aside inside it — see the Site Selector wrapper
-                above for why. The design/hidden toggle moves here too, so an
-                off-stage chat still collapses to zero size instead of a
-                wrapper div holding its grid cell open with hidden content.
-                No hardcoded total height here — this wrapper is a plain flex
-                column whose auto height is just "spacer + card", and it's
-                built to mirror the viewport column's own composition
-                (tabs row + mb-3 + its 58vh box) piece for piece, so the two
-                columns' natural heights end up equal and their bottoms land
-                on the same line without any guessed offset. */}
-            <div
-              className={`${stage === "design" ? "min-h-0 overflow-hidden flex flex-col" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && exploreSeen && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}
-            >
-            {/* Invisible stand-in for the viewport's "Section tabs" row —
-                same classes as one of its real pill buttons, so this spacer's
-                rendered height matches that row exactly (no magic-number
-                offset that would drift if that row's padding/font changes). */}
-            <div aria-hidden className="invisible shrink-0 flex items-center justify-between mb-3">
-              <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em]">
-                dwelling
-              </span>
-            </div>
-            <motion.aside
+            {/* AI ASSIST — CHAT. Glow lives on this outer wrapper, not the
+                liquid-glass card inside it — box-shadow gets clipped flat by
+                the card's own overflow:hidden (needed for its rounded-corner
+                clipping) when applied directly to it, so it sits one level
+                up on a plain, non-clipping box instead — same pattern as the
+                Site Selector wrapper above. The design/hidden toggle sits
+                here too, so an off-stage chat still collapses to zero size
+                instead of holding its grid cell open with hidden content.
+                Delayed (chatGlowReady) and held open until an actual message
+                is sent — see chatGlowReady's declaration for why. */}
+            <div className={`${stage === "design" ? "flex flex-col" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && chatGlowReady && !messages.some((m) => m.role === "user") ? "panel-glow-pulse" : ""}`}>
+            {/* The invisible tabs-row spacer lives INSIDE the same visual card
+                as the rest of the chat, instead of as a separate sibling
+                above it — so the card itself (and the glow wrapping it)
+                starts flush at the top, level with Your Summary and the
+                viewport's 2D/3D buttons, rather than floating below a gap
+                with nothing glowing over it. It's placed AFTER the actual
+                chat content (see below), not before it — before it, it was
+                pushing the "Engine Assistant" header down below where Your
+                Summary/2D-3D sit, the same misalignment one level in. Its
+                own height still mirrors the viewport's "Section tabs" row
+                exactly (same classes as one of its real pill buttons), which
+                is what keeps this card's total height — and so its bottom
+                edge — matching the viewport panel's, same as before. */}
+            <motion.div
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col min-h-0 shrink-0"
-              style={{ height: "58vh" }}
+              className="liquid-glass rounded-[1.5rem] shadow-lg shadow-black/20 overflow-hidden flex flex-col min-h-0"
             >
+              <aside className="flex flex-col min-h-0 shrink-0 p-6" style={{ height: "58vh" }}>
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">
                   <img src={assistantAvatar} alt="Engine Assistant" width={36} height={36} loading="lazy" className="w-full h-full object-contain" />
@@ -2621,7 +2827,18 @@ export default function Configurator() {
                   <Send className="h-4 w-4" strokeWidth={2} />
                 </button>
               </form>
-            </motion.aside>
+              </aside>
+              {/* mt-3 here reproduces the real tabs row's mb-3 — without it
+                  this spacer was ~12px short of the real row's footprint
+                  (pill height + the margin before the viewport starts),
+                  so the chat card's bottom sat that much above the
+                  viewport's actual bottom edge. */}
+              <div aria-hidden className="invisible shrink-0 flex items-center justify-between px-6 mt-3">
+                <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em]">
+                  dwelling
+                </span>
+              </div>
+            </motion.div>
             </div>
           </div>
         </div>
@@ -2645,7 +2862,7 @@ export default function Configurator() {
               initial={{ y: 20, opacity: 0, scale: 0.96 }}
               animate={{ y: 0, opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
-              className="relative w-full max-w-lg max-h-[85vh]"
+              className="relative w-full max-w-md max-h-[70vh] min-h-0"
             >
               <button
                 type="button"
@@ -2655,7 +2872,7 @@ export default function Configurator() {
               >
                 <X className="h-4 w-4" strokeWidth={1.5} />
               </button>
-              <PaymentPanel totals={pricedTotals} onSubmit={r.submitPayment} inline />
+              <PaymentPanel totals={pricedTotals} onSubmit={r.submitPayment} selectedPlan={selectedPlan} inline />
             </motion.div>
           </motion.div>
         )}
@@ -2667,7 +2884,9 @@ export default function Configurator() {
           <EngineOnTheWayOverlay
             reservationRef={r.reservationRef}
             colors={r.colors}
-            total={r.totals.total + DWELLING_VALUE}
+            total={pricedTotals.total}
+            dwellingImage={_dwellingImg}
+            dwellingImageScale={_dwellingImg === dwellingFg ? 1 : 1.06}
             onContinue={() => navigate("/tribe")}
           />
         )}

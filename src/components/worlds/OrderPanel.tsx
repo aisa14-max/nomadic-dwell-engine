@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Check } from "lucide-react";
+import { ArrowRight, ArrowLeft, Check, Lock } from "lucide-react";
 import { AVAILABLE_PARTS, TOTAL_PARTS, PartId, findOption, gbp, DEPOSIT_RATE, DWELLING_VALUE, isSkipped } from "@/data/dwellingParts";
 import { PLANS, findPlan, MAX_DISCOUNT, applyPlanDiscount } from "@/data/plans";
 import { ENGINE_PAGE_ENABLED } from "@/config/features";
@@ -42,18 +42,21 @@ export default function OrderPanel({
   onContinue,
 }: Props) {
   const count = configured.size;
+  // Only the first step (add-ons -> plans) gets locked — once past it,
+  // "Continue to payment" doesn't need to re-gate anything.
+  const isLocked = !showPlans && count < TOTAL_PARTS;
   const plan = findPlan(selectedPlan);
   const priced = applyPlanDiscount(totals, selectedPlan, DEPOSIT_RATE);
   const { discount } = priced;
   const discountedTotal = priced.total;
 
   return (
-    <div className="liquid-glass rounded-[1.25rem] p-5 flex flex-col h-full">
-      <div className="shrink-0 pb-3 border-b border-white/10">
+    <div className="liquid-glass rounded-[1.25rem] p-4 flex flex-col h-full">
+      <div className="shrink-0 pb-2.5 border-b border-white/10">
         <p className="text-[10px] uppercase tracking-[0.2em] text-white/55 font-body">
           Your reservation
         </p>
-        <h3 className="font-heading text-2xl text-white mt-0.5 tracking-[-0.5px]">
+        <h3 className="font-heading text-xl text-white mt-0.5 tracking-[-0.5px]">
           {showPlans ? "Choose your plan" : "Price & Order"}
         </h3>
       </div>
@@ -61,7 +64,7 @@ export default function OrderPanel({
       {/* The dwelling itself is rented via the subscription below, not
           bought outright — its value sits here for context, separate from
           the one-off add-on total it isn't part of. */}
-      <div className="shrink-0 mt-3 flex items-center justify-between gap-3 rounded-[0.75rem] bg-white/[0.04] px-3 py-2.5">
+      <div className="shrink-0 mt-2.5 flex items-center justify-between gap-3 rounded-[0.75rem] bg-white/[0.04] px-3 py-2">
         <span className="text-[10px] font-body text-white/50 leading-snug">
           Dwelling value
           <br />
@@ -82,7 +85,7 @@ export default function OrderPanel({
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="overflow-hidden"
             >
-              <div className="grid grid-cols-2 gap-1.5 pb-4 mb-3 border-b border-white/10">
+              <div className="grid grid-cols-2 gap-1.5 pb-3 mb-2.5 border-b border-white/10">
                 {PLANS.map((p) => {
                   const active = selectedPlan === p.id;
                   const saving = Math.round(totals.subtotal * p.discount);
@@ -92,14 +95,17 @@ export default function OrderPanel({
                       onClick={() => onSelectPlan(p.id)}
                       aria-pressed={active}
                       className={[
-                        "relative w-full text-left rounded-[0.75rem] px-3 py-2.5 transition-all border",
+                        "relative w-full text-left rounded-[0.75rem] px-2.5 py-2 transition-all border",
                         active
                           ? "bg-white/15 border-white/50"
                           : "bg-white/[0.03] border-white/10 hover:bg-white/[0.07] hover:border-white/25",
                       ].join(" ")}
                     >
+                      {/* Normal flow, not absolutely positioned in the
+                          corner — it used to sit right on top of the price
+                          once the price got bigger/bolder. */}
                       {p.highlight && !active && (
-                        <span className="absolute top-2 right-2 text-[7px] font-body uppercase tracking-[0.08em] text-white/50 border border-white/20 rounded-full px-1.5 py-0.5">
+                        <span className="inline-block mb-1.5 text-[7px] font-body uppercase tracking-[0.08em] text-white/50 border border-white/20 rounded-full px-1.5 py-0.5">
                           Popular
                         </span>
                       )}
@@ -110,14 +116,14 @@ export default function OrderPanel({
                           </span>
                           {active && <Check className="h-3 w-3 text-white shrink-0" strokeWidth={2.5} />}
                         </span>
-                        <span className="text-[11px] font-body text-white/80 shrink-0">{p.price}</span>
+                        <span className={`font-heading text-base shrink-0 ${active ? "text-black" : "text-white"}`}>{p.price}</span>
                       </div>
                       <p className="text-[10px] font-body text-white/45 mt-0.5 leading-snug">
                         {p.tagline}
                       </p>
-                      <ul className="mt-1.5 space-y-0.5">
+                      <ul className="mt-1.5 space-y-1">
                         {p.features.map((f) => (
-                          <li key={f} className="text-[9px] font-body text-white/55 flex items-start gap-1">
+                          <li key={f} className="text-[11px] font-body text-white/65 flex items-start gap-1.5">
                             <span className="text-white/30 mt-[1px]">·</span>
                             <span className="min-w-0">{f}</span>
                           </li>
@@ -191,9 +197,17 @@ export default function OrderPanel({
           <Row label={`${plan.name} plan discount`} value={`−${gbp(discount)}`} accent />
         )}
         <Row label="Tax" value={gbp(totals.tax)} />
-        <Row label="Total" value={gbp(discountedTotal + DWELLING_VALUE)} strong />
+        {/* Dwelling value is shown separately above, clearly marked as not
+            purchased — folding it into "Total" here made this number look
+            like what's being charged, and made the payment step's 10%
+            deposit look like the wrong percentage of it. */}
+        <Row label="Total" value={gbp(discountedTotal)} strong />
+        {/* The recurring subscription is the number that actually matters
+            most (it's the real ongoing cost, unlike the one-off add-ons
+            above) — strong here, not muted, so it doesn't read as a
+            footnote under the one-off Total. */}
         {plan && (
-          <Row label={`Subscription (${plan.name})`} value={`${plan.price}`} muted />
+          <Row label={`Subscription (${plan.name})`} value={`${plan.price}`} strong />
         )}
         {!showPlans && !plan && totals.subtotal > 0 && (
           <p className="pt-1 text-[10px] font-body text-emerald-300/80">
@@ -201,6 +215,16 @@ export default function OrderPanel({
           </p>
         )}
       </div>
+
+      {/* Otherwise nothing stopped a visitor clicking straight through to
+          payment without ever opening a single add-on. Doesn't require
+          changing anything — opening rib/membrane and leaving the default
+          applied is enough — just makes sure they actually saw what's here. */}
+      {isLocked && (
+        <p className="shrink-0 mt-2 text-[10px] font-body text-white/40 text-center leading-snug">
+          Open each add-on above to continue — no need to change anything
+        </p>
+      )}
 
       <div className={`shrink-0 mt-3 items-center gap-2 ${hideActions ? "hidden" : "flex"}`}>
         {onBack && (
@@ -212,15 +236,31 @@ export default function OrderPanel({
             <ArrowLeft className="h-4 w-4" strokeWidth={2} />
           </button>
         )}
+        {/* Locked reads as stroke-only, not the solid white fill it gets once
+            unlocked — a full white CTA drew the eye even while it couldn't
+            actually be clicked, which was part of what made it easy to miss
+            that the add-ons above hadn't been looked at yet. */}
         <button
           onClick={onContinue}
-          className="flex-1 bg-white text-black rounded-full px-4 py-3 text-[13px] font-body font-medium inline-flex items-center justify-center gap-2"
+          disabled={isLocked}
+          title={isLocked ? "Open each add-on above first — you don't have to change anything, just take a look" : undefined}
+          className={[
+            "flex-1 rounded-full px-4 py-3 text-[13px] font-body font-medium inline-flex items-center justify-center gap-2 transition-colors",
+            isLocked
+              ? "border border-white/25 text-white/50 bg-transparent cursor-not-allowed"
+              : "bg-white text-black",
+          ].join(" ")}
         >
-          {showPlans
-            ? "Continue to payment"
-            : count === 0
-              ? "See subscription options"
-              : `See subscription options (${count}/${TOTAL_PARTS})`}
+          {showPlans ? (
+            "Continue to payment"
+          ) : count === 0 ? (
+            <>
+              <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              See subscription options
+            </>
+          ) : (
+            `See subscription options (${count}/${TOTAL_PARTS})`
+          )}
           <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2} />
         </button>
       </div>

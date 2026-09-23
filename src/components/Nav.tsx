@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowUpRight, Check, Menu } from "lucide-react";
+import { ArrowUpRight, Check, Menu, Sparkles, X } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
 import { useJourney } from "@/lib/journey";
+import { WRAPUP_EVENT, requestWrapUp } from "@/lib/tribeStore";
 import { ENGINE_PAGE_ENABLED } from "@/config/features";
 import StartOverButton from "@/components/StartOverButton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -66,6 +67,26 @@ export default function Nav() {
   const journey = useJourney();
   const [menuOpen, setMenuOpen] = useState(false);
   const items = user ? [...baseItems, ...signedInItems] : baseItems;
+
+  // On the Tribe page, Start Over's usual nav slot becomes "Ready to wrap
+  // up?" instead — the Tribe page itself pushes whether it should glow
+  // (enough clicking around, or having opened Creators) via WRAPUP_EVENT,
+  // since that engagement state lives on the page, not here. Resets on
+  // every route change so a stale glow from a past visit can't linger.
+  const [wrapUpEligible, setWrapUpEligibleState] = useState(false);
+  const [wrapUpHintSeen, setWrapUpHintSeen] = useState(false);
+  useEffect(() => {
+    setWrapUpEligibleState(false);
+    setWrapUpHintSeen(false);
+  }, [pathname]);
+  useEffect(() => {
+    const onEvent = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { type: string; eligible?: boolean } | undefined;
+      if (detail?.type === "eligible") setWrapUpEligibleState(!!detail.eligible);
+    };
+    window.addEventListener(WRAPUP_EVENT, onEvent);
+    return () => window.removeEventListener(WRAPUP_EVENT, onEvent);
+  }, []);
 
   // "Join the Tribe" appears only once the order is finished (Voyages, brief and Worlds done).
   const tribeUnlocked = !!user && !!journey.steps.find((s) => s.id === "reserve")?.done;
@@ -184,9 +205,47 @@ export default function Nav() {
               Sign in
             </button>
           )}
-          {/* Exhibition: anyone can restart the whole app from any page (not needed on Home, which always starts fresh) */}
+          {/* Exhibition: anyone can restart the whole app from any page (not needed on Home, which always starts fresh).
+              Zero-width + absolutely positioned so it overlays rather than
+              taking up flex space — otherwise its own width (present only
+              on non-Home pages) shrinks the gap justify-between leaves
+              before the center pill, visibly shifting the nav links left
+              compared to Home, where this button doesn't exist at all. */}
           {pathname !== "/" && (
-            <StartOverButton className="hidden sm:inline-flex items-center gap-2 liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90 hover:text-white" />
+            <div className="relative hidden sm:block w-0 -ml-2">
+              {pathname === "/tribe" ? (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                  <div className={`relative rounded-full ${wrapUpEligible ? "panel-glow-pulse" : ""}`}>
+                    <button
+                      type="button"
+                      onClick={() => { requestWrapUp(); setWrapUpHintSeen(true); }}
+                      className="inline-flex items-center gap-2 whitespace-nowrap liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90 hover:text-white"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      Ready to wrap up?
+                    </button>
+                    {wrapUpEligible && !wrapUpHintSeen && (
+                      <div className="absolute right-0 top-full mt-2 pointer-events-auto" style={{ width: 210 }}>
+                        <div className="liquid-glass-strong rounded-xl pl-3.5 pr-2.5 py-2.5 flex items-start gap-2">
+                          <p className="font-body text-[12px] text-white/90 leading-snug">
+                            You've explored a bit — finish whenever you're ready.
+                          </p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setWrapUpHintSeen(true); }}
+                            aria-label="Dismiss hint"
+                            className="text-white/50 hover:text-white/90 shrink-0 mt-0.5"
+                          >
+                            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <StartOverButton className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center gap-2 whitespace-nowrap liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90 hover:text-white" />
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -268,7 +327,20 @@ export default function Nav() {
               </button>
             )}
             {pathname !== "/" && (
-              <StartOverButton className="flex items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm font-body text-white/70 hover:text-white" />
+              pathname === "/tribe" ? (
+                <button
+                  type="button"
+                  onClick={() => { requestWrapUp(); setWrapUpHintSeen(true); setMenuOpen(false); }}
+                  className={`flex items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-body ${
+                    wrapUpEligible ? "border-white/30 text-white panel-glow-pulse" : "border-white/15 text-white/70 hover:text-white"
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  Ready to wrap up?
+                </button>
+              ) : (
+                <StartOverButton className="flex items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm font-body text-white/70 hover:text-white" />
+              )
             )}
           </div>
         </SheetContent>

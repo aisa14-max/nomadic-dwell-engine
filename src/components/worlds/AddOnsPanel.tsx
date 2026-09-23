@@ -72,13 +72,17 @@ export default function AddOnsPanel({
               <span
                 className={[
                   // Outline only — a completed step reads as white ring + white
-                  // icon rather than a filled disc. Locked steps sit well back
-                  // so the one you can actually act on is obvious.
+                  // icon rather than a filled disc. Skipped counts as complete
+                  // too (it's still a decision, just not a purchase), so it
+                  // gets the same white treatment — just dashed, to keep
+                  // "skipped" visually distinct from "actually chosen" while
+                  // both clearly read as done. Locked steps sit well back so
+                  // the one you can actually act on is obvious.
                   "w-8 h-8 rounded-full inline-flex items-center justify-center border bg-transparent transition-all duration-300 shrink-0",
                   done
                     ? "border-white text-white"
                     : skipped
-                      ? "border-white/30 text-white/30 border-dashed"
+                      ? "border-white text-white border-dashed"
                       : comingSoon
                         ? "border-white/25 text-white/45"
                       : locked
@@ -189,10 +193,11 @@ export default function AddOnsPanel({
                         );
                       })}
 
-                      {/* Rib Colour and Membrane Pattern pick the dwelling's
-                          shell material — they're not optional add-ons, so
-                          they can't be skipped. */}
-                      {p.id !== "rib" && p.id !== "membrane" && (
+                      {/* Rib Colour and Membrane Pattern always have a real
+                          material applied (the free default) even without
+                          an explicit pick — so "skip" here just means
+                          "keep the default", same £0 outcome as every other
+                          skip, not "no rib/membrane at all". */}
                       <button
                         onClick={() => onSelectOption(SKIPPED)}
                         aria-pressed={skipped}
@@ -206,7 +211,7 @@ export default function AddOnsPanel({
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-[10px] font-body text-white/60 truncate">
-                            Skip this add-on
+                            {p.id === "rib" || p.id === "membrane" ? "Skip — keep default" : "Skip this add-on"}
                           </span>
                           <span className="block text-[9px] font-body text-white/30">
                             No charge
@@ -216,7 +221,6 @@ export default function AddOnsPanel({
                           <Check className="h-3 w-3 text-white/70 shrink-0" strokeWidth={2.5} />
                         )}
                       </button>
-                      )}
                     </div>
                   </motion.div>
                 )}

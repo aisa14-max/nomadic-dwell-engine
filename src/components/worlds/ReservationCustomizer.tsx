@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { useReservation } from "@/hooks/useReservation";
 import { useMockAuth } from "@/context/MockAuth";
-import { PARTS, PartId } from "@/data/dwellingParts";
+import { PARTS, PartId, DEPOSIT_RATE } from "@/data/dwellingParts";
+import { applyPlanDiscount } from "@/data/plans";
 
 import PartsStrip from "./PartsStrip";
 import ReserveCard from "./ReserveCard";
@@ -182,11 +183,14 @@ export default function ReservationCustomizer({ onClose }: Props) {
         )}
       </AnimatePresence>
 
-      {/* Payment panel */}
+      {/* Payment panel — apply the plan discount here (same as every
+          configurator page's own pricedTotals) so the deposit due today
+          actually reflects the plan just picked, instead of the pre-discount
+          amount. */}
       <AnimatePresence>
         {r.stage === "payment" && (
           <div onClick={(e) => e.stopPropagation()}>
-            <PaymentPanel totals={r.totals} onSubmit={r.submitPayment} />
+            <PaymentPanel totals={applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE)} onSubmit={r.submitPayment} selectedPlan={selectedPlan} />
           </div>
         )}
       </AnimatePresence>

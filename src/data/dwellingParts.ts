@@ -25,6 +25,9 @@ export type Part = {
   locked?: boolean;
 };
 
+// Every option price below is under £400 — they used to run as high as
+// £1,100 (plus a £20,000 "dwelling value" elsewhere), which read as far more
+// expensive than a demo add-on picker should feel.
 export const PARTS: Part[] = [
   {
     id: "rib",
@@ -32,7 +35,7 @@ export const PARTS: Part[] = [
     hotspot: { x: 59, y: 32 },
     options: [
       { id: "petg-clear", name: "PETG Clear", hex: "#e6ece9", price: 0, isDefault: true },
-      { id: "petg-black", name: "PETG Black", hex: "#1a1a1a", price: 850 },
+      { id: "petg-black", name: "PETG Black", hex: "#1a1a1a", price: 120 },
     ],
   },
   {
@@ -41,8 +44,8 @@ export const PARTS: Part[] = [
     hotspot: { x: 52, y: 28 },
     options: [
       { id: "beige", name: "Beige", hex: "#e3d5b8", price: 0, isDefault: true },
-      { id: "green", name: "Green", hex: "#4a6b3a", price: 850 },
-      { id: "red", name: "Red", hex: "#8a3a3a", price: 850 },
+      { id: "green", name: "Green", hex: "#4a6b3a", price: 120 },
+      { id: "red", name: "Red", hex: "#8a3a3a", price: 120 },
     ],
   },
   {
@@ -51,9 +54,9 @@ export const PARTS: Part[] = [
     locked: true,
     hotspot: { x: 53, y: 33 },
     options: [
-      { id: "solar", name: "Solar Panel", hex: "#1c2a4a", price: 600 },
-      { id: "bike", name: "Bike Holder", hex: "#8a8a8e", price: 750 },
-      { id: "water", name: "Extra Water Tank", hex: "#7aa0b8", price: 1100 },
+      { id: "solar", name: "Solar Panel", hex: "#1c2a4a", price: 180 },
+      { id: "bike", name: "Bike Holder", hex: "#8a8a8e", price: 150 },
+      { id: "water", name: "Extra Water Tank", hex: "#7aa0b8", price: 220 },
     ],
   },
   {
@@ -62,12 +65,12 @@ export const PARTS: Part[] = [
     locked: true,
     hotspot: { x: 85, y: 62 },
     options: [
-      { id: "lounge-chair", name: "Lounge Chair", hex: "#a06a3a", price: 620 },
-      { id: "picnic-bench", name: "Picnic Bench", hex: "#8a6247", price: 780 },
-      { id: "fire-pit-seating", name: "Fire Pit Seating", hex: "#4a4038", price: 250 },
-      { id: "hammock", name: "Hammock", hex: "#d4a96a", price: 480 },
-      { id: "deck-table", name: "Deck Table", hex: "#6b5240", price: 690 },
-      { id: "pool", name: "Foldable Pool", hex: "#3a8ab8", price: 880 },
+      { id: "lounge-chair", name: "Lounge Chair", hex: "#a06a3a", price: 140 },
+      { id: "picnic-bench", name: "Picnic Bench", hex: "#8a6247", price: 160 },
+      { id: "fire-pit-seating", name: "Fire Pit Seating", hex: "#4a4038", price: 90 },
+      { id: "hammock", name: "Hammock", hex: "#d4a96a", price: 110 },
+      { id: "deck-table", name: "Deck Table", hex: "#6b5240", price: 150 },
+      { id: "pool", name: "Foldable Pool", hex: "#3a8ab8", price: 180 },
     ],
   },
 ];
@@ -94,7 +97,7 @@ export const DEPOSIT_RATE = 0.1;
 /** The dwelling itself is rented via the monthly subscription, not bought
     outright — this is its full asset value, shown for context alongside the
     one-off add-on total rather than added into it. */
-export const DWELLING_VALUE = 20000;
+export const DWELLING_VALUE = 350;
 
 export const findOption = (partId: PartId, optionId: string) =>
   AVAILABLE_PARTS.find((p) => p.id === partId)?.options.find((o) => o.id === optionId);

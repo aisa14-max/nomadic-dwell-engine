@@ -105,7 +105,12 @@ export default function FadingVideo({
       muted
       playsInline
       preload="auto"
-      loop={loop}
+      // Deliberately not the native `loop` attribute — that lets the browser
+      // loop silently in the background, so the "ended" event this
+      // component's own crossfade restart relies on (fade out, jump to 0,
+      // fade back in) never fires again after the first play-through,
+      // leaving the video faded to invisible forever. The `loop` prop still
+      // drives the custom JS loop above (onTime/onEnded) instead.
       className={className}
       style={{ opacity: 0, ...style }}
       {...rest}

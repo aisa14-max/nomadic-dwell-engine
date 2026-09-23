@@ -334,7 +334,7 @@
   border-bottom: 1px solid rgba(255,255,255,.18);
   color: #fff;
   width: 100%;
-  padding: 18px 0 8px;
+  padding: 12px 0 5px;
   font-family: 'Barlow', sans-serif;
   font-size: 14px;
   outline: none;
@@ -343,7 +343,7 @@
 .float-label {
   position: absolute;
   left: 0;
-  top: 18px;
+  top: 12px;
   color: rgba(255,255,255,.5);
   font-size: 14px;
   pointer-events: none;
