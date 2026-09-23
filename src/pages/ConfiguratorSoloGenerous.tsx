@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Lock, Lightbulb, MousePointer2, type LucideIcon } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Lock, MousePointer2, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import { Switch } from "@/components/ui/switch";
 import landscapeBg from "@/assets/configurator-landscape-bg-v2.png";
@@ -337,8 +337,18 @@ export default function ConfiguratorSoloGenerous() {
 
   // Also forces the viewport back to the dwelling elevation — the Plan view
   // toggle is hidden on the Add-ons page, so if the user left it on "plan"
-  // before continuing, there'd be no way back to it there.
-  const enterCustomise = () => { setShowNext(true); r.setStage("configure"); setViewMode("3D"); };
+  // before continuing, there'd be no way back to it there. Also closes any
+  // zone peek left open from the design stage (clicked a hotspot, never
+  // closed it before hitting Continue configuration) — otherwise it carried
+  // straight into the add-ons scene, which is meant to show the plain
+  // exterior only.
+  const enterCustomise = () => {
+    setActiveCutaway(null);
+    setClickedHotspotId(null);
+    setShowNext(true);
+    r.setStage("configure");
+    setViewMode("3D");
+  };
   const pricedTotals = applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE);
   const handlePartToggle = (p: PartId) => r.setActive(r.activePart === p ? null : p);
   const handleOptionSelect = (optionId: string) => {
@@ -350,15 +360,26 @@ export default function ConfiguratorSoloGenerous() {
     r.setActive(next ? next.id : null);
   };
 
+  // On the add-ons page, the order/price panel used to sit there from the
+  // moment you arrived, competing with the dwelling for attention right
+  // away. Now it only appears once you've actually started (opened a step
+  // or picked something) — before that it's just add-ons + dwelling, two
+  // panels, not three.
+  const addOnsEngaged = r.activePart !== null || r.configured.size > 0;
+
   const gridCols =
     stage === "payment" ? "lg:grid-cols-[0px_1fr_460px]"
     : stage === "plans" ? "lg:grid-cols-[0px_1fr_640px]"
+    // Before add-ons are engaged, the order panel isn't rendered at all
+    // (see addOnsEngaged above) — collapsing its column to 0 instead of
+    // leaving it reserved-but-empty lets the viewport grow into that space,
+    // then the same grid-template-columns transition below eases it back
+    // down to 360px right as the order panel slides in.
+    : stage === "customise" && !addOnsEngaged ? "lg:grid-cols-[220px_1fr_0px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
   const [showLayoutZones, setShowLayoutZones] = useState(false);
-  // Toggle for the whole "glow whichever step is next" demo hint below.
-  const [glowHintsEnabled, setGlowHintsEnabled] = useState(true);
   // Same progressive-unlock chain as the other configurator pages: Your
   // Summary is static (counts as seen immediately) -> Site Selector ->
   // Show Zones (reveals the glowing dots) -> Add Zones (drag a room onto
@@ -373,6 +394,17 @@ export default function ConfiguratorSoloGenerous() {
   const [zonesSeen, setZonesSeen] = useState(false);
   const [exploreUnlocked, setExploreUnlocked] = useState(false);
   const [exploreSeen, setExploreSeen] = useState(false);
+  // The chat's own glow waits a bit longer than exploreSeen itself — flipping
+  // Step Inside on fires it immediately, but that's exactly when visitors are
+  // busy looking at the 360° panorama they just opened, not the sidebar, so
+  // the glow was starting (and often finishing invisibly) while nobody could
+  // see it. Delayed until they've had time to actually look around.
+  const [chatGlowReady, setChatGlowReady] = useState(false);
+  useEffect(() => {
+    if (!exploreSeen) return;
+    const t = setTimeout(() => setChatGlowReady(true), 6000);
+    return () => clearTimeout(t);
+  }, [exploreSeen]);
   // Which zone's hotspot opened the panorama takeover (stays fixed for the
   // life of that takeover — gates whether it's shown at all, same as
   // ConfiguratorSolo.tsx's activeExplore) vs. panoramaScene, which scene is
@@ -456,6 +488,72 @@ export default function ConfiguratorSoloGenerous() {
   const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.15).toFixed(2)));
   const zoomOut = () => setZoom((z) => Math.max(1, +(z - 0.15).toFixed(2)));
   const viewportRef = useRef<HTMLDivElement>(null);
+  // The add-ons viewport grows wider (right column collapses) before
+  // add-ons are engaged — see gridCols/addOnsEngaged above. The background
+  // is object-cover, so a wider box on the same fixed height just reveals
+  // more of the scene horizontally, making the sited dwelling within it
+  // read smaller against the frame instead of staying the same size. This
+  // tracks how much wider the box currently is than its normal (engaged)
+  // width and feeds that back in as extra zoom, so the framing stays
+  // consistent regardless of which width state it's in.
+  const viewportNormalWidthRef = useRef(0);
+  const [viewportBgZoomBoost, setViewportBgZoomBoost] = useState(1);
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (w <= 0) return;
+      if (stage !== "customise" || addOnsEngaged) {
+        viewportNormalWidthRef.current = w;
+        setViewportBgZoomBoost(1);
+      } else if (viewportNormalWidthRef.current > 0) {
+        setViewportBgZoomBoost(w / viewportNormalWidthRef.current);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stage, addOnsEngaged]);
+  // Mouse-wheel zoom + left-click-drag pan, alongside the existing +/-
+  // buttons. Pan resets whenever zoom returns to 1 — otherwise the scene
+  // could stay visibly offset even at rest scale, with nothing to pan. Both
+  // are skipped entirely while the 360° panorama (activeExplore) is open —
+  // photo-sphere-viewer already owns left-click-drag and wheel-zoom for
+  // looking around, and this viewport's own listeners would otherwise fight
+  // it for the same gestures on the same element underneath.
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  useEffect(() => { if (zoom === 1) setPan({ x: 0, y: 0 }); }, [zoom]);
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    // Native listener (not React's onWheel) — React 17+ registers wheel
+    // handlers as passive by default, so preventDefault() inside a plain
+    // onWheel prop silently does nothing and the page scrolls underneath.
+    const onWheel = (e: WheelEvent) => {
+      if (activeExplore) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom((z) => Math.min(2, Math.max(1, +(z + delta).toFixed(2))));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [activeExplore]);
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const handleViewportPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || zoom <= 1 || activeExplore) return;
+    e.preventDefault();
+    isPanningRef.current = true;
+    panStartRef.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
+  };
+  const handleViewportPointerMove = (e: React.PointerEvent) => {
+    if (!isPanningRef.current) return;
+    setPan({
+      x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+      y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+    });
+  };
+  const stopPanning = () => { isPanningRef.current = false; };
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isZoneDragOver, setIsZoneDragOver] = useState(false);
   // Which rooms have actually been dropped onto the dwelling — drives the
@@ -508,6 +606,18 @@ export default function ConfiguratorSoloGenerous() {
   // dwelling) reads bedUpgraded instead of the generic "has it been
   // placed" flag every other zone uses — see zoneLabel/zoneCutawayImage.
   const zonePlacedForDisplay = (id: ZoneId) => (id === "bed" ? bedUpgraded : placedZones.has(id));
+  // The base elevation as last configured — incomplete (torn edge) until
+  // the first zone lands, then complete for good, then swapped for the
+  // extra-window render (in the configured rib/membrane colors) once that
+  // chat suggestion lands. Same expression the viewport itself renders
+  // (see the img below) — pulled out here too so the Congratulations
+  // overlay's own preview (EngineOnTheWayOverlay's dwellingImage prop) can't
+  // silently drift out of sync with what the viewport actually shows.
+  const _dwellingImg = !dwellingComplete
+    ? baseIncomplete
+    : windowAdded
+    ? baseWindowImage(r.configured.get("rib"), r.configured.get("membrane"))
+    : baseDeclinedImage(r.configured.get("rib"), r.configured.get("membrane"));
 
   const focusHotspot = (h: { id: ZoneId; x: number; y: number }) => {
     setActiveCutaway((open) => (open === h.id ? null : h.id));
@@ -521,7 +631,7 @@ export default function ConfiguratorSoloGenerous() {
   // its dot has already been peeked (see the `placed` prop passed to its
   // ZoneCard below), so this still needs to run again in that case, unlike
   // every other zone which is done for good after its first placement.
-  const placeZone = (id: ZoneId, opts: { upgrade?: boolean } = {}) => {
+  const placeZone = (id: ZoneId, opts: { upgrade?: boolean; openCutaway?: boolean } = {}) => {
     if (isZoneLocked(id)) return;
     const isBedUpgradeDrop = id === "bed" && opts.upgrade;
     if (placedZones.has(id) && !isBedUpgradeDrop) return;
@@ -537,8 +647,16 @@ export default function ConfiguratorSoloGenerous() {
     if (isBedUpgradeDrop) setBedUpgraded(true);
     setZoneDropToast(true);
     setTimeout(() => setZoneDropToast(false), 2500);
-    setClickedHotspotId(id);
-    setActiveCutaway(id);
+    // Dragging the chip in from Add Zones just places it — the dwelling
+    // swaps to its complete render (dwellingComplete/bedUpgraded above), but
+    // the room itself stays closed until its hotspot is actually clicked
+    // (see the dot's onClick below, which re-enters here with
+    // openCutaway left at its default). Only skipped for the drag-drop
+    // path; clicking an unplaced dot directly still opens straight to it.
+    if (opts.openCutaway ?? true) {
+      setClickedHotspotId(id);
+      setActiveCutaway(id);
+    }
   };
 
   const isPointInViewport = (point: { x: number; y: number }) => {
@@ -553,7 +671,7 @@ export default function ConfiguratorSoloGenerous() {
     setDraggedZoneId(id);
   };
   const handleZoneDragDrop = (id: ZoneId, point: { x: number; y: number }) => {
-    if (isPointInViewport(point)) placeZone(id, { upgrade: id === "bed" });
+    if (isPointInViewport(point)) placeZone(id, { upgrade: id === "bed", openCutaway: false });
     setIsZoneDragOver(false);
     setDraggedZoneId(null);
   };
@@ -763,13 +881,17 @@ export default function ConfiguratorSoloGenerous() {
       ? `Hi! I'm your Engine Assistant. I've designed a ${String(spec.dining_style ?? "compact")} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
       : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
 
-  const suggestions: string[] = ["Add one more window"];
-  // One-shot — once the Keep it/Undo choice is resolved, this suggestion
-  // stops reappearing in later suggestion rows.
+  // The very first chip row offers only the one suggestion that actually
+  // works, so a first-time visitor's first click is guaranteed to succeed —
+  // same pattern as ConfiguratorSolo.tsx/ConfiguratorCouple.tsx. Every chip
+  // row after that (once the window decision is resolved) swaps to dead-end
+  // options instead — they fall through to pickUnrecognizedReply — so "Add
+  // one more window" is never offered a second time, but the chat still has
+  // something to click rather than going silent for good.
   const [windowSuggestionUsed, setWindowSuggestionUsed] = useState(false);
   const visibleSuggestions = windowSuggestionUsed
-    ? suggestions.filter((s) => s !== "Add one more window")
-    : suggestions;
+    ? ["Add a skylight", "Add more storage", "Make the roof taller"]
+    : ["Add one more window"];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
 
@@ -851,8 +973,13 @@ export default function ConfiguratorSoloGenerous() {
       },
     ]);
     // "Add one more window" is a one-shot suggestion — once it's been
-    // decided on, don't offer it again.
+    // decided on, don't offer it again. The chip row itself was hidden for
+    // the whole Keep it/Undo detour (see send()'s setShowSuggestions(false)
+    // when addsWindow) — bring it back now so the dead-end follow-up chips
+    // (visibleSuggestions, above) actually appear instead of the row just
+    // staying hidden for good.
     setWindowSuggestionUsed(true);
+    setShowSuggestions(true);
   };
 
   const _areaCm2 = (8 * 40) * (3 * 40);
@@ -880,7 +1007,13 @@ export default function ConfiguratorSoloGenerous() {
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
-          <div className="flex items-end justify-between flex-wrap gap-6">
+          {/* relative z-20 here (not just on the ghost-cursor's own inner
+              wrapper) is the actual fix for it rendering behind the chat
+              panel below: this row and the grid row further down are direct
+              siblings, so THIS is the level where their stacking order gets
+              decided — a z-index set only on something nested deep inside
+              this row can't win that comparison, no matter how high. */}
+          <div className="relative z-20 flex items-end justify-between flex-wrap gap-6">
             <div className="max-w-3xl">
               <BlurText
                 text="Compose your engine."
@@ -893,29 +1026,54 @@ export default function ConfiguratorSoloGenerous() {
               transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
               className="flex items-center gap-3"
             >
-              {stage === "design" && (
-                <label className="liquid-glass rounded-full pl-3 pr-1.5 py-1.5 inline-flex items-center gap-2 text-xs font-body text-white/70 cursor-pointer">
-                  <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  Hints
-                  <Switch
-                    checked={glowHintsEnabled}
-                    onCheckedChange={setGlowHintsEnabled}
-                    aria-label="Toggle step-by-step glow hints"
-                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15 scale-90"
-                  />
-                </label>
-              )}
               {stage === "design" ? (
-                <button
-                  onClick={enterCustomise}
-                  disabled={!exploreSeen}
-                  title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
-                  className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${glowHintsEnabled && exploreSeen ? "panel-glow-pulse" : ""}`}
-                >
-                  {exploreSeen
-                    ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
-                    : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
-                </button>
+                <div className="relative z-30">
+                  <button
+                    onClick={enterCustomise}
+                    disabled={!exploreSeen}
+                    title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
+                    className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${exploreSeen ? "panel-glow-pulse" : ""}`}
+                  >
+                    {exploreSeen
+                      ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
+                      : <>Continue configuration <Lock className="h-3.5 w-3.5" strokeWidth={2} /></>}
+                  </button>
+                  {/* Ghost-cursor nudge toward Continue configuration — once
+                      they've actually sent a chat message, that's the next
+                      obvious move, so it gets the same "here's what to do
+                      next" treatment as the earlier steps instead of relying
+                      on the button's own glow alone to be noticed. z-30 (on
+                      this wrapper, and the cursor itself below) since the
+                      header sits directly above the chat panel's own card —
+                      without it the cursor was rendering behind that card
+                      instead of in front of it. */}
+                  {exploreSeen && messages.some((m) => m.role === "user") && (
+                    <motion.div
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
+                      style={{ left: "50%", top: "220%" }}
+                      animate={{
+                        top: ["220%", "220%", "50%", "50%", "50%"],
+                        opacity: [0, 1, 1, 1, 0],
+                        scale: [1, 1, 1, 0.72, 1],
+                      }}
+                      transition={{
+                        duration: 2,
+                        times: [0, 0.12, 0.55, 0.66, 0.88],
+                        repeat: Infinity,
+                        repeatDelay: 0.6,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <MousePointer2
+                        className="h-4 w-4 text-white"
+                        style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                        fill="white"
+                        fillOpacity={0.15}
+                        strokeWidth={1.75}
+                      />
+                    </motion.div>
+                  )}
+                </div>
               ) : stage === "plans" || stage === "payment" ? (
                 <button
                   onClick={stage === "plans" ? () => r.setStage("configure") : () => r.setStage("summary")}
@@ -935,7 +1093,7 @@ export default function ConfiguratorSoloGenerous() {
             {/* LEFT COLUMN */}
             <div className="flex flex-col gap-4 min-w-0">
               {stage === "customise" && (
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && !r.activePart && r.configured.size === 0 ? "panel-glow-pulse" : ""}`}>
+                <div className={`rounded-[1.5rem] ${!r.activePart && r.configured.size === 0 ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -987,7 +1145,7 @@ export default function ConfiguratorSoloGenerous() {
                   </div>
                 </motion.div>
 
-                <div className={`relative rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
+                <div className={`relative rounded-[1.5rem] ${!siteSeen ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
@@ -1038,7 +1196,7 @@ export default function ConfiguratorSoloGenerous() {
                       Selector is actually opened (its job — get them to open
                       it — is done at that point, whether or not they go on to
                       pick a site or Skip) or its own X is dismissed. */}
-                  {glowHintsEnabled && briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
+                  {briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
                     <div className="absolute inset-0 z-20 pointer-events-none">
                       <motion.div
                         className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -1160,7 +1318,7 @@ export default function ConfiguratorSoloGenerous() {
                 {/* siteSeen covers both real ways past Site Selector — picking
                     a different site in the carousel, or Skip — so either one
                     is enough to move the glow on to Show Zones. */}
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
+                <div className={`rounded-[1.5rem] ${siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
@@ -1187,7 +1345,7 @@ export default function ConfiguratorSoloGenerous() {
                 </motion.aside>
                 </div>
 
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}>
+                <div className={`rounded-[1.5rem] ${dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
@@ -1248,7 +1406,7 @@ export default function ConfiguratorSoloGenerous() {
                                 onDragStart={handleZoneDragStart}
                                 onDragMove={handleZoneDragMove}
                                 onDragDrop={handleZoneDragDrop}
-                                glow={glowHintsEnabled && !zoneAdded && z.id === "bed"}
+                                glow={!zoneAdded && z.id === "bed"}
                               />
                             ))}
                           </div>
@@ -1266,7 +1424,7 @@ export default function ConfiguratorSoloGenerous() {
                 </motion.aside>
                 </div>
 
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && zoneAdded && !exploreSeen ? "panel-glow-pulse" : ""}`}>
+                <div className={`rounded-[1.5rem] ${zoneAdded && !exploreSeen ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
@@ -1303,15 +1461,23 @@ export default function ConfiguratorSoloGenerous() {
               transition={{ duration: 0.7, delay: 0.9, ease: "easeOut" }}
               className="relative flex flex-col"
             >
+              {/* Section tabs + Elevation/Plan toggle — hidden entirely on
+                  the add-ons page. The viewport there is a static exterior
+                  scene, so neither the "dwelling" label nor Elevation/Plan
+                  did anything useful; dropping the whole row also lets this
+                  card's top edge align flush with the Add-ons and Price &
+                  Order cards beside it, instead of sitting lower under this
+                  row's own height + margin like it used to. */}
+              {stage !== "customise" && (
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1 bg-white/5 rounded-full p-1">
                   <span className="px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] bg-white text-black font-medium">
                     dwelling
                   </span>
                 </div>
-                {/* Elevation/Plan view toggle — design stage only. On the
-                    Add-ons page (customise stage) the viewport stays fixed
-                    on the dwelling render, so there's nothing to switch to. */}
+                {/* Elevation/Plan view toggle — design stage only. On every
+                    other stage the viewport stays fixed on one static
+                    render, so there's nothing to switch to. */}
                 {stage === "design" && (
                   <div className="flex gap-1 bg-white/5 rounded-full p-1">
                     {(["3D", "plan"] as const).map((v) => (
@@ -1329,6 +1495,7 @@ export default function ConfiguratorSoloGenerous() {
                   </div>
                 )}
               </div>
+              )}
 
               <div
                 ref={viewportRef}
@@ -1337,8 +1504,13 @@ export default function ConfiguratorSoloGenerous() {
                     ? "relative w-full h-full overflow-hidden liquid-glass rounded-none"
                     : "relative rounded-[1.25rem] overflow-hidden liquid-glass",
                   isZoneDragOver ? "ring-2 ring-white/50" : "",
+                  zoom > 1 && !activeExplore ? "cursor-grab active:cursor-grabbing" : "",
                 ].join(" ")}
                 style={isFullscreen ? undefined : { height: "58vh" }}
+                onPointerDown={handleViewportPointerDown}
+                onPointerMove={handleViewportPointerMove}
+                onPointerUp={stopPanning}
+                onPointerLeave={stopPanning}
               >
                 <AnimatePresence mode="wait">
                   {engineReady && (
@@ -1347,9 +1519,14 @@ export default function ConfiguratorSoloGenerous() {
                         key="plan-view"
                         className="absolute inset-0"
                         initial={{ opacity: 0, scale: 1.04 }}
-                        animate={{ opacity: 1, scale: zoom }}
+                        animate={{ opacity: 1, scale: zoom, x: pan.x, y: pan.y }}
                         exit={{ opacity: 0, scale: 1.04 }}
-                        transition={{ opacity: { duration: 0.5, ease: "easeOut" }, scale: { type: "spring", stiffness: 220, damping: 26 } }}
+                        transition={{
+                          opacity: { duration: 0.5, ease: "easeOut" },
+                          scale: { type: "spring", stiffness: 220, damping: 26 },
+                          x: { type: "tween", duration: 0 },
+                          y: { type: "tween", duration: 0 },
+                        }}
                       >
                         {/* Architect-blueprint backdrop — a faint near-black navy
                             tint over the glass panel with a fine 24px grid plus a
@@ -1407,16 +1584,21 @@ export default function ConfiguratorSoloGenerous() {
                         key="scene-3d"
                         className="absolute inset-0"
                         initial={{ opacity: 0 }}
-                        animate={{ opacity: 1, scale: zoom }}
+                        animate={{ opacity: 1, scale: zoom, x: pan.x, y: pan.y }}
                         exit={{ opacity: 0 }}
-                        transition={{ opacity: { duration: 0.5, ease: "easeOut" }, scale: { type: "spring", stiffness: 220, damping: 26 } }}
+                        transition={{
+                          opacity: { duration: 0.5, ease: "easeOut" },
+                          scale: { type: "spring", stiffness: 220, damping: 26 },
+                          x: { type: "tween", duration: 0 },
+                          y: { type: "tween", duration: 0 },
+                        }}
                       >
                         <img
                           src={_landscapeBg}
                           alt=""
                           aria-hidden
                           className="absolute inset-0 w-full h-full object-cover"
-                          style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
+                          style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom * viewportBgZoomBoost})` }}
                         />
                         <div className="absolute inset-0 bg-black/30" aria-hidden />
 
@@ -1429,16 +1611,9 @@ export default function ConfiguratorSoloGenerous() {
                                 first zone lands, then complete for good, then
                                 swapped for the extra-window render (in the
                                 configured rib/membrane colors) once that chat
-                                suggestion lands — see baseWindowImage/
-                                baseDeclinedImage above. */}
+                                suggestion lands — see _dwellingImg above. */}
                             <img
-                              src={
-                                !dwellingComplete
-                                  ? baseIncomplete
-                                  : windowAdded
-                                  ? baseWindowImage(r.configured.get("rib"), r.configured.get("membrane"))
-                                  : baseDeclinedImage(r.configured.get("rib"), r.configured.get("membrane"))
-                              }
+                              src={_dwellingImg}
                               alt="Dwelling"
                               className="w-full h-full object-contain pointer-events-none transition-opacity duration-500"
                             />
@@ -1794,10 +1969,10 @@ export default function ConfiguratorSoloGenerous() {
                 className="flex gap-4 min-w-0 self-stretch h-full"
               >
                 <AnimatePresence>
-                  {stage === "customise" && (
+                  {stage === "customise" && addOnsEngaged && (
                     <motion.div
                       key="customise"
-                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 380 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
@@ -1846,7 +2021,7 @@ export default function ConfiguratorSoloGenerous() {
                   footprint, not the taller flex column above (which also
                   includes the invisible label spacer) — same reasoning as
                   the zone chip's own glow wrapper. */}
-              <div className={`rounded-[1.5rem] shrink-0 min-h-0 ${glowHintsEnabled && exploreSeen && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
+              <div className={`rounded-[1.5rem] shrink-0 min-h-0 ${chatGlowReady && !messages.some((m) => m.role === "user") ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -2037,6 +2212,7 @@ export default function ConfiguratorSoloGenerous() {
             reservationRef={r.reservationRef}
             colors={r.colors}
             total={r.totals.total + DWELLING_VALUE}
+            dwellingImage={_dwellingImg}
             onContinue={() => navigate("/tribe")}
           />
         )}

@@ -1320,25 +1320,6 @@ export default function TribePage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPresence((v) => !v);
-                    setSelected(null);
-                    setShowTribes(false);
-                  }}
-                  aria-expanded={showPresence}
-                  className="liquid-glass rounded-full px-4 py-2 text-sm font-body font-medium text-white/90 hover:text-white flex items-center gap-2 shrink-0"
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      background: presence.visible ? "#7ee0c8" : "rgba(255,255,255,0.3)",
-                      boxShadow: presence.visible ? "0 0 8px #7ee0c8" : "none",
-                    }}
-                  />
-                  Presence
-                </button>
                </div>
 
                 {/* Context slot: chapter → tribe summary → prompt */}
@@ -1873,8 +1854,7 @@ function TribeCard({
   return (
     <div className={`relative pt-7 grid gap-x-8 gap-y-5 ${hasSide ? "lg:grid-cols-[1.1fr_1.5fr_1fr]" : "lg:grid-cols-[1.1fr_1.5fr]"}`}>
       {/* Closes this tribe card back to the tribes legend — top-right,
-          under where Presence sits in the row above this card, rather than
-          a text link buried next to the Join button. */}
+          rather than a text link buried next to the Join button. */}
       <button
         onClick={onClose}
         aria-label="Close"
