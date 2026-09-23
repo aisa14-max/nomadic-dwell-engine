@@ -60,6 +60,21 @@ export default function UnderTheHoodDialog() {
     return () => window.removeEventListener(WRAPUP_EVENT, onEvent);
   }, []);
 
+  // WRAPUP_EVENT is one global bus, not scoped per page — Tribe's own
+  // "Ready to wrap up?" button (its wrap-up screen offers Under the Hood as
+  // a cross-promo) fires the same event this dialog listens to above, so
+  // showEndScreen was flipping true here too even though this dialog wasn't
+  // open yet. That stale true then sat latent until the visitor actually
+  // followed the cross-promo into Under the Hood, popping this dialog's OWN
+  // "you're done exploring" screen immediately instead of the fresh engine
+  // reveal. Reset on every fresh open: this only ever needs to be true from
+  // clicking THIS dialog's own "Ready to wrap up?" button (below) while
+  // already inside it, which doesn't toggle underHoodOpen and so never
+  // triggers this effect.
+  useEffect(() => {
+    if (underHoodOpen) setShowEndScreen(false);
+  }, [underHoodOpen]);
+
   return (
     <DialogPrimitive.Root open={underHoodOpen} onOpenChange={(open) => { if (!open) closeUnderHood(); }}>
       <DialogPrimitive.Portal>
@@ -92,34 +107,19 @@ export default function UnderTheHoodDialog() {
             </button>
           </div>
 
-          {/* The actual popup panel — liquid-glass-strong/rounded-[2rem],
-              same card language as the questionnaire. Deliberately NOT
-              height-capped or internally scrollable (that was tried twice —
-              max-h+overflow-y-auto, then a definite h-[95vh] — and both
-              still left ConfiguratorPortfolio's own chat panel growing
-              instead of scrolling internally, since that frozen file's own
-              "keeps getting taller" fix apparently needs more than just a
-              definite ancestor height to behave the way it does as a real
-              standalone page). Instead this card is left to size itself
-              exactly the way it would on its own route (auto height, no
-              cap) — same environment its internal fixes are actually
-              proven to work in — and the OUTER Content wrapper above
-              scrolls the whole modal if it runs past the viewport, rather
-              than this div scrolling its own content. transform-gpu still
-              matters: it's a no-op transform, but any transform makes this
-              div a containing block for position:fixed descendants —
-              ConfiguratorPortfolio's own background video and dark overlay
-              are `fixed inset-0`, so without this they'd size to the real
-              viewport and paint behind the backdrop margin instead of
-              filling (and staying clipped to) just this card. */}
-          <div className="relative w-full max-w-[1500px] my-auto liquid-glass-strong border border-white/10 rounded-[2rem] overflow-hidden transform-gpu">
           <AnimatePresence mode="wait">
             {!showEngine ? (
+              // True full-page intro — NOT inside the liquid-glass card below
+              // (that card is max-w-[1500px] and content-sized, which made
+              // this reveal beat look like a small boxed panel floating in
+              // the middle of the screen instead of an immersive full-bleed
+              // moment). fixed inset-0 at the Content's own level instead,
+              // same as the Overlay/Close button/wrap-up button around it.
               <motion.div
                 key="reveal"
                 exit={{ opacity: 0, filter: "blur(12px)" }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="relative min-h-[70vh] w-full overflow-hidden bg-[#02030a] text-white"
+                className="fixed inset-0 z-0 overflow-hidden bg-[#02030a] text-white"
               >
                 <div className="absolute inset-0 z-0">
                   <div className="absolute inset-0 bg-gradient-to-b from-[#02030a]/40 via-[#02030a]/55 to-[#02030a]/80" />
@@ -132,7 +132,7 @@ export default function UnderTheHoodDialog() {
                   />
                 </div>
 
-                <div className="relative z-10 flex min-h-[70vh] w-full flex-col items-center justify-center gap-10">
+                <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-10">
                   <div className="relative w-40 h-40 flex items-center justify-center">
                     {/* Big gear, slow clockwise */}
                     <motion.div
@@ -172,17 +172,37 @@ export default function UnderTheHoodDialog() {
                 </div>
               </motion.div>
             ) : (
+              // The actual popup panel — liquid-glass-strong/rounded-[2rem],
+              // same card language as the questionnaire. Deliberately NOT
+              // height-capped or internally scrollable (that was tried twice —
+              // max-h+overflow-y-auto, then a definite h-[95vh] — and both
+              // still left ConfiguratorPortfolio's own chat panel growing
+              // instead of scrolling internally, since that frozen file's own
+              // "keeps getting taller" fix apparently needs more than just a
+              // definite ancestor height to behave the way it does as a real
+              // standalone page). Instead this card is left to size itself
+              // exactly the way it would on its own route (auto height, no
+              // cap) — same environment its internal fixes are actually
+              // proven to work in — and the OUTER Content wrapper above
+              // scrolls the whole modal if it runs past the viewport, rather
+              // than this div scrolling its own content. transform-gpu still
+              // matters: it's a no-op transform, but any transform makes this
+              // div a containing block for position:fixed descendants —
+              // ConfiguratorPortfolio's own background video and dark overlay
+              // are `fixed inset-0`, so without this they'd size to the real
+              // viewport and paint behind the backdrop margin instead of
+              // filling (and staying clipped to) just this card.
               <motion.div
                 key="engine"
                 initial={{ opacity: 0, filter: "blur(12px)" }}
                 animate={{ opacity: 1, filter: "blur(0px)" }}
                 transition={{ duration: 0.7, ease: "easeOut" }}
+                className="relative w-full max-w-[1500px] my-auto liquid-glass-strong border border-white/10 rounded-[2rem] overflow-hidden transform-gpu"
               >
                 <ConfiguratorPortfolio />
               </motion.div>
             )}
           </AnimatePresence>
-          </div>
 
           {/* Not nested inside the card div above — it needs to cover the
               full screen, and that div's overflow-hidden (for its own
