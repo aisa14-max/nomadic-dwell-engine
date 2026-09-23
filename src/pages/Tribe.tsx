@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { MessageCircle, MousePointer2, Sparkles, X } from "lucide-react";
+import { MessageCircle, MousePointer2, X } from "lucide-react";
 import { toast } from "sonner";
 import BlurText from "@/components/BlurText";
-import StartOverButton from "@/components/StartOverButton";
+import WrapUpScreen from "@/components/WrapUpScreen";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
 import { SITES } from "@/data/sites";
 import {
@@ -131,7 +131,7 @@ const DEFAULT_PRESENCE: Presence = { visible: true, anonymous: false, cityOnly: 
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function TribePage() {
-  const { user } = useMockAuth();
+  const { user, openUnderHood } = useMockAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const onboarding = useMemo(readBrief, []);
@@ -1245,7 +1245,34 @@ export default function TribePage() {
                       // overflow:hidden — see the panel-glow-pulse note above.
                       const isCreators = t.id === "creators";
                       return (
-                        <div key={t.id} className={`rounded-full shrink-0 ${isCreators && !on ? "panel-glow-pulse" : ""}`}>
+                        <div key={t.id} className={`relative rounded-full shrink-0 ${isCreators && !on ? "panel-glow-pulse" : ""}`}>
+                          {/* Ghost cursor sliding in diagonally from the
+                              north-east toward the pill — bigger and in
+                              motion now, not just a small bob, since
+                              glow/badge alone weren't enough to get people
+                              to actually click in. The upward reach is kept
+                              small (y: -12) — the bottom bar it sits in is a
+                              .liquid-glass panel with overflow:hidden for
+                              its own border-gradient trick, so anything
+                              poking too far past the pill's own box
+                              vertically gets clipped invisible. Fades out
+                              for good once they've opened Creators. */}
+                          {isCreators && !on && !exploredCreators && (
+                            <motion.div
+                              aria-hidden
+                              className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none z-10"
+                              animate={{ x: [30, 0, 0], y: [-12, 0, 0], opacity: [0, 1, 1, 0] }}
+                              transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 0.9, ease: "easeOut", times: [0, 0.5, 1] }}
+                            >
+                              <MousePointer2
+                                className="h-6 w-6 text-white -rotate-12"
+                                style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))" }}
+                                fill="white"
+                                fillOpacity={0.15}
+                                strokeWidth={1.75}
+                              />
+                            </motion.div>
+                          )}
                           <button
                             onMouseEnter={() => setPreviewTribeId(t.id)}
                             onMouseLeave={() => setPreviewTribeId((cur) => (cur === t.id ? null : cur))}
@@ -1502,63 +1529,22 @@ export default function TribePage() {
             </AnimatePresence>
 
             {/* Wrap-up — a soft, optional finish line reached only by
-                clicking "Ready to wrap up?" above, never automatic. Start
-                Over reuses the same full reset used everywhere else in the
-                app (StartOverButton -> restartApp), so that logic stays in
-                one place instead of being reimplemented here. */}
-            <AnimatePresence>
-              {showEndScreen && (
-                <motion.div
-                  key="wrap-up"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4"
-                >
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.92, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                    className="relative liquid-glass-strong rounded-[1.5rem] p-8 w-full max-w-sm text-center"
-                  >
-                    <button
-                      onClick={() => setShowEndScreen(false)}
-                      aria-label="Keep exploring"
-                      className="absolute top-4 right-4 text-white/50 hover:text-white/90"
-                    >
-                      <X className="h-4 w-4" strokeWidth={1.75} />
-                    </button>
-
-                    <div className="relative w-14 h-14 mx-auto rounded-full bg-emerald-400/10 border border-emerald-400/30 inline-flex items-center justify-center">
-                      <span className="absolute inset-0 rounded-full bg-emerald-400/20 animate-ping" />
-                      <Sparkles className="relative h-7 w-7 text-emerald-300" strokeWidth={1.8} />
-                    </div>
-
-                    <p className="mt-5 text-[11px] uppercase tracking-[.2em] text-white/60 font-body">
-                      Thank you for exploring
-                    </p>
-                    <h2 className="font-heading text-2xl text-white/95 mt-2 leading-tight">
-                      You're part of the Nomadic Engine tribe now.
-                    </h2>
-                    <p className="text-sm text-white/55 font-body mt-2">
-                      Come back anytime to meet more people, or start over from the beginning.
-                    </p>
-
-                    <div className="mt-6 flex flex-col items-center gap-2">
-                      <StartOverButton className="w-full rounded-full bg-white text-black hover:bg-white/90 px-6 py-3 text-sm font-body font-medium inline-flex items-center justify-center gap-2 transition-colors" />
-                      <button
-                        onClick={() => setShowEndScreen(false)}
-                        className="text-[12px] text-white/50 hover:text-white/85 font-body"
-                      >
-                        Keep exploring
-                      </button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                clicking "Ready to wrap up?" above, never automatic. Offers a
+                path into Under the Hood as well as the definitive Start
+                Over, rather than just one exit. */}
+            <WrapUpScreen
+              show={showEndScreen}
+              onClose={() => setShowEndScreen(false)}
+              subtitle="You're part of the Nomadic Engine tribe now."
+              crossPromo={{
+                label: "Have you checked what's under the hood?",
+                // Closes this screen first — otherwise it's still open
+                // underneath, and closing the Under the Hood popup would
+                // land back on a Tribe page with a stale wrap-up card open.
+                onClick: () => { setShowEndScreen(false); openUnderHood(); },
+                highlightId: "under-the-hood",
+              }}
+            />
           </div>
         </motion.div>
       )}

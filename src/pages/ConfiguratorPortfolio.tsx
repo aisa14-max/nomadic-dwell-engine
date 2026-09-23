@@ -36,6 +36,17 @@ function renderMd(text: string) {
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
+// Response shape of POST /furniture-options — mirrors app.py's picker column
+// (_chair_options/_table_options/_shelf_options): every catalog variant that
+// fits the currently-placed module's h/d slot, plus which one is active.
+type FurnitureOptions = {
+  chair_options: { left: string; right: string; h: number }[];
+  table_options: string[];
+  shelf_options: string[];
+  current: Record<string, string>;
+  thumbnails: Record<string, string>; // module_id -> base64 PNG
+};
+
 // Zone hotspots on the dwelling render — convex hull of each section's 8
 // projected corners, back→front. Shared between the interactive polygons
 // and the guided-tour hint layer that pulses them before the first hover.
@@ -154,17 +165,64 @@ export default function ConfiguratorPortfolio() {
   // Incremented on every new fetch — stale callbacks check against this and drop their result.
   const fetchGenRef = useRef(0);
 
-  const fetchRender = (section = activeSection, view = viewMode, overrideSpec?: Record<string, unknown>) => {
+  // Manual per-zone furniture picks (chair_left/chair_right/table/shelf →
+  // module_id), dining/3D only — same role as Streamlit's
+  // st.session_state.module_overrides. Persists across section/view
+  // switches (so leaving and returning to Dining/3D keeps your picks, same
+  // as Streamlit's rerun-persistent session state); reset only when the
+  // chat assistant produces a new spec (see send() below), since a fresh
+  // layout can't be assumed to still fit the old picks.
+  const [manualOverrides, setManualOverrides] = useState<Record<string, string>>({});
+  const [furnitureOptions, setFurnitureOptions] = useState<FurnitureOptions | null>(null);
+
+  const fetchRender = (
+    section = activeSection,
+    view = viewMode,
+    overrideSpec?: Record<string, unknown>,
+    overrideOverrides?: Record<string, string>,
+  ) => {
     const gen = ++fetchGenRef.current;
     setSectionImage(null);
+    const manual_overrides = section === "dining" ? (overrideOverrides ?? manualOverrides) : undefined;
     fetch(`${API}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ spec: overrideSpec ?? spec, section, view }),
+      body: JSON.stringify({ spec: overrideSpec ?? spec, section, view, manual_overrides }),
     })
       .then((r) => r.json())
       .then((d) => { if (gen === fetchGenRef.current && d.image_b64) setSectionImage(d.image_b64); })
       .catch(() => {});
+  };
+
+  const fetchFurnitureOptionsFor = (targetSpec: Record<string, unknown>, overrides: Record<string, string>) => {
+    fetch(`${API}/furniture-options`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spec: targetSpec, manual_overrides: overrides }),
+    })
+      .then((r) => r.json())
+      .then((d: FurnitureOptions) => setFurnitureOptions(d))
+      .catch(() => setFurnitureOptions(null));
+  };
+
+  // Fetch/refresh the picker options whenever Dining/3D is the active view,
+  // or (while already there) whenever the spec itself changes — e.g. a chat
+  // edit. Doesn't depend on manualOverrides itself; picking an option goes
+  // through applyOverride below, which fetches its own fresh options.
+  useEffect(() => {
+    if (activeSection === "dining" && viewMode === "3D") {
+      fetchFurnitureOptionsFor(spec, manualOverrides);
+    } else {
+      setFurnitureOptions(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, viewMode, spec]);
+
+  const applyOverride = (patch: Record<string, string>) => {
+    const next = { ...manualOverrides, ...patch };
+    setManualOverrides(next);
+    fetchRender("dining", "3D", spec, next);
+    fetchFurnitureOptionsFor(spec, next);
   };
 
   // Hover is CSS-only — no API call, instant feedback via SVG polygon glow.
@@ -243,24 +301,64 @@ export default function ConfiguratorPortfolio() {
       ? `Hi! I'm your Engine Assistant. I've designed a ${_spec.dining_style ?? "compact"} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
       : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
 
-  // Build suggestions client-side from spec so they're always contextual.
-  const _tags = (_spec.preferred_tags as string[] | undefined) ?? [];
-  const suggestions: string[] = locationState?.suggestions?.length
-    ? locationState.suggestions
-    : [
-        _spec.dining_style === "compact"
-          ? "Make it more spacious and open"
-          : "Make it more compact and efficient",
-        ((_spec.h as number) ?? 7) <= 8
-          ? "Raise the ceiling — make it feel more dramatic"
-          : "Lower the ceiling for a cosier feel",
-        _tags.includes("more_shelves")
-          ? "Remove the overhead shelves"
-          : "Add storage shelves above the table",
-        _answers.occupants === "solo"
-          ? "Give the single-person setup more presence"
-          : "Make it feel more intimate for two",
-      ];
+  // Quick-action suggestions — derived from the LIVE spec state (not
+  // locationState.spec/.suggestions, which are frozen at onboarding and
+  // never updated after a chat edit), so each one flips to its opposite the
+  // moment the dwelling actually reaches that state. Chair/table height are
+  // independent of each other and of dining_style — they're driven by their
+  // own preferred_tags (tall_chairs/low_chairs, tall_table/low_table, or
+  // the compound tall_furniture/low_furniture) and only fall back to
+  // dining_style's default when no explicit tag is set, mirroring exactly
+  // how llm.py + solver3d resolve furniture height (see
+  // _apply_furniture_height in llm.py and _chair_rule_3d/_table_rule_3d in
+  // solver3d.py). Phrased to contain the literal keyword substrings those
+  // same functions key on ("higher chair(s)"/"lower chair(s)"/"higher
+  // table"/"lower table"/"shelves"), so the intended tag always lands
+  // instead of depending on the LLM inferring it from a paraphrase.
+  const _tags = (spec.preferred_tags as string[] | undefined) ?? [];
+  const _hasTag = (t: string) => _tags.includes(t);
+  const chairsHigh = _hasTag("tall_chairs") || _hasTag("tall_furniture")
+    ? true
+    : _hasTag("low_chairs") || _hasTag("low_furniture")
+      ? false
+      : spec.dining_style === "spacious";
+  const tableHigh = _hasTag("tall_table") || _hasTag("tall_furniture")
+    ? true
+    : _hasTag("low_table") || _hasTag("low_furniture")
+      ? false
+      : spec.dining_style === "spacious";
+  const hasShelves = spec.roof_style === "divided" || _hasTag("more_shelves") || _hasTag("wide_shelves");
+
+  // Picking a different-height chair needs more than a zone_override — the
+  // chair zone's own vertical span only resizes via preferred_tags
+  // (tall_chairs/low_chairs), independent of the table and of dining_style
+  // (verified server-side: solving "compact" + preferred_tags:
+  // ["tall_chairs"] places a full h3 chair next to a normal h2 table). So
+  // this patches spec.preferred_tags to match whichever height was picked,
+  // on top of the usual manual_overrides module pick.
+  const applyChairOverride = (opt: { left: string; right: string; h: number }) => {
+    const nextTags = [
+      ..._tags.filter((t) => t !== "tall_chairs" && t !== "low_chairs"),
+      opt.h === 3 ? "tall_chairs" : "low_chairs",
+    ];
+    const nextSpec = { ...spec, preferred_tags: nextTags };
+    const nextOverrides = { ...manualOverrides, chair_left: opt.left, chair_right: opt.right };
+    setSpec(nextSpec);
+    setManualOverrides(nextOverrides);
+    fetchRender("dining", "3D", nextSpec, nextOverrides);
+    fetchFurnitureOptionsFor(nextSpec, nextOverrides);
+  };
+
+  const suggestions: string[] = [
+    spec.dining_style === "compact"
+      ? "Make it more spacious and open"
+      : "Make it more compact and efficient",
+    chairsHigh ? "I'd like lower chairs" : "I'd like higher chairs",
+    tableHigh ? "I'd like a lower table" : "I'd like a higher table",
+    hasShelves
+      ? "Remove the overhead shelves"
+      : "Add storage shelves above the table",
+  ];
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
 
@@ -330,9 +428,12 @@ export default function ConfiguratorPortfolio() {
 
       if (data.spec) {
         setSpec(data.spec);
+        // A new layout can't be assumed to still fit the old manual picks —
+        // same as Streamlit, which clears module_overrides on every chat edit.
+        setManualOverrides({});
         // Re-render with the correct section + view (chat API always returns dining-2D
         // which would be wrong in dwelling mode or 3D mode).
-        fetchRender(activeSection, viewMode, data.spec as Record<string, unknown>);
+        fetchRender(activeSection, viewMode, data.spec as Record<string, unknown>, {});
       }
 
       setMessages((prev) => {
@@ -373,19 +474,165 @@ export default function ConfiguratorPortfolio() {
 
       <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
-          <p className="text-sm font-body text-white/80 mb-4">
-            {_siteName ? `// ${_siteName}` : "// Worlds"}
-          </p>
           <div className="flex items-end justify-between flex-wrap gap-6">
             <div className="max-w-3xl">
               <BlurText
-                text="Compose your engine."
+                text="How does the engine actually work?"
                 className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
               />
+              <p className="mt-4 text-sm font-body text-white/50 max-w-xl">
+                This is a demo version of the back-end system section generator of Nomadic Engine.
+              </p>
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5">
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-[240px_1fr_360px] gap-5">
+            {/* FURNITURE STYLE PICKER — left column, mirrors app.py's picker
+                column (chair/table/shelf variants that fit the currently-
+                placed module's h/d slot). Dining/3D only, same scope the
+                Streamlit reference uses (_picker_result is only ever set in
+                that branch). Column stays reserved at every section/view so
+                the grid doesn't reflow when switching in and out of it. */}
+            <motion.div
+              initial={blurInit}
+              animate={blurIn}
+              transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
+              className="liquid-glass rounded-[1.25rem] shadow-lg shadow-black/20 p-5 flex flex-col"
+              style={{ height: "calc(58vh + 2.625rem)" }}
+            >
+              <h3 className="text-sm font-body font-medium text-white mb-3 shrink-0">Furniture styles</h3>
+              {activeSection !== "dining" || viewMode !== "3D" ? (
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 text-center px-2">
+                  <Lock className="h-5 w-5 text-white/30" strokeWidth={1.5} />
+                  <p className="text-white/40 text-xs font-body leading-relaxed">
+                    Open Dining in 3D to swap chair, table, and shelf styles.
+                  </p>
+                </div>
+              ) : !furnitureOptions ? (
+                <div className="flex-1 min-h-0 flex items-center justify-center">
+                  <Loader2 className="h-5 w-5 text-white/40 animate-spin" strokeWidth={1.5} />
+                </div>
+              ) : (
+                <div className="chat-scrollbar flex-1 min-h-0 overflow-y-auto pr-1 space-y-5">
+                  {furnitureOptions.chair_options.length > 1 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body mb-2">Chair style</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {furnitureOptions.chair_options.map((opt) => {
+                          const active = furnitureOptions.current.chair_left === opt.left;
+                          const thumb = furnitureOptions.thumbnails[opt.left];
+                          return (
+                            <button
+                              key={opt.left}
+                              onClick={() => applyChairOverride(opt)}
+                              title={opt.left}
+                              className={[
+                                "rounded-xl overflow-hidden text-[10px] font-body text-center border transition-all",
+                                active
+                                  ? "bg-white/15 border-white shadow-[0_0_12px_-2px_rgba(255,255,255,0.5)]"
+                                  : "bg-white/[0.06] border-white/15 hover:bg-white/15 hover:border-white/35",
+                              ].join(" ")}
+                            >
+                              {thumb && (
+                                <img
+                                  src={`data:image/png;base64,${thumb}`}
+                                  alt={opt.left}
+                                  className="w-full aspect-square object-contain"
+                                />
+                              )}
+                              <span className={`block px-1.5 py-1.5 truncate ${active ? "text-white font-medium" : "text-white/75"}`}>
+                                {opt.left.replace(/^chair_left_/, "").replace(/_/g, " ")}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {furnitureOptions.table_options.length > 1 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body mb-2">Table style</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {furnitureOptions.table_options.map((mid) => {
+                          const active = furnitureOptions.current.table === mid;
+                          const thumb = furnitureOptions.thumbnails[mid];
+                          return (
+                            <button
+                              key={mid}
+                              onClick={() => applyOverride({ table: mid })}
+                              title={mid}
+                              className={[
+                                "rounded-xl overflow-hidden text-[10px] font-body text-center border transition-all",
+                                active
+                                  ? "bg-white/15 border-white shadow-[0_0_12px_-2px_rgba(255,255,255,0.5)]"
+                                  : "bg-white/[0.06] border-white/15 hover:bg-white/15 hover:border-white/35",
+                              ].join(" ")}
+                            >
+                              {thumb && (
+                                <img
+                                  src={`data:image/png;base64,${thumb}`}
+                                  alt={mid}
+                                  className="w-full aspect-square object-contain"
+                                />
+                              )}
+                              <span className={`block px-1.5 py-1.5 truncate ${active ? "text-white font-medium" : "text-white/75"}`}>
+                                {mid.replace(/^table_/, "").replace(/_/g, " ")}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {furnitureOptions.shelf_options.length > 1 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.16em] text-white/45 font-body mb-2">Shelf style</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {furnitureOptions.shelf_options.map((mid) => {
+                          const active = furnitureOptions.current.shelf === mid;
+                          const thumb = furnitureOptions.thumbnails[mid];
+                          return (
+                            <button
+                              key={mid}
+                              onClick={() => applyOverride({ shelf: mid })}
+                              title={mid}
+                              className={[
+                                "rounded-xl overflow-hidden text-[10px] font-body text-center border transition-all",
+                                active
+                                  ? "bg-white/15 border-white shadow-[0_0_12px_-2px_rgba(255,255,255,0.5)]"
+                                  : "bg-white/[0.06] border-white/15 hover:bg-white/15 hover:border-white/35",
+                              ].join(" ")}
+                            >
+                              {thumb && (
+                                <img
+                                  src={`data:image/png;base64,${thumb}`}
+                                  alt={mid}
+                                  className="w-full aspect-square object-contain"
+                                />
+                              )}
+                              <span className={`block px-1.5 py-1.5 truncate ${active ? "text-white font-medium" : "text-white/75"}`}>
+                                {mid.replace(/^shelf_/, "").replace(/_/g, " ")}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {furnitureOptions.chair_options.length <= 1 &&
+                    furnitureOptions.table_options.length <= 1 &&
+                    furnitureOptions.shelf_options.length <= 1 && (
+                      <p className="text-white/35 text-xs font-body leading-relaxed pt-6 text-center">
+                        No alternate styles available for this layout.
+                      </p>
+                    )}
+                </div>
+              )}
+            </motion.div>
+
             {/* VIEWPORT */}
             <motion.div
               initial={blurInit}
@@ -701,18 +948,44 @@ export default function ConfiguratorPortfolio() {
                 it, glow draws the eye over here — liquid-glass clips box-shadow,
                 so (same as the guided-tour panels on Configurator.tsx) the glow
                 has to land on this plain outer wrapper, not the panel itself.
-                overflow-hidden here (not just min-h-0) matters: a CSS Grid item
-                left at the default overflow:visible still contributes its full
-                CONTENT height to the row's auto-sizing, growing chain length or
-                not — that's what was pushing the row taller (and misaligning it
-                from the viewport panel) as the conversation got longer, instead
-                of stretching to match the viewport panel from the first message. */}
-            <div className={`rounded-[1.25rem] h-full min-h-0 overflow-hidden ${hasClickedDining && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
+                Explicit height: "58vh" on the aside itself (matching the
+                viewport panel's own inline height), not h-full on an
+                outer fixed-height wrapper — h-full depended on a CSS Grid
+                row stretching to the viewport panel's height, which stopped
+                holding once this page started rendering inside other
+                wrappers (the Under the Hood popup) instead of only as its
+                own top-level route, and the chat kept growing with the
+                conversation instead of scrolling internally.
+                The invisible tabs-row spacer below (after the aside, not
+                before it) reproduces the Section-tabs row's own height +
+                mb-3 margin, so this card's total height — and so its
+                bottom edge — lines up with the viewport panel's, the same
+                spacer trick the other configurator pages' chat panels use.
+                liquid-glass + rounded-[1.25rem] live on THIS outer wrapper,
+                not the aside — they used to be on the aside alone, which
+                only covers the 58vh it's actually sized to, leaving the
+                spacer's extra space see-through: the glow (also on this
+                wrapper) reached the full aligned height, but the visible
+                glass panel behind it stopped short of it. Moving the glass
+                itself out here makes it span the same full height the glow
+                already does — same structure the other configurator
+                pages' chat wrappers use.
+                The aside's own height below is 58vh PLUS the tabs-row's
+                height/margin (rather than 58vh with a separate invisible
+                spacer after it) — a separate spacer left the actual chat
+                content (header/messages/input) sized to just the 58vh
+                portion, floating in the upper part of the now-taller glass
+                card with dead space below the input field. Folding that
+                extra height into the aside itself instead lets its own
+                flex children (the message list is flex-1) absorb it, so
+                the content genuinely fills the card top-to-bottom. */}
+            <div className={`liquid-glass rounded-[1.25rem] shadow-lg shadow-black/20 min-h-0 overflow-hidden flex flex-col ${hasClickedDining && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
             <motion.aside
               initial={blurInit}
               animate={blurIn}
               transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-              className="liquid-glass rounded-[1.25rem] p-6 flex flex-col h-full min-h-0"
+              className="p-6 flex flex-col min-h-0 shrink-0"
+              style={{ height: "calc(58vh + 2.625rem)" }}
             >
               <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
                 <span className="relative inline-flex w-9 h-9 rounded-full bg-white/10 border border-white/15 items-center justify-center overflow-hidden">

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ArrowUpRight, Check, Menu, Sparkles, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowUpRight, Check, Menu, MousePointer2, Sparkles, X } from "lucide-react";
 import { useMockAuth, type AvatarId } from "@/context/MockAuth";
 import { useJourney } from "@/lib/journey";
 import { WRAPUP_EVENT, requestWrapUp } from "@/lib/tribeStore";
@@ -63,30 +64,69 @@ function Hint({ text, children }: { text: string; children: React.ReactNode }) {
 export default function Nav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user, signOut, openLogin, onboardingOpen, loginOpen, planSelectionOpen } = useMockAuth();
+  const { user, signOut, openLogin, onboardingOpen, loginOpen, planSelectionOpen, underHoodOpen, openUnderHood } = useMockAuth();
   const journey = useJourney();
   const [menuOpen, setMenuOpen] = useState(false);
   const items = user ? [...baseItems, ...signedInItems] : baseItems;
 
-  // On the Tribe page, Start Over's usual nav slot becomes "Ready to wrap
-  // up?" instead — the Tribe page itself pushes whether it should glow
-  // (enough clicking around, or having opened Creators) via WRAPUP_EVENT,
-  // since that engagement state lives on the page, not here. Resets on
-  // every route change so a stale glow from a past visit can't linger.
+  // On Tribe, Start Over's usual nav slot becomes "Ready to wrap up?"
+  // instead. Tribe pushes whether it should glow (enough clicking around,
+  // or having opened Creators) via WRAPUP_EVENT, since that engagement
+  // state lives on the page, not here. Under the Hood is a popup now (see
+  // UnderTheHoodDialog), not a page this nav slot needs to know about — it
+  // carries its own "Ready to wrap up?" in its own header instead. Resets
+  // on every route change so a stale glow from a past visit can't linger.
+  const isTribe = pathname === "/tribe";
   const [wrapUpEligible, setWrapUpEligibleState] = useState(false);
   const [wrapUpHintSeen, setWrapUpHintSeen] = useState(false);
   useEffect(() => {
     setWrapUpEligibleState(false);
     setWrapUpHintSeen(false);
   }, [pathname]);
+
+  // While Tribe's wrap-up screen is open with its "check Under the Hood"
+  // cross-promo, that same nav button glows + gets pointed at too — so the
+  // suggestion in the modal is echoed by the real, clickable nav control
+  // that opens it, not just a button inside the card. Measured via a ref +
+  // fixed overlay (rather than styling the button itself) because the
+  // center pill is a .liquid-glass with overflow:hidden for its own
+  // border-gradient trick — anything poking past the pill's own tiny
+  // padding to look like a glow ring or a pointing cursor gets clipped
+  // invisible there, same constraint as the panel-glow-pulse note on the
+  // Tribe page. "under-the-hood" here is just a shared string id (see
+  // WrapUpScreen's crossPromo.highlightId), not a route.
+  const hoodLinkRef = useRef<HTMLButtonElement>(null);
+  const [highlightHood, setHighlightHood] = useState(false);
+  const [hoodRect, setHoodRect] = useState<DOMRect | null>(null);
+  // Horizontal distance from screen-center (where the wrap-up screen's
+  // "Thank you for exploring" card sits, since it's centered) to this
+  // button — the cursor slides from there, not from a guessed offset.
+  const [hoodSlideFrom, setHoodSlideFrom] = useState(0);
   useEffect(() => {
     const onEvent = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { type: string; eligible?: boolean } | undefined;
+      const detail = (e as CustomEvent).detail as
+        { type: string; eligible?: boolean; to?: string | null } | undefined;
       if (detail?.type === "eligible") setWrapUpEligibleState(!!detail.eligible);
+      if (detail?.type === "highlight") setHighlightHood(detail.to === "under-the-hood");
     };
     window.addEventListener(WRAPUP_EVENT, onEvent);
     return () => window.removeEventListener(WRAPUP_EVENT, onEvent);
   }, []);
+  useEffect(() => {
+    if (!highlightHood) { setHoodRect(null); return; }
+    const measure = () => {
+      const hood = hoodLinkRef.current?.getBoundingClientRect() ?? null;
+      setHoodRect(hood);
+      if (hood) setHoodSlideFrom(window.innerWidth / 2 - (hood.left + hood.width / 2));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [highlightHood]);
 
   // "Join the Tribe" appears only once the order is finished (Voyages, brief and Worlds done).
   const tribeUnlocked = !!user && !!journey.steps.find((s) => s.id === "reserve")?.done;
@@ -104,7 +144,7 @@ export default function Nav() {
   // transparent and don't reach the very top of the screen, so the nav's
   // own tab pills were showing through, dimmed, above the modal's own
   // step/option UI (looked like two stacked rows of tabs).
-  if (onboardingOpen || loginOpen || planSelectionOpen) return null;
+  if (onboardingOpen || loginOpen || planSelectionOpen || underHoodOpen) return null;
 
   return (
     <nav className="fixed top-4 inset-x-0 z-50 px-5 md:px-8 lg:px-16">
@@ -160,12 +200,14 @@ export default function Nav() {
                 {CONFIGURE_ITEM.label}
               </button>
             ) : (
-              <Link
-                to={HOOD_ITEM.to}
+              <button
+                ref={hoodLinkRef}
+                type="button"
+                onClick={openUnderHood}
                 className="ml-1 inline-flex items-center bg-white text-black hover:bg-white/90 rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap font-body transition-colors"
               >
                 {HOOD_ITEM.label}
-              </Link>
+              </button>
             )}
           </Hint>
         </div>
@@ -213,7 +255,7 @@ export default function Nav() {
               compared to Home, where this button doesn't exist at all. */}
           {pathname !== "/" && (
             <div className="relative hidden sm:block w-0 -ml-2">
-              {pathname === "/tribe" ? (
+              {isTribe ? (
                 <div className="absolute right-0 top-1/2 -translate-y-1/2">
                   <div className={`relative rounded-full ${wrapUpEligible ? "panel-glow-pulse" : ""}`}>
                     <button
@@ -263,6 +305,9 @@ export default function Nav() {
                   to={item.to}
                   onClick={(e) => {
                     if (item === CONFIGURE_ITEM) { e.preventDefault(); startConfigure(); }
+                    // Under the Hood is a popup now, not a route — open it
+                    // in place rather than navigating.
+                    if (item === HOOD_ITEM) { e.preventDefault(); openUnderHood(); }
                     if (item.to === "/") signOut();
                     setMenuOpen(false);
                   }}
@@ -327,7 +372,7 @@ export default function Nav() {
               </button>
             )}
             {pathname !== "/" && (
-              pathname === "/tribe" ? (
+              isTribe ? (
                 <button
                   type="button"
                   onClick={() => { requestWrapUp(); setWrapUpHintSeen(true); setMenuOpen(false); }}
@@ -345,6 +390,48 @@ export default function Nav() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Glow ring + pointing cursor drawn as a fixed overlay at the real
+          button's measured position, rather than styled onto the Link
+          itself — the center pill is a .liquid-glass with overflow:hidden,
+          which would clip both. z-[55] sits above Tribe's wrap-up backdrop
+          (z-50) so this stays crisp instead of dimming with the rest of
+          the nav underneath it. */}
+      <AnimatePresence>
+        {highlightHood && hoodRect && (
+          <motion.div
+            key="hood-highlight"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed z-[55] pointer-events-none"
+            style={{ left: hoodRect.left, top: hoodRect.top, width: hoodRect.width, height: hoodRect.height }}
+          >
+            <span className="absolute inset-0 rounded-full panel-glow-pulse" />
+            {/* Slides in diagonally from where the wrap-up screen's "Thank
+                you for exploring" card actually sits — horizontally
+                screen-center (hoodSlideFrom, since the card is centered),
+                a fixed reach down for the vertical — toward this button up
+                in the nav. Unclipped by anything since this overlay is
+                fixed at the top level, not nested inside the center pill's
+                own clipped box. */}
+            <motion.span
+              className="absolute right-0 top-1/2 -translate-y-1/2"
+              animate={{ x: [hoodSlideFrom, 0, 0], y: [90, 0, 0], opacity: [0, 1, 1, 0] }}
+              transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 0.8, ease: "easeOut", times: [0, 0.5, 1] }}
+            >
+              <MousePointer2
+                className="h-6 w-6 text-white -rotate-12"
+                style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                fill="white"
+                fillOpacity={0.15}
+                strokeWidth={1.75}
+              />
+            </motion.span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }
