@@ -27,12 +27,12 @@ import coralAtoll from "@/assets/sites/coral-atoll.jpg";
 import tasmanBluff from "@/assets/sites/tasman-bluff.jpg";
 import dryValley from "@/assets/sites/dry-valley.jpg";
 import concordiaDome from "@/assets/sites/concordia-dome.jpg";
-import landscapeNamib from "@/assets/configurator-landscape-namib.jpg";
+import landscapeNamib from "@/assets/sites/landscapes/namib-dune.jpg";
 import landscapePineHollow from "@/assets/sites/landscapes/pine-hollow.jpg";
 import landscapeMosiPlains from "@/assets/sites/landscapes/mosi-plains.jpg";
 import landscapeBlackPines from "@/assets/sites/landscapes/black-pines.jpg";
 import landscapeOliveRidge from "@/assets/sites/landscapes/olive-ridge.jpg";
-import landscapeYukonBend from "@/assets/sites/landscapes/yukon-bend.png";
+import landscapeYukonBend from "@/assets/sites/landscapes/yukon-bend.jpg";
 import landscapeBayouHollow from "@/assets/sites/landscapes/bayou-hollow.jpg";
 import landscapeSierraCrest from "@/assets/sites/landscapes/sierra-crest.jpg";
 import landscapeGreatLakesCove from "@/assets/sites/landscapes/great-lakes-cove.jpg";
@@ -47,6 +47,7 @@ import landscapeAndesRidge from "@/assets/sites/landscapes/andes-ridge.jpg";
 import landscapeCerradoFlats from "@/assets/sites/landscapes/cerrado-flats.jpg";
 import landscapeGobiEdge from "@/assets/sites/landscapes/gobi-edge.jpg";
 import landscapeHokkaidoForest from "@/assets/sites/landscapes/hokkaido-forest.jpg";
+import landscapeDryValley from "@/assets/sites/landscapes/dry-valley.jpg";
 import landscapeHimalayaPass from "@/assets/sites/landscapes/himalaya-pass.jpg";
 import landscapeAnatoliaSteppe from "@/assets/sites/landscapes/anatolia-steppe.jpg";
 import landscapeBaliCove from "@/assets/sites/landscapes/bali-cove.jpg";
@@ -86,6 +87,8 @@ export interface Site {
   landscapeImage?: string;
   /** Extra crop-in on just the landscape backdrop (independent of the viewport's manual zoom, which scales the dwelling too). 1 = no change. */
   landscapeZoom?: number;
+  /** Vertical shift of the landscape backdrop, in % of its height (negative = up). Needs landscapeZoom > 1 so no edge shows. */
+  landscapeOffsetY?: number;
   /** Not yet open for booking — shown dimmed with a "Coming soon" state instead of a Configure path. */
   locked?: boolean;
 }
@@ -165,8 +168,8 @@ export const SITES: Site[] = [
 
   // North America
   { title: "Yukon Bend",      region: "Yukon, CA",            regionId: "north-america", climateId: "polar",           temperature: "Cold",      rainfall: "Snowy",    costOfLiving: "Medium", internetSpeed: "Medium", safety: "High",   image: yukonBend, coords: [-135.05, 60.72], landscapeImage: landscapeYukonBend },
+  { title: "Sierra Crest",    region: "California, US",       regionId: "north-america", climateId: "mountain-alpine", temperature: "Cool",      rainfall: "Moderate", costOfLiving: "High",   internetSpeed: "Fast",   safety: "High",   image: sierraCrest, coords: [-119.0, 37.8], landscapeImage: landscapeSierraCrest },
   { title: "Bayou Hollow",    region: "Louisiana, US",        regionId: "north-america", climateId: "tropical",        temperature: "Hot",       rainfall: "Wet",      costOfLiving: "Low",    internetSpeed: "Medium", safety: "Medium", image: bayouHollow, coords: [-91.15, 30.45], landscapeImage: landscapeBayouHollow, locked: true },
-  { title: "Sierra Crest",    region: "California, US",       regionId: "north-america", climateId: "mountain-alpine", temperature: "Cool",      rainfall: "Moderate", costOfLiving: "High",   internetSpeed: "Fast",   safety: "High",   image: sierraCrest, coords: [-119.0, 37.8], landscapeImage: landscapeSierraCrest, locked: true },
   { title: "Great Lakes Cove",region: "Ontario, CA",          regionId: "north-america", climateId: "continental",     temperature: "Temperate", rainfall: "Moderate", costOfLiving: "Medium", internetSpeed: "Fast",   safety: "High",   image: greatLakesCove, coords: [-79.4, 43.7], landscapeImage: landscapeGreatLakesCove, locked: true },
 
   // South America
@@ -179,13 +182,13 @@ export const SITES: Site[] = [
   // Africa
   { title: "Namib Dune",      region: "Erongo, NA",        regionId: "africa", climateId: "dry-arid",        temperature: "Hot",       rainfall: "Dry",      costOfLiving: "Medium", internetSpeed: "Medium", safety: "High",   image: namibDune, coords: [14.53, -22.56], landscapeImage: landscapeNamib },
   { title: "Atlas Spine",     region: "High Atlas, MA",    regionId: "africa", climateId: "mountain-alpine", temperature: "Cool",      rainfall: "Moderate", costOfLiving: "Low",    internetSpeed: "Medium", safety: "Medium", image: atlasSpine, coords: [-7.92, 31.06], landscapeImage: landscapeAtlasSpine },
-  { title: "Sahel Pan",       region: "Agadez, NE",        regionId: "africa", climateId: "dry-arid",        temperature: "Hot",       rainfall: "Dry",      costOfLiving: "Low",    internetSpeed: "Slow",   safety: "Low",    image: sahelPan, coords: [7.99, 16.97], landscapeImage: landscapeSahelPan, locked: true },
+  { title: "Sahel Pan",       region: "Agadez, NE",        regionId: "africa", climateId: "dry-arid",        temperature: "Hot",       rainfall: "Dry",      costOfLiving: "Low",    internetSpeed: "Slow",   safety: "Low",    image: sahelPan, coords: [7.99, 16.97], landscapeImage: landscapeSahelPan },
   { title: "Rift Highlands",  region: "Rift Valley, KE",   regionId: "africa", climateId: "mountain-alpine", temperature: "Temperate", rainfall: "Moderate", costOfLiving: "Low",    internetSpeed: "Medium", safety: "Medium", image: riftHighlands, coords: [36.07, -0.3], landscapeImage: landscapeRiftHighlands, locked: true },
   { title: "Congo Canopy",    region: "Cuvette, CG",       regionId: "africa", climateId: "tropical",        temperature: "Hot",       rainfall: "Wet",      costOfLiving: "Low",    internetSpeed: "Slow",   safety: "Low",    image: congoCanopy, coords: [16.05, -0.6], landscapeImage: landscapeCongoCanopy, locked: true },
 
   // Asia
   { title: "Anatolia Steppe", region: "Cappadocia, TR",    regionId: "asia", climateId: "temperate",       temperature: "Warm",      rainfall: "Moderate", costOfLiving: "Low",    internetSpeed: "Medium", safety: "Medium", image: anatoliaSteppe, coords: [34.83, 38.65], landscapeImage: landscapeAnatoliaSteppe },
-  { title: "Hokkaido Forest", region: "Hokkaido, JP",      regionId: "asia", climateId: "continental",     temperature: "Cold",      rainfall: "Snowy",    costOfLiving: "High",   internetSpeed: "Fast",   safety: "High",   image: hokkaidoForest, coords: [142.95, 43.22], landscapeImage: landscapeHokkaidoForest },
+  { title: "Hokkaido Forest", region: "Hokkaido, JP",      regionId: "asia", climateId: "continental",     temperature: "Cold",      rainfall: "Snowy",    costOfLiving: "High",   internetSpeed: "Fast",   safety: "High",   image: hokkaidoForest, coords: [142.95, 43.22], landscapeImage: landscapeHokkaidoForest, landscapeZoom: 1.6, landscapeOffsetY: -20 },
   { title: "Gobi Edge",       region: "Ömnögovi, MN",      regionId: "asia", climateId: "dry-arid",        temperature: "Hot",       rainfall: "Dry",      costOfLiving: "Low",    internetSpeed: "Medium", safety: "Medium", image: gobiEdge, coords: [104.4, 43.6], landscapeImage: landscapeGobiEdge, locked: true },
   { title: "Himalaya Pass",   region: "Ladakh, IN",        regionId: "asia", climateId: "mountain-alpine", temperature: "Cold",      rainfall: "Dry",      costOfLiving: "Low",    internetSpeed: "Slow",   safety: "Medium", image: himalayaPass, coords: [77.58, 34.15], landscapeImage: landscapeHimalayaPass, locked: true },
   { title: "Bali Cove",       region: "Bali, ID",          regionId: "asia", climateId: "tropical",        temperature: "Hot",       rainfall: "Wet",      costOfLiving: "Low",    internetSpeed: "Fast",   safety: "High",   image: baliCove, coords: [115.18, -8.65], landscapeImage: landscapeBaliCove, locked: true },
@@ -196,6 +199,6 @@ export const SITES: Site[] = [
   { title: "Tasman Bluff",    region: "Tasmania, AU",           regionId: "oceania", climateId: "temperate",       temperature: "Cool",      rainfall: "Rainy",    costOfLiving: "Medium", internetSpeed: "Fast",   safety: "High",   image: tasmanBluff, coords: [146.32, -41.45], landscapeImage: landscapeTasmanBluff, locked: true },
 
   // Antarctica
-  { title: "Dry Valley",      region: "McMurdo, AQ",        regionId: "antarctica", climateId: "polar", temperature: "Cold", rainfall: "Dry",   costOfLiving: "High", internetSpeed: "Slow",   safety: "Medium", image: dryValley, coords: [161.5, -77.5], locked: true },
+  { title: "Dry Valley",      region: "McMurdo, AQ",        regionId: "antarctica", climateId: "polar", temperature: "Cold", rainfall: "Dry",   costOfLiving: "High", internetSpeed: "Slow",   safety: "Medium", image: dryValley, coords: [161.5, -77.5], landscapeImage: landscapeDryValley },
   { title: "Concordia Dome",  region: "Dome C, AQ",         regionId: "antarctica", climateId: "polar", temperature: "Cold", rainfall: "Dry",   costOfLiving: "High", internetSpeed: "Slow",   safety: "Medium", image: concordiaDome, coords: [123.35, -75.1], locked: true },
 ];

@@ -42,7 +42,7 @@ import dwellingBlackRed from "@/assets/configurator-dwelling-black-red.png";
 import dwellingClearGreen from "@/assets/configurator-dwelling-clear-green.png";
 import dwellingClearRed from "@/assets/configurator-dwelling-clear-red.png";
 import withGrowDwelling from "@/assets/configurator-with-grow.png";
-import topViewImg from "@/assets/configurator-top-view.jpg";
+import topViewImg from "@/assets/configurator-plan-couple-standard.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 import zoneBed from "@/assets/zone-bed.png";
 import zoneLiving from "@/assets/zone-living.png";
@@ -674,6 +674,22 @@ export default function Configurator() {
     s8: "Terrace",
   };
 
+  // Zone names on the plan view, x = centre of each zone's furniture as a % of
+  // the plan image's width (configurator-plan-couple-standard.png, 4480px).
+  // Kitchen/Lab Storage follow the actual fittings (appliance run vs. the dark
+  // storage units), which sit the other way round from their roofline hotspots.
+  const PLAN_ZONE_LABELS = [
+    { id: "s1b", x: 10 },
+    { id: "s2", x: 16.3 },
+    { id: "s3", x: 25 },
+    { id: "s4b", x: 33.3 },
+    { id: "s4", x: 42.6 },
+    { id: "s5", x: 61 },
+    { id: "s6", x: 74.4 },
+    { id: "s7", x: 83.6 },
+    { id: "s8", x: 93.9 },
+  ];
+
   // Shared so the 3D scene and the plan view render identical hotspots —
   // same glow; clicking the pin itself triggers the zoom + cutaway reveal via
   // focusHotspot for whichever hotspots have an entry in CUTAWAY_IMAGES (a
@@ -985,17 +1001,20 @@ export default function Configurator() {
     region: _onboardingSiteRegion || _fallbackSite.region,
   };
   // Sites with their own landscape backdrop use it for the Site Selector
-  // thumbnail too, instead of the default catalog photo. Atacama Plateau is
-  // pinned first among the alternates so it's always offered as a choice,
-  // not just whichever 3 happen to come first in the catalog.
-  const _pinnedSite = SITES.find((s) => s.title === "Atacama Plateau" && !s.locked);
+  // thumbnail too, instead of the default catalog photo.
+  // Pinned alternates, in order: Yukon Bend is always the second suggestion
+  // (right after the onboarding pick), then Atacama Plateau — so they are
+  // always offered, not just whichever 3 come first in the catalog.
+  const _pinnedSites = ["Yukon Bend", "Atacama Plateau"]
+    .map((t) => SITES.find((s) => s.title === t && !s.locked))
+    .filter((s): s is (typeof SITES)[number] => !!s && s.title !== _primarySite.title);
   const _otherSites = SITES.filter(
-    (s) => !s.locked && s.title !== _primarySite.title && s.title !== _pinnedSite?.title,
+    (s) =>
+      !s.locked &&
+      s.title !== _primarySite.title &&
+      !_pinnedSites.some((p) => p.title === s.title),
   );
-  const _extraSites = [
-    ...(_pinnedSite && _pinnedSite.title !== _primarySite.title ? [_pinnedSite] : []),
-    ..._otherSites,
-  ]
+  const _extraSites = [..._pinnedSites, ..._otherSites]
     .map((s) => (s.landscapeImage ? { ...s, image: s.landscapeImage } : s))
     .slice(0, 3);
   const SITE_OPTIONS = [_primarySite, ..._extraSites];
@@ -1113,6 +1132,7 @@ export default function Configurator() {
   // without one fall back to the generic default scene.
   const _landscapeBg = activeSite.landscapeImage ?? landscapeBg;
   const _landscapeZoom = activeSite.landscapeImage ? activeSite.landscapeZoom ?? 1 : 1;
+  const _landscapeOffsetY = activeSite.landscapeImage ? activeSite.landscapeOffsetY ?? 0 : 0;
   // Rib Colour (an add-on, not a design-stage choice) recolors the cross-braced
   // overlay's ribs black instead of swapping in an unrelated scene — keeps the
   // actual site background intact instead of jumping to a different photo.
@@ -1925,7 +1945,7 @@ export default function Configurator() {
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: `scale(${_landscapeZoom})` }}
+                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
                       />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
                       <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -1996,11 +2016,60 @@ export default function Configurator() {
                         y: { type: "tween", duration: 0 },
                       }}
                     >
-                      <img
-                        src={topViewImg}
-                        alt="Dwelling plan view"
-                        className="absolute inset-0 w-full h-full object-contain bg-[#faf8f4]"
+                      {/* Architect-blueprint backdrop — near-black navy, partly
+                          see-through so the glass panel shows through, with a
+                          fine 24px grid plus a stronger line every 120px.
+                          Oversized (-100% inset) so zooming out/panning never
+                          reveals its edges. */}
+                      <div
+                        aria-hidden
+                        className="absolute -inset-full"
+                        style={{
+                          backgroundColor: "rgba(6,12,21,0.15)",
+                          backgroundImage: [
+                            "linear-gradient(rgba(150,190,235,0.22) 1px, transparent 1px)",
+                            "linear-gradient(90deg, rgba(150,190,235,0.22) 1px, transparent 1px)",
+                            "linear-gradient(rgba(150,190,235,0.08) 1px, transparent 1px)",
+                            "linear-gradient(90deg, rgba(150,190,235,0.08) 1px, transparent 1px)",
+                          ].join(", "),
+                          backgroundSize: "120px 120px, 120px 120px, 24px 24px, 24px 24px",
+                          backgroundPosition: "center center",
+                        }}
                       />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {/* Box locked to the plan image's own aspect ratio so the
+                            zone labels' %-x lines up with the drawing itself. */}
+                        <div
+                          className="relative"
+                          style={{ aspectRatio: "4480/956", width: "85%", maxHeight: "100%" }}
+                        >
+                          <img
+                            src={topViewImg}
+                            alt="Dwelling plan view"
+                            className="absolute inset-0 w-full h-full object-contain"
+                          />
+                          {/* Zone names, alternating above/below the plan so
+                              neighbouring labels never collide on narrow screens. */}
+                          {PLAN_ZONE_LABELS.map((z, i) => {
+                            // Odd indexes go above — keeps each zone on the same side it had
+                            // before Plant Bay (formerly index 0) was dropped from the list.
+                            const above = i % 2 === 1;
+                            return (
+                              <div
+                                key={z.id}
+                                className={`absolute flex items-center pointer-events-none ${above ? "flex-col-reverse bottom-full mb-1" : "flex-col top-full mt-1"}`}
+                                style={{ left: `${z.x}%`, transform: "translateX(-50%)" }}
+                              >
+                                <span className="w-px h-3 bg-white/50" />
+                                {/* Same glass pill + type as the Show Zones hotspot labels. */}
+                                <span className="liquid-glass-strong rounded-xl px-3.5 py-2.5 whitespace-nowrap font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
+                                  {HOTSPOT_LABELS[z.id]}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </motion.div>
                   ) : (
                     /* Zoomable scene — landscape + dwelling + hotspots scale together */
@@ -2032,7 +2101,7 @@ export default function Configurator() {
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: `scale(${_landscapeZoom})` }}
+                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
                       />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
 

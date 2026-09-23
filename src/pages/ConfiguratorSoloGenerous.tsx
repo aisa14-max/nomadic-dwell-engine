@@ -49,7 +49,7 @@ import chipBed from "@/assets/zone-bed.png";
 import chipKitchen from "@/assets/zone-kitchen.png";
 import chipDining from "@/assets/zone-dining.png";
 import chipLiving from "@/assets/zone-living.png";
-import topViewImg from "@/assets/configurator-top-view.jpg";
+import topViewImg from "@/assets/configurator-plan-single-spacious.png";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
 // Real 360° panoramas for this dwelling's Explore more scenes (from the
 // .lovable "panorama single spacious" hand-off). Add more imports + a
@@ -191,6 +191,18 @@ const DWELLING_HOTSPOTS: { id: ZoneId; x: number; y: number }[] = [
   { id: "bed",      x: 81.3, y: 42.2 },
 ];
 const HOTSPOT_LABELS: Record<ZoneId, string> = ZONE_LABELS;
+
+// Zone names on the plan view, x = centre of each zone's furniture as a % of
+// the plan image's width (configurator-plan-single-spacious.png, cropped to
+// the plan itself, 1617px). Alternates above/below the plan, starting above.
+const PLAN_ZONE_LABELS: { id: ZoneId; x: number }[] = [
+  { id: "bathroom", x: 7.5 },
+  { id: "kitchen",  x: 20.5 },
+  { id: "dining",   x: 36.5 },
+  { id: "living",   x: 56 },
+  { id: "closet",   x: 72 },
+  { id: "bed",      x: 90 },
+];
 
 // Horizontal carousel card — same shape/behavior as every other
 // configurator page's Add/Layout Zones strip (image on top, label below).
@@ -605,14 +617,19 @@ export default function ConfiguratorSoloGenerous() {
     title: _onboardingSiteName || _fallbackSite.title,
     region: _onboardingSiteRegion || _fallbackSite.region,
   };
-  const _pinnedSite = SITES.find((s) => s.title === "Atacama Plateau" && !s.locked);
+  // Pinned alternates, in order: Yukon Bend is always the second suggestion
+  // (right after the onboarding pick), then Atacama Plateau — so they are
+  // always offered, not just whichever 3 come first in the catalog.
+  const _pinnedSites = ["Yukon Bend", "Atacama Plateau"]
+    .map((t) => SITES.find((s) => s.title === t && !s.locked))
+    .filter((s): s is (typeof SITES)[number] => !!s && s.title !== _primarySite.title);
   const _otherSites = SITES.filter(
-    (s) => !s.locked && s.title !== _primarySite.title && s.title !== _pinnedSite?.title,
+    (s) =>
+      !s.locked &&
+      s.title !== _primarySite.title &&
+      !_pinnedSites.some((p) => p.title === s.title),
   );
-  const _extraSites = [
-    ...(_pinnedSite && _pinnedSite.title !== _primarySite.title ? [_pinnedSite] : []),
-    ..._otherSites,
-  ]
+  const _extraSites = [..._pinnedSites, ..._otherSites]
     .map((s) => (s.landscapeImage ? { ...s, image: s.landscapeImage } : s))
     .slice(0, 3);
   const SITE_OPTIONS = [_primarySite, ..._extraSites];
@@ -729,6 +746,7 @@ export default function ConfiguratorSoloGenerous() {
   const _siteName = activeSite.title;
   const _landscapeBg = activeSite.landscapeImage ?? landscapeBg;
   const _landscapeZoom = activeSite.landscapeImage ? activeSite.landscapeZoom ?? 1 : 1;
+  const _landscapeOffsetY = activeSite.landscapeImage ? activeSite.landscapeOffsetY ?? 0 : 0;
 
   const greeting: string = locationState?.reply?.trim()
     ? locationState.reply
@@ -1247,7 +1265,56 @@ export default function ConfiguratorSoloGenerous() {
                         exit={{ opacity: 0, scale: 1.04 }}
                         transition={{ opacity: { duration: 0.5, ease: "easeOut" }, scale: { type: "spring", stiffness: 220, damping: 26 } }}
                       >
-                        <img src={topViewImg} alt="Dwelling plan view" className="absolute inset-0 w-full h-full object-contain bg-[#faf8f4]" />
+                        {/* Architect-blueprint backdrop — a faint near-black navy
+                            tint over the glass panel with a fine 24px grid plus a
+                            stronger line every 120px. Oversized (-100% inset) so
+                            zooming out never reveals its edges. Same as the
+                            Couple Standard plan in Configurator.tsx. */}
+                        <div
+                          aria-hidden
+                          className="absolute -inset-full"
+                          style={{
+                            backgroundColor: "rgba(6,12,21,0.15)",
+                            backgroundImage: [
+                              "linear-gradient(rgba(150,190,235,0.22) 1px, transparent 1px)",
+                              "linear-gradient(90deg, rgba(150,190,235,0.22) 1px, transparent 1px)",
+                              "linear-gradient(rgba(150,190,235,0.08) 1px, transparent 1px)",
+                              "linear-gradient(90deg, rgba(150,190,235,0.08) 1px, transparent 1px)",
+                            ].join(", "),
+                            backgroundSize: "120px 120px, 120px 120px, 24px 24px, 24px 24px",
+                            backgroundPosition: "center center",
+                          }}
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {/* Box locked to the plan image's own aspect ratio so the
+                              zone labels' %-x lines up with the drawing itself. */}
+                          <div
+                            className="relative"
+                            style={{ aspectRatio: "1617/463", width: "85%", maxHeight: "100%" }}
+                          >
+                            <img
+                              src={topViewImg}
+                              alt="Dwelling plan view"
+                              className="absolute inset-0 w-full h-full object-contain"
+                            />
+                            {PLAN_ZONE_LABELS.map((z, i) => {
+                              const above = i % 2 === 0;
+                              return (
+                                <div
+                                  key={z.id}
+                                  className={`absolute flex items-center pointer-events-none ${above ? "flex-col-reverse bottom-full mb-1" : "flex-col top-full mt-1"}`}
+                                  style={{ left: `${z.x}%`, transform: "translateX(-50%)" }}
+                                >
+                                  <span className="w-px h-3 bg-white/50" />
+                                  {/* Same glass pill + type as the Show Zones hotspot labels. */}
+                                  <span className="liquid-glass-strong rounded-xl px-3.5 py-2.5 whitespace-nowrap font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
+                                    {zoneLabel(z.id, true)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </motion.div>
                     ) : (
                       <motion.div
@@ -1263,7 +1330,7 @@ export default function ConfiguratorSoloGenerous() {
                           alt=""
                           aria-hidden
                           className="absolute inset-0 w-full h-full object-cover"
-                          style={{ transform: `scale(${_landscapeZoom})` }}
+                          style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
                         />
                         <div className="absolute inset-0 bg-black/30" aria-hidden />
 
