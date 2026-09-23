@@ -304,13 +304,6 @@ export default function ConfiguratorSolo() {
   const rightColDirection = rightColIndex - prevRightColIndexRef.current;
   useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
 
-  // On the add-ons page, the order/price panel used to sit there from the
-  // moment you arrived, competing with the dwelling for attention right
-  // away. Now it only appears once you've actually started (opened a step
-  // or picked something) — before that it's just add-ons + dwelling, two
-  // panels, not three.
-  const addOnsEngaged = r.activePart !== null || r.configured.size > 0;
-
   // Add-ons should only ever show the plain exterior dwelling — any zone
   // peek left open from the design stage (clicked a hotspot, never closed
   // it before hitting Continue configuration) would otherwise carry straight
@@ -352,12 +345,6 @@ export default function ConfiguratorSolo() {
     // now-static dwelling viewport correspondingly less) since there's no
     // interaction happening in the viewport at this stage.
     : stage === "plans" ? "lg:grid-cols-[0px_1fr_520px]"
-    // Before add-ons are engaged, the order panel isn't rendered at all
-    // (see addOnsEngaged above) — collapsing its column to 0 instead of
-    // leaving it reserved-but-empty lets the viewport grow into that space,
-    // then the same grid-template-columns transition below eases it back
-    // down to 360px right as the order panel slides in.
-    : stage === "customise" && !addOnsEngaged ? "lg:grid-cols-[220px_1fr_0px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
@@ -414,32 +401,6 @@ export default function ConfiguratorSolo() {
   // bug as the reservation modal), and this also actually fills the whole
   // screen (hides browser chrome) instead of just the page content area.
   const viewportRef = useRef<HTMLDivElement>(null);
-  // The add-ons viewport grows wider (right column collapses) before
-  // add-ons are engaged — see gridCols/addOnsEngaged above. The background
-  // is object-cover, so a wider box on the same fixed height just reveals
-  // more of the scene horizontally, making the sited dwelling within it
-  // read smaller against the frame instead of staying the same size. This
-  // tracks how much wider the box currently is than its normal (engaged)
-  // width and feeds that back in as extra zoom, so the framing stays
-  // consistent regardless of which width state it's in.
-  const viewportNormalWidthRef = useRef(0);
-  const [viewportBgZoomBoost, setViewportBgZoomBoost] = useState(1);
-  useEffect(() => {
-    const el = viewportRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const w = el.getBoundingClientRect().width;
-      if (w <= 0) return;
-      if (stage !== "customise" || addOnsEngaged) {
-        viewportNormalWidthRef.current = w;
-        setViewportBgZoomBoost(1);
-      } else if (viewportNormalWidthRef.current > 0) {
-        setViewportBgZoomBoost(w / viewportNormalWidthRef.current);
-      }
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [stage, addOnsEngaged]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Dropping a zone tile from the Layout Zones panel onto the viewport
   // focuses that zone — see handleZoneDrop below, defined after onSectionClick.
@@ -1951,7 +1912,7 @@ export default function ConfiguratorSolo() {
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom * viewportBgZoomBoost})` }}
+                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
                       />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
                       <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -2656,10 +2617,10 @@ export default function ConfiguratorSolo() {
                     on screen side by side at once, same as the viewport
                     easing wider/narrower next to them. */}
                 <AnimatePresence>
-                  {stage === "customise" && addOnsEngaged && (
+                  {stage === "customise" && (
                     <motion.div
                       key="customise"
-                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 380 }}
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
