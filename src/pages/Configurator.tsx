@@ -614,9 +614,11 @@ export default function Configurator() {
         // walkway/floor near the shelving (was up near the skylight seam) —
         // kept short of the bedroom marker's floor-adjacent y (1200/2025) so
         // it doesn't drop into the same under-navbar dead zone noted there.
-        // Now leads into the kitchen rather than back to the bedroom.
+        // Leads into the kitchen, plus a second marker on the floor of the
+        // opening on the right where the bed is visible — leads into the bedroom.
         markers: [
           { id: "to-kitchen", x: 1230, y: 1300, onClick: () => setPanoramaScene("kitchen") },
+          { id: "to-bedroom", x: 2950, y: 1140, onClick: () => setPanoramaScene("bedroom") },
         ],
       },
       kitchen: {
@@ -624,7 +626,7 @@ export default function Configurator() {
         markers: [
           // Toward the shelving/orange-couch nook shared with the livingroom
           // scene — the same landmarks visible from that side of the room.
-          { id: "to-livingroom", x: 5040, y: 1400, onClick: () => setPanoramaScene("livingroom") },
+          { id: "to-livingroom", x: 4130, y: 1780, onClick: () => setPanoramaScene("livingroom") },
           // Near the grey nook wall/chairs, by the shelf — leads into the
           // growing-plants bay.
           { id: "to-plants", x: 1450, y: 1650, onClick: () => setPanoramaScene("plants") },
@@ -635,7 +637,7 @@ export default function Configurator() {
         markers: [
           // Through the doorway on the right, where the shared hallway with
           // the bunk/orange-chair nook is visible — leads back into the kitchen.
-          { id: "to-kitchen", x: 5384, y: 1400, onClick: () => setPanoramaScene("kitchen") },
+          { id: "to-kitchen", x: 4960, y: 1700, onClick: () => setPanoramaScene("kitchen") },
           // On the door itself (the grey fabric-clad door beside the sink
           // unit) — leads into the bathroom.
           { id: "to-bathroom", x: 3987, y: 1400, onClick: () => setPanoramaScene("bathroom") },
@@ -1164,6 +1166,14 @@ export default function Configurator() {
   // otherwise sit on top of _dwellingImg and hide any custom colour picked
   // above. Only show it for the default rib/membrane combo.
   const _showGrowOverlay = plantsGrown && _dwellingImg === dwellingFg;
+  // The rib/membrane-coloured renders are a separate render drawn ~6% smaller
+  // than dwellingFg (PETG Clear + Beige) and shifted right — measured off both
+  // doors: dwellingFg's sit at x 1107/2820, y 320–840 on the 4066×1005 canvas,
+  // the coloured ones' at x 1272/2887, y 330–822. Scaling 1.06 about the fixed
+  // point of that mapping (x ≈ 4017px → 98.8%, y ≈ 510px → 50.25% of the
+  // 2400/1792 box) puts the doors exactly where dwellingFg's are.
+  const _dwellingImgStyle =
+    _dwellingImg === dwellingFg ? undefined : { transform: "scale(1.06)", transformOrigin: "98.8% 50.25%" };
   const _bracingImg =
     r.configured.get("membrane") === "green" ? (_ribIsBlack ? bracingBlackGreen : bracingClearGreen)
     : r.configured.get("membrane") === "red" ? (_ribIsBlack ? bracingBlackRed : bracingClearRed)
@@ -1954,7 +1964,7 @@ export default function Configurator() {
                           className="relative translate-y-8"
                           style={{ aspectRatio: "2400/1792", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                         >
-                          <img src={_dwellingImg} alt="Dwelling" className="w-full h-full object-contain pointer-events-none" />
+                          <img src={_dwellingImg} alt="Dwelling" className="w-full h-full object-contain pointer-events-none" style={_dwellingImgStyle} />
                           <img
                             src={withGrowDwelling}
                             alt="Dwelling with the growing-plants bay"
@@ -2069,6 +2079,7 @@ export default function Configurator() {
                             src={_dwellingImg}
                             alt="Dwelling"
                             className="w-full h-full object-contain pointer-events-none"
+                            style={_dwellingImgStyle}
                           />
                           {/* The dwelling starts without the growing-plants bay — this fades
                               IN once Grow Plants is dropped onto the viewport. Placed right

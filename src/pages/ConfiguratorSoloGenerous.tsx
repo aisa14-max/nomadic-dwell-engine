@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Lock, Lightbulb, MousePointer2, type LucideIcon } from "lucide-react";
@@ -14,6 +14,25 @@ import landscapeBg from "@/assets/configurator-landscape-bg-v2.png";
 // use for their own hotspot peeks — no per-zone positioning math needed).
 import baseIncomplete from "@/assets/configurator-generous-base-incomplete.png";
 import baseComplete from "@/assets/configurator-generous-base-complete.png";
+// Same base elevation, complete, plus one more window beside the door —
+// swapped in when the "Add one more window" chat suggestion is clicked.
+// -black is the same render with the PETG Black rib option applied instead
+// of the default clear rib; -green/-red layer the membrane color on top of
+// whichever rib is configured.
+import baseWindow from "@/assets/configurator-generous-base-window.png";
+import baseWindowGreen from "@/assets/configurator-generous-base-window-green.png";
+import baseWindowRed from "@/assets/configurator-generous-base-window-red.png";
+import baseWindowBlack from "@/assets/configurator-generous-base-window-black.png";
+import baseWindowBlackGreen from "@/assets/configurator-generous-base-window-black-green.png";
+import baseWindowBlackRed from "@/assets/configurator-generous-base-window-black-red.png";
+// The "declined" (Undo) render, no extra window, but in the configured rib/
+// membrane colors instead of always falling back to the plain baseComplete
+// (from the "original" subfolder of the same hand-off).
+import baseBlack from "@/assets/configurator-generous-base-black.png";
+import baseGreen from "@/assets/configurator-generous-base-green.png";
+import baseRed from "@/assets/configurator-generous-base-red.png";
+import baseBlackGreen from "@/assets/configurator-generous-base-black-green.png";
+import baseBlackRed from "@/assets/configurator-generous-base-black-red.png";
 import zoneBedSmallImg from "@/assets/configurator-generous-zone-bed-small.png";
 import zoneBedImg from "@/assets/configurator-generous-zone-bed.png";
 import zoneKitchenImg from "@/assets/configurator-generous-zone-kitchen.png";
@@ -137,18 +156,25 @@ const zoneCutawayImage = (id: ZoneId, placed: boolean) => (id === "bed" && place
 // actual room render.
 const zoneChipImage = (id: ZoneId) => ZONE_CHIP_IMAGES[id];
 
-// "Explore more" — a full-viewport, drag-around 360° panorama for whichever
-// zone hotspots actually have one, same mechanism as ConfiguratorSolo.tsx's
-// SECTION_EXPLORE/PANORAMA_SCENES. Bathroom, Kitchen, Living and Bed have
-// real panorama art so far (the .lovable "panorama single spacious"
-// hand-off), each still a dead end (no door markers) since they haven't
-// been paired up with a connecting doorway shot yet — add markers once
-// that's ready.
-const PANORAMA_SCENES: Partial<Record<ZoneId, { src: string; markers: PanoramaMarker[] }>> = {
-  bathroom: { src: bathroomPanorama, markers: [] },
-  kitchen: { src: kitchenPanorama, markers: [] },
-  living: { src: livingPanorama, markers: [] },
-  bed: { src: bedPanorama, markers: [] },
+// Which extra-window base render to show once "Add one more window" lands —
+// picks up the configured rib/membrane colors the same way the other
+// configurator pages' _ribIsBlack checks do.
+const baseWindowImage = (rib: string | undefined, membrane: string | undefined) => {
+  const ribIsBlack = rib === "petg-black";
+  if (membrane === "green") return ribIsBlack ? baseWindowBlackGreen : baseWindowGreen;
+  if (membrane === "red") return ribIsBlack ? baseWindowBlackRed : baseWindowRed;
+  return ribIsBlack ? baseWindowBlack : baseWindow;
+};
+
+// Which no-extra-window render to show once the dwelling is complete but
+// "Add one more window" was never taken (or was Undone) — same rib/membrane
+// lookup as baseWindowImage above, just falling back to the plain
+// baseComplete for any combo that doesn't have its own colored render yet.
+const baseDeclinedImage = (rib: string | undefined, membrane: string | undefined) => {
+  const ribIsBlack = rib === "petg-black";
+  if (membrane === "green") return ribIsBlack ? baseBlackGreen : baseGreen;
+  if (membrane === "red") return ribIsBlack ? baseBlackRed : baseRed;
+  return ribIsBlack ? baseBlack : baseComplete;
 };
 
 // Hotspot dot positions — top-center of each room's own alpha-channel
@@ -297,7 +323,10 @@ export default function ConfiguratorSoloGenerous() {
   const rightColDirection = rightColIndex - prevRightColIndexRef.current;
   useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
 
-  const enterCustomise = () => { setShowNext(true); r.setStage("configure"); };
+  // Also forces the viewport back to the dwelling elevation — the Plan view
+  // toggle is hidden on the Add-ons page, so if the user left it on "plan"
+  // before continuing, there'd be no way back to it there.
+  const enterCustomise = () => { setShowNext(true); r.setStage("configure"); setViewMode("3D"); };
   const pricedTotals = applyPlanDiscount(r.totals, selectedPlan, DEPOSIT_RATE);
   const handlePartToggle = (p: PartId) => r.setActive(r.activePart === p ? null : p);
   const handleOptionSelect = (optionId: string) => {
@@ -330,9 +359,79 @@ export default function ConfiguratorSoloGenerous() {
   const [zonesSeen, setZonesSeen] = useState(false);
   const [exploreUnlocked, setExploreUnlocked] = useState(false);
   const [exploreSeen, setExploreSeen] = useState(false);
-  // Which zone's panorama is currently taking over the viewport — see
-  // PANORAMA_SCENES above for which zones actually have one.
+  // Which zone's hotspot opened the panorama takeover (stays fixed for the
+  // life of that takeover — gates whether it's shown at all, same as
+  // ConfiguratorSolo.tsx's activeExplore) vs. panoramaScene, which scene is
+  // actually on screen right now and moves independently once a marker
+  // walks the viewer into a different linked room.
   const [activeExplore, setActiveExplore] = useState<ZoneId | null>(null);
+  const [panoramaScene, setPanoramaScene] = useState<ZoneId>("bathroom");
+  // "Explore more" — a full-viewport, drag-around 360° panorama for
+  // whichever zone hotspots actually have one, same mechanism as
+  // ConfiguratorSolo.tsx's SECTION_EXPLORE/PANORAMA_SCENES. Defined here
+  // (not as a module-level const) since Living's marker needs to close over
+  // setPanoramaScene. Bathroom, Kitchen, Living and Bed all have real
+  // panorama art now (the .lovable "panorama single spacious" hand-off);
+  // Living -> Bed is the first connecting doorway wired up (the round rug
+  // by the hammock, visible in both scenes) — add more marker pairs as
+  // further doorways get matched up.
+  const PANORAMA_SCENES = useMemo<Partial<Record<ZoneId, { src: string; markers: PanoramaMarker[] }>>>(
+    () => {
+      // Dining has no panorama art of its own yet, so its Explore more
+      // reuses the Living scene outright (same room, same connecting
+      // markers to Kitchen/Bathroom/Bed) rather than going without.
+      const livingScene = {
+        src: livingPanorama,
+        markers: [
+          // Near the hammock chair — the same rug/hammock corridor visible
+          // from the bedroom panorama, so this is where the two scenes
+          // actually connect.
+          { id: "to-bed", x: 2830, y: 1150, onClick: () => setPanoramaScene("bed") },
+          // Over the shelf by the small side table, looking toward the
+          // kitchen beyond.
+          { id: "to-kitchen", x: 1360, y: 975, onClick: () => setPanoramaScene("kitchen") },
+          // Over the terrazzo wall by the door, looking toward the bathroom.
+          { id: "to-bathroom", x: 1040, y: 1015, onClick: () => setPanoramaScene("bathroom") },
+        ],
+      };
+      const bedScene = {
+        src: bedPanorama,
+        markers: [
+          // Beside the white lounge/daybed near the archway — leads back
+          // out into the living room.
+          { id: "to-living", x: 2050, y: 1339, onClick: () => setPanoramaScene("living") },
+        ],
+      };
+      return {
+        bathroom: {
+          src: bathroomPanorama,
+          // On the floor at the threshold of the plain exit door beside the
+          // sink — leads back out to the living room.
+          markers: [
+            { id: "to-living", x: 2689, y: 1080, onClick: () => setPanoramaScene("living") },
+          ],
+        },
+        kitchen: {
+          src: kitchenPanorama,
+          markers: [
+            // Next to the pale daybed/sofa visible through the archway
+            // toward the living room.
+            { id: "to-living", x: 3239, y: 1128, onClick: () => setPanoramaScene("living") },
+            // On the wall pillar just above the sink, near the sink's own
+            // wall-mounted hook.
+            { id: "to-bathroom", x: 300, y: 1200, onClick: () => setPanoramaScene("bathroom") },
+          ],
+        },
+        living: livingScene,
+        dining: livingScene,
+        bed: bedScene,
+        // Closet has no panorama art of its own yet either, so its Explore
+        // more reuses the Bed scene (same room, same connecting marker).
+        closet: bedScene,
+      };
+    },
+    [],
+  );
   const [zones] = useState<{ id: ZoneId; size: ZoneSize }[]>(
     ALL_ZONE_IDS.map((id) => ({ id, size: DEFAULT_ZONE_SIZES[id] })),
   );
@@ -383,6 +482,14 @@ export default function ConfiguratorSoloGenerous() {
   // chip-lock bookkeeping below.
   const [bedUpgraded, setBedUpgraded] = useState(false);
   const dwellingComplete = bedUpgraded;
+  // Set once the "Add one more window" chat suggestion is clicked — swaps
+  // the complete base elevation for the same render with an extra window
+  // beside the door. Only matters once dwellingComplete, same as baseComplete
+  // itself.
+  const [windowAdded, setWindowAdded] = useState(false);
+  // Right after that change lands, the chat holds a "Keep it"/"Undo" choice
+  // (instead of the regular suggestion chips) until the user picks one.
+  const [windowDecisionPending, setWindowDecisionPending] = useState(false);
   // Bed's own display state (label + image, both on its chip and on the
   // dwelling) reads bedUpgraded instead of the generic "has it been
   // placed" flag every other zone uses — see zoneLabel/zoneCutawayImage.
@@ -629,7 +736,13 @@ export default function ConfiguratorSoloGenerous() {
       ? `Hi! I'm your Engine Assistant. I've designed a ${String(spec.dining_style ?? "compact")} dwelling${_occStr ? ` for ${_occStr}` : ""} at ${_siteName}${_purStr ? `, suited for ${_purStr}` : ""}. Is there anything you'd like to adjust?`
       : "Hi! I'm your Engine Assistant. Is there anything you'd like to adjust about your dwelling?";
 
-  const suggestions: string[] = ["Add bracings", "Add a skylight", "Make it wider"];
+  const suggestions: string[] = ["Add one more window"];
+  // One-shot — once the Keep it/Undo choice is resolved, this suggestion
+  // stops reappearing in later suggestion rows.
+  const [windowSuggestionUsed, setWindowSuggestionUsed] = useState(false);
+  const visibleSuggestions = windowSuggestionUsed
+    ? suggestions.filter((s) => s !== "Add one more window")
+    : suggestions;
   const [selectedSuggestion, setSelectedSuggestion] = useState<string | null>(null);
   const [introPhase, setIntroPhase] = useState<"idle" | "typing" | "streaming" | "ready">("idle");
 
@@ -667,19 +780,52 @@ export default function ConfiguratorSoloGenerous() {
     const text = (overrideText ?? input).trim();
     if (!text || isStreaming) return;
     setShowSuggestions(false);
+    // Sending anything else while the Keep it/Undo choice is still up
+    // dismisses it, rather than stacking both rows.
+    setWindowDecisionPending(false);
     const userMsg: ChatMsg = { role: "user", content: text };
     const chatHistory = messages.filter((m) => m.content !== "");
     setMessages([...chatHistory, userMsg, { role: "assistant", content: "" }]);
     setInput("");
     setIsStreaming(true);
     await new Promise((res) => setTimeout(res, 400));
+    // The one chat request that's actually wired up end-to-end, same as
+    // dropping a zone — everything else still falls through to the generic
+    // "not implemented yet" reply below.
+    const addsWindow = text.toLowerCase() === "add one more window";
+    if (addsWindow) {
+      setWindowAdded(true);
+      setWindowDecisionPending(true);
+    }
     setMessages((prev) => {
       const next = [...prev];
-      next[next.length - 1] = { role: "assistant", content: pickUnrecognizedReply("dropping zones onto the dwelling") };
+      next[next.length - 1] = {
+        role: "assistant",
+        content: addsWindow
+          ? "Done — I've added one more window beside the door. Want to keep it?"
+          : pickUnrecognizedReply("dropping zones onto the dwelling"),
+      };
       return next;
     });
     setIsStreaming(false);
-    setShowSuggestions(true);
+    // The Keep it/Undo choice takes over in place of the regular suggestion
+    // chips until it's resolved (see windowDecisionPending below).
+    setShowSuggestions(!addsWindow);
+  };
+
+  const resolveWindowDecision = (keep: boolean) => {
+    setWindowDecisionPending(false);
+    if (!keep) setWindowAdded(false);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: keep ? "Great, keeping the extra window." : "Undone — back to the original window layout.",
+      },
+    ]);
+    // "Add one more window" is a one-shot suggestion — once it's been
+    // decided on, don't offer it again.
+    setWindowSuggestionUsed(true);
   };
 
   const _areaCm2 = (8 * 40) * (3 * 40);
@@ -1059,20 +1205,25 @@ export default function ConfiguratorSoloGenerous() {
                     dwelling
                   </span>
                 </div>
-                <div className="flex gap-1 bg-white/5 rounded-full p-1">
-                  {(["3D", "plan"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => setViewMode(v)}
-                      className={[
-                        "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
-                        viewMode === v ? "bg-white text-black font-medium" : "text-white/50 hover:text-white/80",
-                      ].join(" ")}
-                    >
-                      {v === "3D" ? "Elevation" : v}
-                    </button>
-                  ))}
-                </div>
+                {/* Elevation/Plan view toggle — design stage only. On the
+                    Add-ons page (customise stage) the viewport stays fixed
+                    on the dwelling render, so there's nothing to switch to. */}
+                {stage === "design" && (
+                  <div className="flex gap-1 bg-white/5 rounded-full p-1">
+                    {(["3D", "plan"] as const).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setViewMode(v)}
+                        className={[
+                          "px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em] transition-all",
+                          viewMode === v ? "bg-white text-black font-medium" : "text-white/50 hover:text-white/80",
+                        ].join(" ")}
+                      >
+                        {v === "3D" ? "Elevation" : v}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div
@@ -1122,9 +1273,19 @@ export default function ConfiguratorSoloGenerous() {
                             style={{ aspectRatio: "4096/3058", maxHeight: "100%", maxWidth: "100%", minWidth: 0, minHeight: 0 }}
                           >
                             {/* Base elevation — incomplete (torn edge) until the
-                                first zone lands, then complete for good. */}
+                                first zone lands, then complete for good, then
+                                swapped for the extra-window render (in the
+                                configured rib/membrane colors) once that chat
+                                suggestion lands — see baseWindowImage/
+                                baseDeclinedImage above. */}
                             <img
-                              src={dwellingComplete ? baseComplete : baseIncomplete}
+                              src={
+                                !dwellingComplete
+                                  ? baseIncomplete
+                                  : windowAdded
+                                  ? baseWindowImage(r.configured.get("rib"), r.configured.get("membrane"))
+                                  : baseDeclinedImage(r.configured.get("rib"), r.configured.get("membrane"))
+                              }
                               alt="Dwelling"
                               className="w-full h-full object-contain pointer-events-none transition-opacity duration-500"
                             />
@@ -1146,8 +1307,13 @@ export default function ConfiguratorSoloGenerous() {
                             ))}
 
                             {/* Glowing zone dots — held back until "Show Zones"
-                                is switched on, then power on one by one. */}
-                            {dotsRevealed && DWELLING_HOTSPOTS.map((h, i) => (
+                                is switched on, then power on one by one. Design
+                                stage only — once the page moves on to Add-ons
+                                (customise stage) the viewport stays visible but
+                                these dots (and the ability to open them) go
+                                away, so the room isn't still poking at zones
+                                while picking add-ons. */}
+                            {stage === "design" && dotsRevealed && DWELLING_HOTSPOTS.map((h, i) => (
                               <div
                                 key={h.id}
                                 className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
@@ -1211,7 +1377,10 @@ export default function ConfiguratorSoloGenerous() {
                                     )}
                                     {(clickedHotspotId === h.id || activeCutaway === h.id) && PANORAMA_SCENES[h.id] && exploreUnlocked && (
                                       <button
-                                        onClick={() => setActiveExplore(h.id)}
+                                        onClick={() => {
+                                          setActiveExplore(h.id);
+                                          setPanoramaScene(h.id);
+                                        }}
                                         className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
                                       >
                                         Explore more
@@ -1409,8 +1578,8 @@ export default function ConfiguratorSoloGenerous() {
                               transition={{ duration: 0.4, ease: "easeOut" }}
                             >
                               <PanoramaViewer
-                                src={PANORAMA_SCENES[activeExplore]!.src}
-                                markers={PANORAMA_SCENES[activeExplore]!.markers}
+                                src={PANORAMA_SCENES[panoramaScene]!.src}
+                                markers={PANORAMA_SCENES[panoramaScene]!.markers}
                               />
                               <button
                                 onClick={() => {
@@ -1516,15 +1685,20 @@ export default function ConfiguratorSoloGenerous() {
             )}
 
             {/* AI ASSIST — CHAT */}
-            <div className={`${stage === "design" ? "min-h-0 overflow-hidden flex flex-col" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && exploreSeen && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
+            <div className={stage === "design" ? "min-h-0 flex flex-col" : "hidden"}>
               <div aria-hidden className="invisible shrink-0 flex items-center justify-between mb-3">
                 <span className="inline-block px-4 py-1.5 rounded-full text-[11px] font-body uppercase tracking-[0.12em]">dwelling</span>
               </div>
+              {/* Glow lives on this wrapper — exactly the chat card's own
+                  footprint, not the taller flex column above (which also
+                  includes the invisible label spacer) — same reasoning as
+                  the zone chip's own glow wrapper. */}
+              <div className={`rounded-[1.5rem] shrink-0 min-h-0 ${glowHintsEnabled && exploreSeen && introPhase !== "ready" ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
                 transition={{ duration: 0.7, delay: 1.0, ease: "easeOut" }}
-                className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col min-h-0 shrink-0"
+                className="liquid-glass rounded-[1.5rem] p-6 shadow-lg shadow-black/20 flex flex-col min-h-0"
                 style={{ height: "58vh" }}
               >
                 <div className="flex items-center gap-3 shrink-0 pb-4 border-b border-white/10">
@@ -1588,9 +1762,38 @@ export default function ConfiguratorSoloGenerous() {
                     ),
                   )}
 
-                  {showSuggestions && (
+                  {windowDecisionPending && (
                     <div className="flex flex-wrap gap-2 pt-2">
-                      {suggestions.map((s, idx) => {
+                      <motion.button
+                        type="button"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => resolveWindowDecision(true)}
+                        className="rounded-full px-4 py-2 text-xs font-body bg-white text-black hover:bg-white/90 transition-colors"
+                      >
+                        Keep it
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.06, ease: "easeOut" }}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => resolveWindowDecision(false)}
+                        className="rounded-full px-4 py-2 text-xs font-body bg-white/[0.06] text-white/85 border border-white/15 hover:bg-white/15 hover:border-white/35 transition-colors"
+                      >
+                        Undo
+                      </motion.button>
+                    </div>
+                  )}
+
+                  {showSuggestions && visibleSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {visibleSuggestions.map((s, idx) => {
                         const isSelected = selectedSuggestion === s;
                         return (
                           <motion.button
@@ -1637,6 +1840,7 @@ export default function ConfiguratorSoloGenerous() {
                   </button>
                 </form>
               </motion.aside>
+              </div>
             </div>
           </div>
         </div>
