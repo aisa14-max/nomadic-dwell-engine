@@ -32,10 +32,18 @@ import chipDining from "@/assets/zone-dining.png";
 import chipLiving from "@/assets/zone-living.png";
 import topViewImg from "@/assets/configurator-top-view.jpg";
 import assistantAvatar from "@/assets/engine-assistant-avatar.png";
+// Real 360° panoramas for this dwelling's Explore more scenes (from the
+// .lovable "panorama single spacious" hand-off). Add more imports + a
+// PANORAMA_SCENES entry below as each new room's panorama arrives.
+import bathroomPanorama from "@/assets/configurator-generous-panorama-bathroom.png";
+import kitchenPanorama from "@/assets/configurator-generous-panorama-kitchen.png";
+import livingPanorama from "@/assets/configurator-generous-panorama-living.png";
+import bedPanorama from "@/assets/configurator-generous-panorama-bed.png";
 import AddOnsPanel from "@/components/worlds/AddOnsPanel";
 import OrderPanel from "@/components/worlds/OrderPanel";
 import PaymentPanel from "@/components/worlds/PaymentPanel";
 import EngineOnTheWayOverlay from "@/components/worlds/EngineOnTheWayOverlay";
+import { PanoramaViewer, type PanoramaMarker } from "@/components/worlds/PanoramaViewer";
 import { useReservation } from "@/hooks/useReservation";
 import { PARTS, PartId, DEPOSIT_RATE, DWELLING_VALUE } from "@/data/dwellingParts";
 import { applyPlanDiscount } from "@/data/plans";
@@ -101,11 +109,14 @@ const ALL_ZONE_IDS: ZoneId[] = ["bed", "kitchen", "dining", "bathroom", "closet"
 const ZONE_LABELS: Record<ZoneId, string> = {
   bed: "Bed bigger", kitchen: "Kitchen", dining: "Dining", bathroom: "Bathroom", closet: "Closet", living: "Living",
 };
-// All 6 zones have real art from the scenario-3 hand-off, so — unlike
-// Kitchen-only on ConfiguratorSolo.tsx / Plant Bay-only on
-// ConfiguratorCouple.tsx — none of them are locked here; every dot and
-// every Add Zones chip is live from the start.
-const isZoneLocked = (_id: ZoneId) => false;
+// All 6 zones have real art from the scenario-3 hand-off, but only Bed is
+// actually droppable in Add Zones right now — same "one hero zone, rest
+// locked/coming soon" convention as ConfiguratorSolo.tsx (Kitchen-only) /
+// ConfiguratorCouple.tsx (Plant Bay-only). Locking only gates the Add Zones
+// chip (grayscale, "Coming soon", not draggable) — every dot still glows on
+// the dwelling regardless (see the DWELLING_HOTSPOTS render call below,
+// which does NOT filter on this).
+const isZoneLocked = (id: ZoneId) => id !== "bed";
 // The room's actual render, shown on the dwelling once it's placed.
 const ZONE_CUTAWAY_IMAGES: Record<ZoneId, string> = {
   bed: zoneBedSmallImg, kitchen: zoneKitchenImg, dining: zoneDiningImg, bathroom: zoneBathroomImg, closet: zoneClosetImg, living: zoneLivingImg,
@@ -125,6 +136,20 @@ const zoneCutawayImage = (id: ZoneId, placed: boolean) => (id === "bed" && place
 // label swaps ("Bed smaller" -> "Bed") — since the chip no longer shows the
 // actual room render.
 const zoneChipImage = (id: ZoneId) => ZONE_CHIP_IMAGES[id];
+
+// "Explore more" — a full-viewport, drag-around 360° panorama for whichever
+// zone hotspots actually have one, same mechanism as ConfiguratorSolo.tsx's
+// SECTION_EXPLORE/PANORAMA_SCENES. Bathroom, Kitchen, Living and Bed have
+// real panorama art so far (the .lovable "panorama single spacious"
+// hand-off), each still a dead end (no door markers) since they haven't
+// been paired up with a connecting doorway shot yet — add markers once
+// that's ready.
+const PANORAMA_SCENES: Partial<Record<ZoneId, { src: string; markers: PanoramaMarker[] }>> = {
+  bathroom: { src: bathroomPanorama, markers: [] },
+  kitchen: { src: kitchenPanorama, markers: [] },
+  living: { src: livingPanorama, markers: [] },
+  bed: { src: bedPanorama, markers: [] },
+};
 
 // Hotspot dot positions — top-center of each room's own alpha-channel
 // bounding box (computed directly from the scenario-3 PNGs, not eyeballed),
@@ -305,6 +330,9 @@ export default function ConfiguratorSoloGenerous() {
   const [zonesSeen, setZonesSeen] = useState(false);
   const [exploreUnlocked, setExploreUnlocked] = useState(false);
   const [exploreSeen, setExploreSeen] = useState(false);
+  // Which zone's panorama is currently taking over the viewport — see
+  // PANORAMA_SCENES above for which zones actually have one.
+  const [activeExplore, setActiveExplore] = useState<ZoneId | null>(null);
   const [zones] = useState<{ id: ZoneId; size: ZoneSize }[]>(
     ALL_ZONE_IDS.map((id) => ({ id, size: DEFAULT_ZONE_SIZES[id] })),
   );
@@ -970,7 +998,7 @@ export default function ConfiguratorSoloGenerous() {
                                 onDragStart={handleZoneDragStart}
                                 onDragMove={handleZoneDragMove}
                                 onDragDrop={handleZoneDragDrop}
-                                glow={glowHintsEnabled && !zoneAdded}
+                                glow={glowHintsEnabled && !zoneAdded && z.id === "bed"}
                               />
                             ))}
                           </div>
@@ -1119,7 +1147,7 @@ export default function ConfiguratorSoloGenerous() {
 
                             {/* Glowing zone dots — held back until "Show Zones"
                                 is switched on, then power on one by one. */}
-                            {dotsRevealed && DWELLING_HOTSPOTS.filter((h) => !isZoneLocked(h.id)).map((h, i) => (
+                            {dotsRevealed && DWELLING_HOTSPOTS.map((h, i) => (
                               <div
                                 key={h.id}
                                 className="group absolute -translate-x-1/2 -translate-y-1/2 w-11 h-11"
@@ -1140,13 +1168,15 @@ export default function ConfiguratorSoloGenerous() {
                                         setTimeout(() => setRewardBurst(null), 1000);
                                       }
                                       dismissHotspotHint();
-                                      // Clicking an empty dot places that zone right
-                                      // there, same as dragging its chip onto the
-                                      // viewport — the PNG shows up on the dwelling,
-                                      // not just as a thumbnail back in Add Zones.
-                                      // Clicking an already-placed dot just re-opens
-                                      // its name tag.
-                                      if (!placedZones.has(h.id)) {
+                                      // Clicking an empty, unlocked dot places that
+                                      // zone right there, same as dragging its chip
+                                      // onto the viewport — the PNG shows up on the
+                                      // dwelling, not just as a thumbnail back in Add
+                                      // Zones. A locked zone can never be "placed"
+                                      // (placeZone no-ops for it), so its dot — same
+                                      // as an already-placed dot — just peeks its
+                                      // cutaway PNG and re-opens its name tag instead.
+                                      if (!isZoneLocked(h.id) && !placedZones.has(h.id)) {
                                         placeZone(h.id);
                                       } else {
                                         setClickedHotspotId((id) => (id === h.id ? null : h.id));
@@ -1172,12 +1202,20 @@ export default function ConfiguratorSoloGenerous() {
                                       : "opacity-0 translate-y-1 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0",
                                   ].join(" ")}
                                 >
-                                  <div className="liquid-glass-strong rounded-xl px-3.5 py-2.5 flex flex-col items-center gap-1">
+                                  <div className="liquid-glass-strong rounded-xl px-3.5 py-2.5 flex flex-col items-center gap-2">
                                     <span className="font-body text-[11px] uppercase tracking-[0.14em] text-white/90">
                                       {zoneLabel(h.id, zonePlacedForDisplay(h.id))}
                                     </span>
-                                    {!placedZones.has(h.id) && (
+                                    {!isZoneLocked(h.id) && !placedZones.has(h.id) && (
                                       <span className="font-body text-[9px] text-white/50">Not added yet</span>
+                                    )}
+                                    {(clickedHotspotId === h.id || activeCutaway === h.id) && PANORAMA_SCENES[h.id] && exploreUnlocked && (
+                                      <button
+                                        onClick={() => setActiveExplore(h.id)}
+                                        className="px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                                      >
+                                        Explore more
+                                      </button>
                                     )}
                                   </div>
                                 </div>
@@ -1278,15 +1316,20 @@ export default function ConfiguratorSoloGenerous() {
                             </AnimatePresence>
 
                             {/* Drop target hint — glows while Add Zones is open
-                                and nothing has been placed yet, so the
-                                mechanic is discoverable before the first drop.
-                                Dead center rather than any one zone's own dot,
-                                since all 6 are valid drop targets. */}
+                                and nothing has been placed yet, so the mechanic
+                                is discoverable before the first drop. Pinned to
+                                Bed's own hotspot position (far right of the
+                                dwelling) rather than dead center, since Bed is
+                                the only zone that's actually droppable right
+                                now — every other chip is locked/"coming soon". */}
                             <AnimatePresence>
                               {showLayoutZones && !zoneAdded && (
                                 <motion.div
                                   className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20"
-                                  style={{ left: "50%", top: "50%" }}
+                                  style={{
+                                    left: `${DWELLING_HOTSPOTS.find((h) => h.id === "bed")!.x}%`,
+                                    top: `${DWELLING_HOTSPOTS.find((h) => h.id === "bed")!.y}%`,
+                                  }}
                                   initial={{ opacity: 0 }}
                                   animate={{ opacity: 1 }}
                                   exit={{ opacity: 0 }}
@@ -1299,7 +1342,7 @@ export default function ConfiguratorSoloGenerous() {
                                     transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
                                   />
                                   <span className="absolute left-1/2 top-full -translate-x-1/2 mt-2 whitespace-nowrap liquid-glass-strong rounded-full px-2.5 py-1 text-[10px] font-body uppercase tracking-[0.1em] text-white/90">
-                                    Drop here
+                                    Drop Bed here
                                   </span>
                                 </motion.div>
                               )}
@@ -1350,6 +1393,39 @@ export default function ConfiguratorSoloGenerous() {
                             <span className="liquid-glass tag-glass">Zones: {placedZones.size} active</span>
                           )}
                         </div>
+
+                        {/* Section interior takeover — full viewport, closeable back to
+                            the main scene. A real drag-around 360° panorama
+                            (photo-sphere-viewer) opening on whichever zone
+                            PANORAMA_SCENES has art for. */}
+                        <AnimatePresence>
+                          {activeExplore && PANORAMA_SCENES[activeExplore] && (
+                            <motion.div
+                              key={`explore-${activeExplore}`}
+                              className="absolute inset-0 z-40"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.4, ease: "easeOut" }}
+                            >
+                              <PanoramaViewer
+                                src={PANORAMA_SCENES[activeExplore]!.src}
+                                markers={PANORAMA_SCENES[activeExplore]!.markers}
+                              />
+                              <button
+                                onClick={() => {
+                                  setActiveExplore(null);
+                                  setClickedHotspotId(null);
+                                  setActiveCutaway(null);
+                                }}
+                                aria-label="Close interior view"
+                                className="absolute top-4 right-4 z-10 rounded-full w-11 h-11 inline-flex items-center justify-center text-white bg-black/70 border border-white/40 shadow-lg hover:bg-black/85 hover:border-white/70 transition-colors"
+                              >
+                                <X className="h-5 w-5" strokeWidth={2} />
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </motion.div>
                     )
                   )}
