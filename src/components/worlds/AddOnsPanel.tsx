@@ -193,34 +193,35 @@ export default function AddOnsPanel({
                         );
                       })}
 
-                      {/* Rib Colour and Membrane Pattern always have a real
-                          material applied (the free default) even without
-                          an explicit pick — so "skip" here just means
-                          "keep the default", same £0 outcome as every other
-                          skip, not "no rib/membrane at all". */}
-                      <button
-                        onClick={() => onSelectOption(SKIPPED)}
-                        aria-pressed={skipped}
-                        className={[
-                          "w-full flex items-center gap-2 rounded-[0.5rem] px-2 py-1.5 text-left transition-colors",
-                          skipped ? "bg-white/10" : "hover:bg-white/[0.06]",
-                        ].join(" ")}
-                      >
-                        <span className="w-4 h-4 rounded-[0.3rem] shrink-0 border border-dashed border-white/25 inline-flex items-center justify-center">
-                          <Minus className="h-2.5 w-2.5 text-white/40" strokeWidth={2} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-[10px] font-body text-white/60 truncate">
-                            {p.id === "rib" || p.id === "membrane" ? "Skip — keep default" : "Skip this add-on"}
+                      {/* Rib Colour and Membrane Pattern don't get a skip
+                          option — unlike every other add-on, a color choice
+                          is required rather than optional, even though the
+                          default is free either way. */}
+                      {p.id !== "rib" && p.id !== "membrane" && (
+                        <button
+                          onClick={() => onSelectOption(SKIPPED)}
+                          aria-pressed={skipped}
+                          className={[
+                            "w-full flex items-center gap-2 rounded-[0.5rem] px-2 py-1.5 text-left transition-colors",
+                            skipped ? "bg-white/10" : "hover:bg-white/[0.06]",
+                          ].join(" ")}
+                        >
+                          <span className="w-4 h-4 rounded-[0.3rem] shrink-0 border border-dashed border-white/25 inline-flex items-center justify-center">
+                            <Minus className="h-2.5 w-2.5 text-white/40" strokeWidth={2} />
                           </span>
-                          <span className="block text-[9px] font-body text-white/30">
-                            No charge
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[10px] font-body text-white/60 truncate">
+                              Skip this add-on
+                            </span>
+                            <span className="block text-[9px] font-body text-white/30">
+                              No charge
+                            </span>
                           </span>
-                        </span>
-                        {skipped && (
-                          <Check className="h-3 w-3 text-white/70 shrink-0" strokeWidth={2.5} />
-                        )}
-                      </button>
+                          {skipped && (
+                            <Check className="h-3 w-3 text-white/70 shrink-0" strokeWidth={2.5} />
+                          )}
+                        </button>
+                      )}
                     </div>
                   </motion.div>
                 )}
