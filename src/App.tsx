@@ -13,7 +13,6 @@ import ConfiguratorPortfolio from "./pages/ConfiguratorPortfolio.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Profile from "./pages/Profile.tsx";
 import Tribe from "./pages/Tribe.tsx";
-import UnderTheHood from "./pages/UnderTheHood.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import IdleReset from "./components/IdleReset.tsx";
@@ -21,6 +20,7 @@ import PageTransition from "./components/PageTransition.tsx";
 import LoginDialog from "./components/LoginDialog.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import PlanSelection from "./components/PlanSelection.tsx";
+import UnderTheHoodDialog from "./components/UnderTheHoodDialog.tsx";
 import { MockAuthProvider, useMockAuth } from "./context/MockAuth";
 import { ENGINE_REDIRECT, ENGINE_PAGE_ENABLED } from "./config/features";
 import { hasFinishedOrder, readJourney } from "./lib/journey";
@@ -95,13 +95,18 @@ const RoutedApp = () => {
           {/* Overview / My Designs / Orders — reached via the nav avatar */}
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/tribe" element={<RequireFinished><Tribe /></RequireFinished>} />
-          <Route path="/under-the-hood" element={<UnderTheHood />} />
+          {/* Under the Hood is now a popup over whatever page you're on
+              (see UnderTheHoodDialog, opened via MockAuth's underHoodOpen),
+              not its own routed page — an old link/bookmark just lands on
+              Home instead. */}
+          <Route path="/under-the-hood" element={<Navigate to="/" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </PageTransition>
       <LoginDialog />
       <OnboardingFlow />
       <PlanSelection />
+      <UnderTheHoodDialog />
     </>
   );
 };

@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, MousePointer2, Lock, Lightbulb, type LucideIcon } from "lucide-react";
+import { ZoomIn, ZoomOut, ArrowRight, ArrowLeft, Send, Loader2, X, ChevronDown, ChevronLeft, ChevronRight, Compass, LayoutGrid, Maximize2, Minimize2, Clock, Zap, Weight, Square, ClipboardList, Users, CalendarRange, Laptop, Layers, MousePointer2, Lock, type LucideIcon } from "lucide-react";
 import BlurText from "@/components/BlurText";
 import { Switch } from "@/components/ui/switch";
 import landscapeBg from "@/assets/configurator-landscape-bg-v2.png";
@@ -281,6 +281,13 @@ export default function ConfiguratorCouple() {
   const rightColDirection = rightColIndex - prevRightColIndexRef.current;
   useEffect(() => { prevRightColIndexRef.current = rightColIndex; }, [rightColIndex]);
 
+  // On the add-ons page, the order/price panel used to sit there from the
+  // moment you arrived, competing with the dwelling for attention right
+  // away. Now it only appears once you've actually started (opened a step
+  // or picked something) — before that it's just add-ons + dwelling, two
+  // panels, not three.
+  const addOnsEngaged = r.activePart !== null || r.configured.size > 0;
+
   // Add-ons should only ever show the plain exterior dwelling — any zone
   // peek left open from the design stage (clicked a hotspot, never closed
   // it before hitting Continue configuration) would otherwise carry straight
@@ -322,13 +329,16 @@ export default function ConfiguratorCouple() {
     // now-static dwelling viewport correspondingly less) since there's no
     // interaction happening in the viewport at this stage.
     : stage === "plans" ? "lg:grid-cols-[0px_1fr_520px]"
+    // Before add-ons are engaged, the order panel isn't rendered at all
+    // (see addOnsEngaged above) — collapsing its column to 0 instead of
+    // leaving it reserved-but-empty lets the viewport grow into that space,
+    // then the same grid-template-columns transition below eases it back
+    // down to 360px right as the order panel slides in.
+    : stage === "customise" && !addOnsEngaged ? "lg:grid-cols-[220px_1fr_0px]"
     : "lg:grid-cols-[220px_1fr_360px]";
   const [engineReady, setEngineReady] = useState(false);
   const [showSiteSelector, setShowSiteSelector] = useState(false);
   const [showLayoutZones, setShowLayoutZones] = useState(false);
-  // Toggle for the whole "glow whichever step is next" demo hint below — on
-  // by default, but a presenter may want to turn it off mid-demo.
-  const [glowHintsEnabled, setGlowHintsEnabled] = useState(true);
   // Demo-mode progressive unlock: each panel opens the next. "Seen" (not the
   // panel's own open/closed toggle) is what stays true once a step has been
   // visited, so collapsing a panel later doesn't re-lock what comes after it.
@@ -381,6 +391,32 @@ export default function ConfiguratorCouple() {
   // bug as the reservation modal), and this also actually fills the whole
   // screen (hides browser chrome) instead of just the page content area.
   const viewportRef = useRef<HTMLDivElement>(null);
+  // The add-ons viewport grows wider (right column collapses) before
+  // add-ons are engaged — see gridCols/addOnsEngaged above. The background
+  // is object-cover, so a wider box on the same fixed height just reveals
+  // more of the scene horizontally, making the sited dwelling within it
+  // read smaller against the frame instead of staying the same size. This
+  // tracks how much wider the box currently is than its normal (engaged)
+  // width and feeds that back in as extra zoom, so the framing stays
+  // consistent regardless of which width state it's in.
+  const viewportNormalWidthRef = useRef(0);
+  const [viewportBgZoomBoost, setViewportBgZoomBoost] = useState(1);
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const w = el.getBoundingClientRect().width;
+      if (w <= 0) return;
+      if (stage !== "customise" || addOnsEngaged) {
+        viewportNormalWidthRef.current = w;
+        setViewportBgZoomBoost(1);
+      } else if (viewportNormalWidthRef.current > 0) {
+        setViewportBgZoomBoost(w / viewportNormalWidthRef.current);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [stage, addOnsEngaged]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   // Dropping a zone tile from the Layout Zones panel onto the viewport
   // focuses that zone — see handleZoneDrop below, defined after onSectionClick.
@@ -584,14 +620,18 @@ export default function ConfiguratorCouple() {
         // Now leads into the kitchen rather than back to the bedroom.
         markers: [
           { id: "to-kitchen", x: 1230, y: 1300, onClick: () => setPanoramaScene("kitchen") },
+          // Beside the bed visible through the archway on the right —
+          // leads straight into the bedroom instead of only being
+          // reachable via the kitchen/plants/bathroom loop.
+          { id: "to-bedroom", x: 3060, y: 1300, onClick: () => setPanoramaScene("bedroom") },
         ],
       },
       kitchen: {
         src: kitchenPanorama,
         markers: [
-          // Toward the shelving/orange-couch nook shared with the livingroom
-          // scene — the same landmarks visible from that side of the room.
-          { id: "to-livingroom", x: 5040, y: 1400, onClick: () => setPanoramaScene("livingroom") },
+          // On the yellow sofa by the shelving — moved left from the
+          // shelving/doorway nook onto the sofa itself, a clearer landmark.
+          { id: "to-livingroom", x: 3930, y: 1650, onClick: () => setPanoramaScene("livingroom") },
           // Near the grey nook wall/chairs, by the shelf — leads into the
           // growing-plants bay.
           { id: "to-plants", x: 1450, y: 1650, onClick: () => setPanoramaScene("plants") },
@@ -600,9 +640,10 @@ export default function ConfiguratorCouple() {
       plants: {
         src: plantsPanorama,
         markers: [
-          // Through the doorway on the right, where the shared hallway with
-          // the bunk/orange-chair nook is visible — leads back into the kitchen.
-          { id: "to-kitchen", x: 5384, y: 1400, onClick: () => setPanoramaScene("kitchen") },
+          // Leads back into the kitchen (which is where the dining nook
+          // sits) — moved left onto the planter/sink wall, off the
+          // doorway on the right it originally sat on.
+          { id: "to-kitchen", x: 3000, y: 1400, onClick: () => setPanoramaScene("kitchen") },
           // On the door itself (the grey fabric-clad door beside the sink
           // unit) — leads into the bathroom.
           { id: "to-bathroom", x: 3987, y: 1400, onClick: () => setPanoramaScene("bathroom") },
@@ -1337,25 +1378,13 @@ export default function ConfiguratorCouple() {
               transition={{ duration: 0.7, delay: 0.6, ease: "easeOut" }}
               className="flex items-center gap-3"
             >
-              {stage === "design" && (
-                <label className="liquid-glass rounded-full pl-3 pr-1.5 py-1.5 inline-flex items-center gap-2 text-xs font-body text-white/70 cursor-pointer">
-                  <Lightbulb className="h-3.5 w-3.5" strokeWidth={1.75} />
-                  Hints
-                  <Switch
-                    checked={glowHintsEnabled}
-                    onCheckedChange={setGlowHintsEnabled}
-                    aria-label="Toggle step-by-step glow hints"
-                    className="data-[state=checked]:bg-white data-[state=unchecked]:bg-white/15 scale-90"
-                  />
-                </label>
-              )}
               {stage === "design" ? (
                 <div className="relative z-30">
                   <button
                     onClick={enterCustomise}
                     disabled={!exploreSeen}
                     title={!exploreSeen ? "Open Site Selector, show the zones, add a zone, and step inside first" : undefined}
-                    className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${glowHintsEnabled && exploreSeen ? "panel-glow-pulse" : ""}`}
+                    className={`bg-white text-black rounded-full px-5 py-2.5 text-sm font-body font-medium inline-flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${exploreSeen ? "panel-glow-pulse" : ""}`}
                   >
                     {exploreSeen
                       ? <>Continue configuration <ArrowRight className="h-4 w-4" strokeWidth={2} /></>
@@ -1370,7 +1399,7 @@ export default function ConfiguratorCouple() {
                       header sits directly above the chat panel's own card —
                       without it the cursor was rendering behind that card
                       instead of in front of it. */}
-                  {glowHintsEnabled && exploreSeen && messages.some((m) => m.role === "user") && (
+                  {exploreSeen && messages.some((m) => m.role === "user") && (
                     <motion.div
                       className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
                       style={{ left: "50%", top: "220%" }}
@@ -1424,7 +1453,7 @@ export default function ConfiguratorCouple() {
               {stage === "customise" && (
                 // Glow hint on arrival — same non-clipping wrapper pattern as the
                 // Site Selector; it stops as soon as an add-on is opened or chosen.
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && !r.activePart && r.configured.size === 0 ? "panel-glow-pulse" : ""}`}>
+                <div className={`rounded-[1.5rem] ${!r.activePart && r.configured.size === 0 ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -1494,7 +1523,7 @@ export default function ConfiguratorCouple() {
                   (needed for its border-gradient trick) when applied directly
                   to it, so it has to sit one level up on a plain, non-clipping
                   box instead. */}
-              <div className={`relative rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
+              <div className={`relative rounded-[1.5rem] ${!siteSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -1552,7 +1581,7 @@ export default function ConfiguratorCouple() {
                     further down, just on a shorter loop — this is the very
                     first thing anyone sees, so it shouldn't feel like it's
                     idling between passes. */}
-                {glowHintsEnabled && briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
+                {briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
                   <div className="absolute inset-0 z-20 pointer-events-none">
                     <motion.div
                       className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -1675,7 +1704,7 @@ export default function ConfiguratorCouple() {
               {/* siteSeen covers both real ways past Site Selector — picking
                   a different site in the carousel, or Skip — so either one
                   is enough to move the glow on to Show Zones. */}
-              <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
+              <div className={`rounded-[1.5rem] ${siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -1702,7 +1731,7 @@ export default function ConfiguratorCouple() {
               </motion.aside>
               </div>
 
-              <div className={`rounded-[1.5rem] ${glowHintsEnabled && dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}>
+              <div className={`rounded-[1.5rem] ${dotsRevealed && !zonesSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -1769,7 +1798,7 @@ export default function ConfiguratorCouple() {
                               onDragStart={handleZoneDragStart}
                               onDragMove={handleZoneDragMove}
                               onDragDrop={handleZoneDragDrop}
-                              glow={glowHintsEnabled && z.id === "grow" && !plantsGrown}
+                              glow={z.id === "grow" && !plantsGrown}
                             />
                           ))}
                         </div>
@@ -1787,7 +1816,7 @@ export default function ConfiguratorCouple() {
               </motion.aside>
               </div>
 
-              <div className={`rounded-[1.5rem] ${glowHintsEnabled && plantsGrown && !exploreSeen ? "panel-glow-pulse" : ""}`}>
+              <div className={`rounded-[1.5rem] ${plantsGrown && !exploreSeen ? "panel-glow-pulse" : ""}`}>
               <motion.aside
                 initial={blurInit}
                 animate={blurIn}
@@ -1833,7 +1862,15 @@ export default function ConfiguratorCouple() {
               transition={{ duration: 0.7, delay: 0.9, ease: "easeOut" }}
               className="relative flex flex-col"
             >
-              {/* Section tabs + 2D/3D toggle */}
+              {/* Section tabs + 2D/3D toggle — hidden entirely on the
+                  add-ons page. The viewport there is a static exterior
+                  scene (see stage === "customise" below), so neither the
+                  "dwelling" label nor Elevation/Plan did anything useful;
+                  dropping the whole row also lets this card's top edge
+                  align flush with the Add-ons and Price & Order cards
+                  beside it, instead of sitting lower under this row's own
+                  height + margin like it used to. */}
+              {stage !== "customise" && (
               <div className="flex items-center justify-between mb-3">
                 <div className="flex gap-1 bg-white/5 rounded-full p-1">
                   {/* "dwelling" is the only section this page ever has — no
@@ -1852,11 +1889,9 @@ export default function ConfiguratorCouple() {
                     </span>
                   ))}
                 </div>
-                {/* Hidden on the add-ons page — the viewport there is a
-                    static exterior scene (see stage === "customise" below),
-                    so 2D/Plan didn't switch anything and just looked like
-                    a live control that wasn't. */}
-                {stage !== "customise" && (
+                {/* Hidden on the subscription page too — same static-scene
+                    reasoning as add-ons (see stage === "plans" below). */}
+                {stage !== "plans" && (
                   <div className="flex gap-1 bg-white/5 rounded-full p-1">
                     {/* Always Elevation/Plan, never 2D — see Configurator.tsx
                         for why (activeSection used to flip this to a 2D/3D
@@ -1882,6 +1917,7 @@ export default function ConfiguratorCouple() {
                   </div>
                 )}
               </div>
+              )}
 
               <div
                 ref={viewportRef}
@@ -1919,7 +1955,7 @@ export default function ConfiguratorCouple() {
                         alt=""
                         aria-hidden
                         className="absolute inset-0 w-full h-full object-cover"
-                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom})` }}
+                        style={{ transform: `translateY(${_landscapeOffsetY}%) scale(${_landscapeZoom * viewportBgZoomBoost})` }}
                       />
                       <div className="absolute inset-0 bg-black/30" aria-hidden />
                     </div>
@@ -2323,10 +2359,10 @@ export default function ConfiguratorCouple() {
                     on screen side by side at once, same as the viewport
                     easing wider/narrower next to them. */}
                 <AnimatePresence>
-                  {stage === "customise" && (
+                  {stage === "customise" && addOnsEngaged && (
                     <motion.div
                       key="customise"
-                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 40 }}
+                      initial={{ opacity: 0, x: rightColDirection < 0 ? -40 : 380 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: rightColDirection < 0 ? 40 : -40 }}
                       transition={{ duration: 0.5, ease: [0.6, 0.2, 0.2, 1] }}
@@ -2376,7 +2412,7 @@ export default function ConfiguratorCouple() {
                 instead of holding its grid cell open with hidden content.
                 Delayed (chatGlowReady) and held open until an actual message
                 is sent — see chatGlowReady's declaration for why. */}
-            <div className={`${stage === "design" ? "flex flex-col" : "hidden"} rounded-[1.5rem] ${glowHintsEnabled && chatGlowReady && !messages.some((m) => m.role === "user") ? "panel-glow-pulse" : ""}`}>
+            <div className={`${stage === "design" ? "flex flex-col" : "hidden"} rounded-[1.5rem] ${chatGlowReady && !messages.some((m) => m.role === "user") ? "panel-glow-pulse" : ""}`}>
             {/* The invisible tabs-row spacer lives INSIDE the same visual card
                 as the rest of the chat, instead of as a separate sibling
                 above it — so the card itself (and the glow wrapping it)

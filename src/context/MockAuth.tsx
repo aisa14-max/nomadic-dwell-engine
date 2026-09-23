@@ -21,6 +21,11 @@ interface MockAuthValue {
   closeLogin: () => void;
   onboardingOpen: boolean;
   closeOnboarding: () => void;
+  /** Under the Hood is a popup over whatever page you're on (like the
+      avatar picker or the questionnaire), not its own routed page. */
+  underHoodOpen: boolean;
+  openUnderHood: () => void;
+  closeUnderHood: () => void;
   /** Site selected on the Voyages page — fed into POST /onboarding */
   pendingSite: SitePayload | null;
   /** Open onboarding with a chosen site — sign-up happens after, not before */
@@ -74,6 +79,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MockUser | null>(loadStoredUser);
   const [loginOpen, setLoginOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [underHoodOpen, setUnderHoodOpen] = useState(false);
   const [pendingSuccess, setPendingSuccess] = useState<(() => void) | null>(null);
   const [pendingSite, setPendingSite] = useState<SitePayload | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(loadStoredPlan);
@@ -120,6 +126,9 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem("pendingSite");
   }, []);
 
+  const openUnderHood = useCallback(() => setUnderHoodOpen(true), []);
+  const closeUnderHood = useCallback(() => setUnderHoodOpen(false), []);
+
   const openOnboardingWithSite = useCallback((site: SitePayload) => {
     sessionStorage.setItem("pendingSite", JSON.stringify(site));
     setPendingSite(site);
@@ -144,13 +153,15 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
       user, signIn, signOut,
       loginOpen, openLogin, closeLogin,
       onboardingOpen, closeOnboarding,
+      underHoodOpen, openUnderHood, closeUnderHood,
       pendingSite, openOnboardingWithSite,
       _pendingSuccess: pendingSuccess, _clearPendingSuccess,
       selectedPlan, planSelectionOpen, openPlanSelection, closePlanSelection, confirmPlan,
       _planPendingSuccess: planPendingSuccess, _clearPlanPendingSuccess,
     }),
     [user, signIn, signOut, loginOpen, openLogin, closeLogin,
-     onboardingOpen, closeOnboarding, pendingSite, openOnboardingWithSite,
+     onboardingOpen, closeOnboarding, underHoodOpen, openUnderHood, closeUnderHood,
+     pendingSite, openOnboardingWithSite,
      pendingSuccess, _clearPendingSuccess,
      selectedPlan, planSelectionOpen, openPlanSelection, closePlanSelection, confirmPlan,
      planPendingSuccess, _clearPlanPendingSuccess],

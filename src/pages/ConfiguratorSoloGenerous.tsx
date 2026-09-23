@@ -365,8 +365,10 @@ export default function ConfiguratorSoloGenerous() {
   // the dwelling) -> Step Inside (final unlock) -> Continue configuration.
   const briefSeen = true;
   const [siteSeen, setSiteSeen] = useState(false);
-  const [siteChangeCount, setSiteChangeCount] = useState(0);
-  const markSiteChanged = () => setSiteChangeCount((n) => n + 1);
+  // The "Start here" arrival nudge dismisses on its own once the panel is
+  // opened, but its own close (X) button just hides the nudge — it doesn't
+  // fast-forward the step the way Skip does.
+  const [siteHintDismissed, setSiteHintDismissed] = useState(false);
   const [dotsRevealed, setDotsRevealed] = useState(false);
   const [zonesSeen, setZonesSeen] = useState(false);
   const [exploreUnlocked, setExploreUnlocked] = useState(false);
@@ -523,6 +525,14 @@ export default function ConfiguratorSoloGenerous() {
     if (isZoneLocked(id)) return;
     const isBedUpgradeDrop = id === "bed" && opts.upgrade;
     if (placedZones.has(id) && !isBedUpgradeDrop) return;
+    // Close Add Zones the moment the FIRST zone lands (zoneAdded flips false
+    // -> true) — otherwise the still-open zone carousel keeps the
+    // newly-glowing Step Inside switch (its panel-glow-pulse condition is
+    // gated on zoneAdded) crowded out below it instead of being the obvious
+    // next thing to notice. Only the first placement triggers this — later
+    // zones (or Bed's upgrade re-drop) leave the panel exactly as the
+    // visitor left it.
+    if (!zoneAdded) setShowLayoutZones(false);
     setPlacedZones((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
     if (isBedUpgradeDrop) setBedUpgraded(true);
     setZoneDropToast(true);
@@ -739,7 +749,6 @@ export default function ConfiguratorSoloGenerous() {
         finalRealIdx = nearestLi - 1;
       }
       setSelectedSiteIdx(finalRealIdx);
-      if (finalRealIdx !== lastSettledSiteIdxRef.current) markSiteChanged();
       lastSettledSiteIdxRef.current = finalRealIdx;
     }, 130);
   };
@@ -847,10 +856,16 @@ export default function ConfiguratorSoloGenerous() {
   };
 
   const _areaCm2 = (8 * 40) * (3 * 40);
-  const _areaM2Num = _areaCm2 / 10000;
+  // These never reacted to what actually happens on the dwelling afterward —
+  // placing a zone changed the render but left Assembly time/Energy/Mass/Area
+  // exactly as they were. Rough multiplier since there's no live backend call
+  // here to recompute the real figures.
+  const _zoneMultiplier = zoneAdded ? 1.3 : 1;
+  const _areaM2Num = (_areaCm2 / 10000) * _zoneMultiplier;
   const _assembly = Math.round(6.5 + _areaM2Num * 1.2);
   const _energy = (1.8 + _areaM2Num * 0.5).toFixed(1);
   const _mass = (0.25 + _areaM2Num * 0.13).toFixed(2);
+  const _totalArea = Math.round(_areaM2Num);
 
   return (
     <div className="relative min-h-screen w-full bg-black text-white overflow-hidden">
@@ -972,32 +987,100 @@ export default function ConfiguratorSoloGenerous() {
                   </div>
                 </motion.div>
 
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
+                <div className={`relative rounded-[1.5rem] ${glowHintsEnabled && !siteSeen ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
                   transition={{ duration: 0.7, delay: 0.7, ease: "easeOut" }}
                   className="liquid-glass rounded-[1.5rem] p-4 shadow-lg shadow-black/20"
                 >
-                  <button
-                    onClick={() => {
-                      if (!briefSeen) return;
-                      const next = !showSiteSelector;
-                      setShowSiteSelector(next);
-                      if (next) setSiteSeen(true);
-                    }}
-                    className="w-full flex items-center justify-between group"
-                    aria-expanded={showSiteSelector}
-                  >
-                    <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
-                      <Compass className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      Site Selector
-                    </span>
-                    <ChevronDown
-                      className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""}`}
-                      strokeWidth={1.75}
-                    />
-                  </button>
+                  <div className="w-full flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => {
+                        if (!briefSeen) return;
+                        setShowSiteSelector((v) => !v);
+                      }}
+                      className="flex-1 min-w-0 flex items-center justify-between group"
+                      aria-expanded={showSiteSelector}
+                    >
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-body uppercase tracking-[0.12em] text-white/60">
+                        <Compass className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        Site Selector
+                      </span>
+                      <ChevronDown
+                        className={`h-3.5 w-3.5 text-white/50 group-hover:text-white transition-transform duration-300 ${showSiteSelector ? "rotate-180" : ""}`}
+                        strokeWidth={1.75}
+                      />
+                    </button>
+                    {/* Only once the carousel is actually open — before that,
+                        "skip past a step you haven't looked at yet" doesn't
+                        make sense. The default site is already a real pick
+                        (onboarding's or a fallback), not a placeholder, so
+                        this is a real way past the step once they've seen it,
+                        not just a decoy next to the real interaction. Doesn't
+                        close the panel — unlike Add Zones below, which closes
+                        itself once its one job is done, Site Selector is left
+                        open so browsing can continue afterward. */}
+                    {showSiteSelector && !siteSeen && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSiteSeen(true); }}
+                        className="shrink-0 text-[10px] font-body font-medium uppercase tracking-[0.08em] px-2.5 py-1 rounded-full bg-emerald-400/15 border border-emerald-400/40 text-emerald-300 hover:bg-emerald-400/25 hover:text-emerald-200 transition-colors"
+                      >
+                        Skip
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Arrival nudge — the very first thing a visitor needs to
+                      do, so it's shown from the moment the panel is
+                      interactive (briefSeen is true immediately) until Site
+                      Selector is actually opened (its job — get them to open
+                      it — is done at that point, whether or not they go on to
+                      pick a site or Skip) or its own X is dismissed. */}
+                  {glowHintsEnabled && briefSeen && !showSiteSelector && !siteSeen && !siteHintDismissed && (
+                    <div className="absolute inset-0 z-20 pointer-events-none">
+                      <motion.div
+                        className="absolute -translate-x-1/2 -translate-y-1/2"
+                        style={{ left: "85%", top: "125%" }}
+                        animate={{
+                          left: ["85%", "85%", "45%", "45%", "45%"],
+                          top: ["125%", "125%", "45%", "45%", "45%"],
+                          opacity: [0, 1, 1, 1, 0],
+                          scale: [1, 1, 1, 0.72, 1],
+                        }}
+                        transition={{
+                          duration: 1.8,
+                          times: [0, 0.12, 0.55, 0.66, 0.88],
+                          repeat: Infinity,
+                          repeatDelay: 0.4,
+                          ease: "easeInOut",
+                        }}
+                      >
+                        <MousePointer2
+                          className="h-5 w-5 text-white"
+                          style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.5))" }}
+                          fill="white"
+                          fillOpacity={0.15}
+                          strokeWidth={1.75}
+                        />
+                      </motion.div>
+                      <div className="absolute pointer-events-auto" style={{ right: "8px", top: "-40px", maxWidth: "170px" }}>
+                        <div className="liquid-glass-strong rounded-xl pl-3.5 pr-2.5 py-2.5 flex items-start gap-2">
+                          <p className="font-body text-[12px] text-white/90 leading-snug">
+                            Start here
+                          </p>
+                          <button
+                            onClick={() => setSiteHintDismissed(true)}
+                            className="shrink-0 mt-0.5 text-white/40 hover:text-white/80"
+                            aria-label="Dismiss hint"
+                          >
+                            <X className="h-3 w-3" strokeWidth={2} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <AnimatePresence initial={false}>
                     {showSiteSelector && (
                       <motion.div
@@ -1010,7 +1093,7 @@ export default function ConfiguratorSoloGenerous() {
                         <div className="pt-2 flex items-center gap-1">
                           {SITE_OPTIONS.length > 1 && (
                             <button
-                              onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1)}
+                              onClick={() => { scrollToSiteLoopIdx(currentSiteLoopIdxRef.current - 1); setSiteSeen(true); }}
                               className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                               aria-label="Previous site"
                             >
@@ -1031,7 +1114,7 @@ export default function ConfiguratorSoloGenerous() {
                                 <button
                                   key={`${opt.title}-${li}`}
                                   ref={(el) => (siteCardRefs.current[li] = el)}
-                                  onClick={() => scrollToSiteLoopIdx(li)}
+                                  onClick={() => { scrollToSiteLoopIdx(li); setSiteSeen(true); }}
                                   aria-label={`Switch to ${opt.title}`}
                                   aria-pressed={active}
                                   className={[
@@ -1060,7 +1143,7 @@ export default function ConfiguratorSoloGenerous() {
 
                           {SITE_OPTIONS.length > 1 && (
                             <button
-                              onClick={() => scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1)}
+                              onClick={() => { scrollToSiteLoopIdx(currentSiteLoopIdxRef.current + 1); setSiteSeen(true); }}
                               className="shrink-0 w-6 h-6 rounded-full inline-flex items-center justify-center bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors"
                               aria-label="Next site"
                             >
@@ -1074,7 +1157,10 @@ export default function ConfiguratorSoloGenerous() {
                 </motion.aside>
                 </div>
 
-                <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteChangeCount >= 1 && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
+                {/* siteSeen covers both real ways past Site Selector — picking
+                    a different site in the carousel, or Skip — so either one
+                    is enough to move the glow on to Show Zones. */}
+                <div className={`rounded-[1.5rem] ${glowHintsEnabled && siteSeen && !dotsRevealed ? "panel-glow-pulse" : ""}`}>
                 <motion.aside
                   initial={blurInit}
                   animate={blurIn}
@@ -1693,7 +1779,7 @@ export default function ConfiguratorSoloGenerous() {
                   <Stat icon={Clock} label="Assembly time" value={String(_assembly)} unit="hours" />
                   <Stat icon={Zap} label="Energy consumption" value={_energy} unit="kWh/d" />
                   <Stat icon={Weight} label="Total mass" value={_mass} unit="t" />
-                  <Stat icon={Square} label="Total area" value="42" unit="m²" />
+                  <Stat icon={Square} label="Total area" value={String(_totalArea)} unit="m²" />
                 </div>
               )}
             </motion.div>
