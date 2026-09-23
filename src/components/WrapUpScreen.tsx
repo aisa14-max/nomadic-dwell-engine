@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, X } from "lucide-react";
 import StartOverButton from "@/components/StartOverButton";
@@ -7,8 +7,10 @@ import { WRAPUP_EVENT } from "@/lib/tribeStore";
 type Props = {
   show: boolean;
   onClose: () => void;
-  /** The line under "Thank you for exploring" — page-specific. */
-  subtitle: string;
+  /** The line under "Thank you for exploring" — page-specific. A plain
+      string, or JSX when part of it needs its own styling (e.g. Under the
+      Hood's non-bold "Nomadic Engine." next to its bold sign-off line). */
+  subtitle: ReactNode;
   /** Optional second path out, offered above Start Over (e.g. Tribe's wrap-up
       points at Under the Hood). Omitted entirely elsewhere — a page with no
       cross-promo is just a plain wrap-up screen, Start Over as the one CTA.
@@ -68,7 +70,10 @@ export default function WrapUpScreen({ show, onClose, subtitle, crossPromo }: Pr
             <p className="mt-5 text-[11px] uppercase tracking-[.2em] text-white/60 font-body">
               Thank you for exploring
             </p>
-            <h2 className="font-heading text-2xl text-white/95 mt-2 leading-tight">
+            <h2
+              className="font-heading text-2xl text-white/95 mt-2 leading-tight"
+              style={{ whiteSpace: "pre-line" }}
+            >
               {subtitle}
             </h2>
 

@@ -190,7 +190,13 @@ export default function UnderTheHoodDialog() {
           <WrapUpScreen
             show={showEndScreen}
             onClose={() => setShowEndScreen(false)}
-            subtitle="You've seen how your Engine thinks."
+            subtitle={
+              <>
+                <span className="font-normal">Nomadic Engine.</span>
+                <br />
+                See you out there.
+              </>
+            }
           />
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

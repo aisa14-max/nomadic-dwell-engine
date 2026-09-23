@@ -472,15 +472,15 @@ export default function ConfiguratorPortfolio() {
       />
       <div className="fixed inset-0 z-0 bg-black/55" aria-hidden />
 
-      <div className="relative z-10 pt-32 px-8 md:px-16 lg:px-20 pb-12">
+      <div className="relative z-10 pt-16 px-8 md:px-16 lg:px-20 pb-12">
         <div className="mx-auto max-w-[1400px]">
           <div className="flex items-end justify-between flex-wrap gap-6">
-            <div className="max-w-3xl">
+            <div>
               <BlurText
                 text="How does the engine actually work?"
-                className="font-heading text-white text-5xl md:text-6xl lg:text-[5rem] leading-[0.9] tracking-[-3px]"
+                className="font-heading text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-[1.05] tracking-[-1px] whitespace-nowrap"
               />
-              <p className="mt-4 text-sm font-body text-white/50 max-w-xl">
+              <p className="mt-3 text-sm font-body text-white/50 max-w-xl">
                 This is a demo version of the back-end system section generator of Nomadic Engine.
               </p>
             </div>
@@ -814,15 +814,76 @@ export default function ConfiguratorPortfolio() {
                           <div className="relative" style={{ aspectRatio: "1/1", maxHeight: "100%", maxWidth: "100%" }}>
                             {/* Hovered section name — top-left corner, Barlow font.
                                 Before the first hover, this doubles as the guided
-                                first step's own hint text. */}
-                            <div
-                              className="absolute top-3 left-3 z-10 pointer-events-none transition-opacity duration-200"
-                              style={{ opacity: hoveredSection || !hasHoveredSection ? 1 : 0 }}
-                            >
-                              <span className="font-body text-[11px] uppercase tracking-[0.22em] text-white/60">
-                                {hoveredSection ?? "Hover a section to explore"}
-                              </span>
+                                first step's own hint: a dismissible "Got it" pill,
+                                same liquid-glass-strong style as the immersive-view
+                                panorama walkthrough hints on Configurator.tsx, since
+                                the plain small-caps label alone was too easy to miss. */}
+                            <div className="absolute top-3 left-3 z-20 pointer-events-none">
+                              <AnimatePresence mode="wait">
+                                {!hasHoveredSection ? (
+                                  <motion.div
+                                    key="hint"
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="liquid-glass-strong rounded-xl px-4 py-3 flex items-center gap-3 pointer-events-auto"
+                                  >
+                                    <p className="font-body text-[12px] text-white/90 leading-snug whitespace-nowrap">
+                                      See a glowing section? Hover or click it to explore
+                                    </p>
+                                    <button
+                                      onClick={() => setHasHoveredSection(true)}
+                                      className="shrink-0 px-3 py-1 rounded-full bg-white text-black text-[10px] font-body uppercase tracking-[0.1em] hover:bg-white/90 transition-colors"
+                                    >
+                                      Got it
+                                    </button>
+                                  </motion.div>
+                                ) : hoveredSection ? (
+                                  <motion.span
+                                    key="readout"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="font-body text-[11px] uppercase tracking-[0.22em] text-white/60"
+                                  >
+                                    {hoveredSection}
+                                  </motion.span>
+                                ) : null}
+                              </AnimatePresence>
                             </div>
+                            {/* Ghost cursor tapping the glowing "living" demo zone —
+                                same traveling-cursor mechanic as the section-tab hints
+                                below, just anchored at that zone's hull centroid
+                                (~53%, 45% in the 0–100 SVG viewBox) instead of centered
+                                on a whole button, so the glow doesn't just sit there
+                                unexplained until someone happens to mouse over it. */}
+                            {!hasHoveredSection && (
+                              <motion.div
+                                className="absolute left-[53%] top-[45%] -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
+                                animate={{
+                                  x: [-22, -22, 0, 0, 0],
+                                  y: [18, 18, 0, 0, 0],
+                                  opacity: [0, 1, 1, 1, 0],
+                                  scale: [1, 1, 1, 0.72, 1],
+                                }}
+                                transition={{
+                                  duration: 2.2,
+                                  times: [0, 0.3, 0.55, 0.7, 1],
+                                  repeat: Infinity,
+                                  repeatDelay: 0.9,
+                                  ease: "easeInOut",
+                                }}
+                              >
+                                <MousePointer2
+                                  className="h-5 w-5 text-white"
+                                  style={{ filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.6))" }}
+                                  fill="white"
+                                  fillOpacity={0.15}
+                                  strokeWidth={1.75}
+                                />
+                              </motion.div>
+                            )}
                             <img
                               src={`data:image/png;base64,${sectionImage}`}
                               alt="Dwelling render"
