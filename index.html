@@ -4,20 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- Locks the desktop tiling (Configurator*/Under the Hood/Tribe/etc,
-         all built on Tailwind's lg: 1024px breakpoint) onto phones by lying
-         to the browser about the viewport width, BEFORE it's parsed any
-         CSS or run any React — a React-mounted effect runs too late and
-         reads as the page loading in the wrong (stacked) layout for a
-         moment before switching. See src/components/MobileTiledViewport.tsx
-         for the same check, kept in sync, which takes over for
-         resize/rotation events once the app is actually running. Threshold
-         (700) and target width (1400, matching the app's own
-         max-w-[1400px] containers) must match that file exactly. -->
+         all built on Tailwind's lg: 1024px breakpoint) onto phones IN
+         LANDSCAPE by lying to the browser about the viewport width, BEFORE
+         it's parsed any CSS or run any React — a React-mounted effect runs
+         too late and reads as the page loading in the wrong (stacked)
+         layout for a moment before switching. Portrait deliberately stays
+         on the normal responsive mobile layout — stretching the desktop
+         tiling to fit a portrait-width phone made everything look
+         stretched/oversized, so this only ever touches landscape. See
+         src/components/MobileTiledViewport.tsx for the same check, kept in
+         sync, which takes over for resize/rotation events once the app is
+         actually running. Threshold (700) and target width (1400, matching
+         the app's own max-w-[1400px] containers) must match that file
+         exactly. -->
     <script>
       (function () {
         try {
           var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
           if (!isTouch) return;
+          if (!window.matchMedia("(orientation: landscape)").matches) return;
           var shortSide = Math.min(window.screen.width, window.screen.height);
           if (shortSide >= 700) return;
           var meta = document.querySelector('meta[name="viewport"]');

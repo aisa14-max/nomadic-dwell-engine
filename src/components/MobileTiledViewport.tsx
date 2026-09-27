@@ -9,8 +9,10 @@ import { AnimatePresence, motion } from "framer-motion";
 // "device-width" to a fixed 1400px (matching the app's own max-w-[1400px]
 // containers) makes every existing lg: class activate untouched, and the
 // mobile browser then auto-zooms the whole rendered page out to fit the
-// real physical screen — same tiling, just smaller, in both portrait and
-// landscape, with zero per-page layout changes.
+// real physical screen — same tiling, just smaller, with zero per-page
+// layout changes. Landscape only — stretching the same desktop tiling to
+// fit a portrait-width phone made everything look stretched/oversized, so
+// portrait deliberately stays on the normal responsive mobile layout.
 //
 // The INITIAL page load is handled by a plain inline <script> in
 // index.html instead of here — it runs before any CSS/React, so the page
@@ -28,6 +30,10 @@ const PHYSICAL_SHORT_SIDE_CEILING = 700;
 function isMobileDevice(): boolean {
   const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   if (!isTouch) return false;
+  // matchMedia reads the actual device orientation, not the page's current
+  // CSS viewport — unaffected by whatever this component last set the meta
+  // tag to, unlike window.innerWidth/innerHeight (see below).
+  if (!window.matchMedia("(orientation: landscape)").matches) return false;
   // screen.width/height reflect the PHYSICAL display and are unaffected by
   // our own viewport-meta override, unlike window.innerWidth/innerHeight —
   // those report relative to whatever the CURRENT declared viewport is, so
