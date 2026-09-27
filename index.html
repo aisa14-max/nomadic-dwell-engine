@@ -3,6 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Locks the desktop tiling (Configurator*/Under the Hood/Tribe/etc,
+         all built on Tailwind's lg: 1024px breakpoint) onto phones by lying
+         to the browser about the viewport width, BEFORE it's parsed any
+         CSS or run any React — a React-mounted effect runs too late and
+         reads as the page loading in the wrong (stacked) layout for a
+         moment before switching. See src/components/MobileTiledViewport.tsx
+         for the same check, kept in sync, which takes over for
+         resize/rotation events once the app is actually running. Threshold
+         (700) and target width (1400, matching the app's own
+         max-w-[1400px] containers) must match that file exactly. -->
+    <script>
+      (function () {
+        try {
+          var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+          if (!isTouch) return;
+          var shortSide = Math.min(window.screen.width, window.screen.height);
+          if (shortSide >= 700) return;
+          var meta = document.querySelector('meta[name="viewport"]');
+          if (meta) meta.setAttribute("content", "width=1400");
+        } catch (e) { /* ignore — worst case, normal responsive layout applies */ }
+      })();
+    </script>
     <title>Nomadic Engine</title>
     <link rel="icon" type="image/png" href="/favicon.png?v=2" />
     <link rel="alternate icon" href="/favicon.ico?v=2" />
