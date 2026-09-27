@@ -16,6 +16,7 @@ import Tribe from "./pages/Tribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Nav from "./components/Nav.tsx";
 import IdleReset from "./components/IdleReset.tsx";
+import MobileLandscapeViewport from "./components/MobileLandscapeViewport.tsx";
 import PageTransition from "./components/PageTransition.tsx";
 import LoginDialog from "./components/LoginDialog.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
@@ -63,6 +64,7 @@ const RoutedApp = () => {
     <>
       <Nav />
       <IdleReset />
+      <MobileLandscapeViewport />
       <PageTransition>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<Landing />} />
